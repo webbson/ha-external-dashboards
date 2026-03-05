@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Form, Input, Button, Card, Space, Switch, Select, InputNumber, message } from "antd";
+import { Form, Input, Button, Card, Space, Select, message } from "antd";
 import { HybridEditor } from "../components/editors/HybridEditor.js";
 import { LivePreview } from "../components/preview/LivePreview.js";
 import { EntityDataViewer } from "../components/preview/EntityDataViewer.js";
@@ -96,7 +96,7 @@ export function ComponentEditor() {
     }
   }, [id, isNew, form]);
 
-  const isContainer = Form.useWatch("isContainer", form);
+
   const activeDashboard = dashboards.find((d) => d.id === selectedDashboardId);
 
   const onFinish = async (values: Record<string, unknown>) => {
@@ -129,41 +129,11 @@ export function ComponentEditor() {
         form={form}
         layout="vertical"
         onFinish={onFinish}
-        initialValues={{
-          isContainer: false,
-          containerConfig: null,
-        }}
+        initialValues={{}}
       >
         <Form.Item name="name" label="Name" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item
-          name="isContainer"
-          label="Container Component"
-          valuePropName="checked"
-        >
-          <Switch />
-        </Form.Item>
-        {isContainer && (
-          <Space>
-            <Form.Item name={["containerConfig", "type"]} label="Container Type">
-              <Select
-                style={{ width: 150 }}
-                options={[
-                  { value: "tabs", label: "Tabs" },
-                  { value: "auto-rotate", label: "Auto Rotate" },
-                  { value: "stack", label: "Stack" },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item
-              name={["containerConfig", "rotateInterval"]}
-              label="Rotate Interval (s)"
-            >
-              <InputNumber min={1} />
-            </Form.Item>
-          </Space>
-        )}
       </Form>
 
       <div style={{ marginTop: 16 }}>
