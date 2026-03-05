@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Button, Card, Spin } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import { api } from "../../api.js";
@@ -20,13 +20,6 @@ export function LivePreview({
 }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loading, setLoading] = useState(false);
-  // Store latest props in refs so manual refresh always uses current values
-  const bindingsRef = useRef(entityBindings);
-  const paramsRef = useRef(parameterValues);
-  const globalStylesRef = useRef(globalStyles);
-  bindingsRef.current = entityBindings;
-  paramsRef.current = parameterValues;
-  globalStylesRef.current = globalStyles;
 
   const render = useCallback(() => {
     if (!template) return;
@@ -35,9 +28,9 @@ export function LivePreview({
       .post<{ html: string; styles: string }>("/api/preview/render", {
         template,
         styles,
-        entityBindings: bindingsRef.current,
-        parameterValues: paramsRef.current,
-        globalStyles: globalStylesRef.current,
+        entityBindings,
+        parameterValues,
+        globalStyles,
       })
       .then(({ html, styles: css }) => {
         const iframe = iframeRef.current;
@@ -60,14 +53,7 @@ export function LivePreview({
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [template, styles]);
-
-  // Auto-render when template or styles change (component editing)
-  useEffect(() => {
-    if (!template) return;
-    const timer = setTimeout(render, 300);
-    return () => clearTimeout(timer);
-  }, [render]);
+  }, [template, styles, entityBindings, parameterValues, globalStyles]);
 
   return (
     <Card

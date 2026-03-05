@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router";
 import { Form, Input, Button, Card, Space, Switch, Select, InputNumber, message } from "antd";
 import { HybridEditor } from "../components/editors/HybridEditor.js";
 import { LivePreview } from "../components/preview/LivePreview.js";
+import { EntityDataViewer } from "../components/preview/EntityDataViewer.js";
 import { EntitySelector } from "../components/selectors/EntitySelector.js";
 import { api } from "../api.js";
 
@@ -165,6 +166,8 @@ export function ComponentEditor() {
           ))}
         </Card>
       )}
+
+      <EntityDataViewer entityBindings={testEntityBindings} />
 
       <LivePreview
         template={template}
