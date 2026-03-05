@@ -17,14 +17,7 @@ export const dashboards = sqliteTable("dashboards", {
   interactiveMode: integer("interactive_mode", { mode: "boolean" })
     .notNull()
     .default(false),
-  globalStyles: text("global_styles", { mode: "json" })
-    .$type<Record<string, string>>()
-    .notNull()
-    .default(sql`'{}'`),
-  standardVariables: text("standard_variables", { mode: "json" })
-    .$type<Record<string, string>>()
-    .notNull()
-    .default(sql`'{}'`),
+  themeId: integer("theme_id").references(() => themes.id),
   maxWidth: text("max_width"),
   padding: text("padding"),
   layoutSwitchMode: text("layout_switch_mode", {
@@ -41,13 +34,32 @@ export const dashboards = sqliteTable("dashboards", {
     .default(sql`(datetime('now'))`),
 });
 
+export const themes = sqliteTable("themes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  standardVariables: text("standard_variables", { mode: "json" })
+    .$type<Record<string, string>>()
+    .notNull()
+    .default(sql`'{}'`),
+  globalStyles: text("global_styles", { mode: "json" })
+    .$type<Record<string, string>>()
+    .notNull()
+    .default(sql`'{}'`),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export const layouts = sqliteTable("layouts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   structure: text("structure", { mode: "json" })
     .$type<{
       gridTemplate: string;
-      regions: { id: string; label: string }[];
+      regions: { id: string; applyChromeTo?: "components" | "region" }[];
     }>()
     .notNull(),
   createdAt: text("created_at")
@@ -159,30 +171,8 @@ export const assets = sqliteTable("assets", {
   fileName: text("file_name").notNull().unique(),
   mimeType: text("mime_type").notNull(),
   fileSize: integer("file_size").notNull(),
+  folder: text("folder"),
   createdAt: text("created_at")
-    .notNull()
-    .default(sql`(datetime('now'))`),
-});
-
-export const popups = sqliteTable("popups", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  content: text("content", { mode: "json" })
-    .$type<{
-      type: "text" | "image" | "video";
-      body?: string;
-      mediaUrl?: string;
-    }>()
-    .notNull(),
-  timeout: integer("timeout").notNull().default(10),
-  targetDashboardIds: text("target_dashboard_ids", { mode: "json" })
-    .$type<number[]>()
-    .notNull()
-    .default(sql`'[]'`),
-  createdAt: text("created_at")
-    .notNull()
-    .default(sql`(datetime('now'))`),
-  updatedAt: text("updated_at")
     .notNull()
     .default(sql`(datetime('now'))`),
 });

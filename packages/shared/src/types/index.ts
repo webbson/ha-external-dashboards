@@ -12,7 +12,7 @@ export interface VisibilityRule {
 export interface ParameterDef {
   name: string;
   label: string;
-  type: "string" | "number" | "boolean" | "color" | "select";
+  type: "string" | "number" | "boolean" | "color" | "select" | "icon";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
 }
@@ -26,7 +26,11 @@ export interface EntitySelectorDef {
 
 export interface LayoutRegion {
   id: string;
-  label: string;
+  applyChromeTo?: "components" | "region";
+  flexDirection?: "column" | "row";
+  justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around" | "space-evenly";
+  alignItems?: "stretch" | "flex-start" | "center" | "flex-end";
+  flexGrow?: boolean;
 }
 
 export interface LayoutStructure {
@@ -37,12 +41,6 @@ export interface LayoutStructure {
 export interface ContainerConfig {
   type: "tabs" | "auto-rotate" | "stack";
   rotateInterval?: number;
-}
-
-export interface PopupContent {
-  type: "text" | "image" | "video";
-  body?: string;
-  mediaUrl?: string;
 }
 
 export interface WsMessage {
