@@ -21,6 +21,10 @@ export const dashboards = sqliteTable("dashboards", {
     .$type<Record<string, string>>()
     .notNull()
     .default(sql`'{}'`),
+  standardVariables: text("standard_variables", { mode: "json" })
+    .$type<Record<string, string>>()
+    .notNull()
+    .default(sql`'{}'`),
   layoutSwitchMode: text("layout_switch_mode", {
     enum: ["tabs", "auto-rotate"],
   })

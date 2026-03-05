@@ -15,6 +15,13 @@
       "when": 1772716934837,
       "tag": "0001_messy_old_lace",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1772725209624,
+      "tag": "0002_free_radioactive_man",
+      "breakpoints": true
     }
   ]
 }

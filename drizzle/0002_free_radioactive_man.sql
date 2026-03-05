@@ -1,0 +1,1 @@
+ALTER TABLE `dashboards` ADD `standard_variables` text DEFAULT '{}' NOT NULL;
