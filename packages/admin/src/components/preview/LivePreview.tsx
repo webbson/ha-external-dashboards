@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, Spin } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import { api } from "../../api.js";
@@ -54,6 +54,15 @@ export function LivePreview({
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [template, styles, entityBindings, parameterValues, globalStyles]);
+
+  // Render once on mount when template exists
+  const initialRender = useRef(false);
+  useEffect(() => {
+    if (!initialRender.current && template) {
+      initialRender.current = true;
+      render();
+    }
+  }, [template, render]);
 
   return (
     <Card
