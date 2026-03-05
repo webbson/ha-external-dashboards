@@ -31,6 +31,8 @@ interface Dashboard {
   headerName?: string;
   headerValue?: string;
   interactiveMode: boolean;
+  maxWidth?: string | null;
+  padding?: string | null;
   globalStyles: Record<string, string>;
   standardVariables?: Partial<StandardVariables>;
   layoutSwitchMode: string;
@@ -77,6 +79,7 @@ interface Component {
   parameterDefs: ParameterDef[];
   entitySelectorDefs: EntitySelectorDef[];
   isContainer: boolean;
+  containerConfig?: { type: string; rotateInterval?: number } | null;
 }
 
 interface ComponentInstance {
@@ -88,6 +91,9 @@ interface ComponentInstance {
   parameterValues: Record<string, string | number | boolean>;
   entityBindings: Record<string, string | string[]>;
   visibilityRules: VisibilityRule[];
+  parentInstanceId: number | null;
+  tabLabel: string | null;
+  tabIcon: string | null;
 }
 
 interface VisibilityRule {
@@ -111,6 +117,7 @@ export function DashboardEditor() {
   >([]);
   const [standardVariables, setStandardVariables] = useState<Partial<StandardVariables>>({});
   const [pickerRegionId, setPickerRegionId] = useState<string | null>(null);
+  const [pickerContainerInstanceId, setPickerContainerInstanceId] = useState<number | null>(null);
   const [configInstance, setConfigInstance] = useState<ComponentInstance | null>(
     null
   );
@@ -158,6 +165,20 @@ export function DashboardEditor() {
     }
   }, [activeDlId]);
 
+  const saveLayouts = async () => {
+    if (!id) return;
+    const result = await api.put<DashboardLayout[]>(
+      `/api/dashboards/${id}/layouts`,
+      dashLayouts.map((l, i) => ({
+        id: l.id > 0 ? l.id : undefined,
+        layoutId: l.layoutId,
+        sortOrder: i,
+        label: l.label,
+      }))
+    );
+    setDashLayouts(result);
+  };
+
   const onFinish = async (values: Dashboard) => {
     setLoading(true);
     try {
@@ -172,26 +193,13 @@ export function DashboardEditor() {
         message.success("Dashboard created");
       } else {
         await api.put(`/api/dashboards/${id}`, payload);
+        await saveLayouts();
         message.success("Dashboard updated");
       }
       navigate("/dashboards");
     } finally {
       setLoading(false);
     }
-  };
-
-  const saveLayouts = async () => {
-    if (!id) return;
-    const result = await api.put<DashboardLayout[]>(
-      `/api/dashboards/${id}/layouts`,
-      dashLayouts.map((l, i) => ({
-        layoutId: l.layoutId,
-        sortOrder: i,
-        label: l.label,
-      }))
-    );
-    setDashLayouts(result);
-    message.success("Layouts saved");
   };
 
   const addLayout = () => {
@@ -208,21 +216,43 @@ export function DashboardEditor() {
   };
 
   const handlePickerSelect = async (componentId: number) => {
-    if (!activeDlId || !pickerRegionId) return;
-    const regionInstances = instances.filter(
-      (i) => i.regionId === pickerRegionId
-    );
-    const inst = await api.post<ComponentInstance>(
-      `/api/dashboard-layouts/${activeDlId}/instances`,
-      {
-        componentId,
-        regionId: pickerRegionId,
-        sortOrder: regionInstances.length,
-      }
-    );
-    setInstances([...instances, inst]);
-    setPickerRegionId(null);
-    setConfigInstance(inst);
+    if (!activeDlId) return;
+
+    if (pickerContainerInstanceId !== null) {
+      // Adding child to container
+      const siblings = instances.filter(
+        (i) => i.parentInstanceId === pickerContainerInstanceId
+      );
+      const containerInst = instances.find((i) => i.id === pickerContainerInstanceId);
+      const inst = await api.post<ComponentInstance>(
+        `/api/dashboard-layouts/${activeDlId}/instances`,
+        {
+          componentId,
+          regionId: containerInst?.regionId ?? "",
+          sortOrder: siblings.length,
+          parentInstanceId: pickerContainerInstanceId,
+        }
+      );
+      setInstances([...instances, inst]);
+      setPickerContainerInstanceId(null);
+      setConfigInstance(inst);
+    } else if (pickerRegionId) {
+      // Adding to region
+      const regionInstances = instances.filter(
+        (i) => i.regionId === pickerRegionId && !i.parentInstanceId
+      );
+      const inst = await api.post<ComponentInstance>(
+        `/api/dashboard-layouts/${activeDlId}/instances`,
+        {
+          componentId,
+          regionId: pickerRegionId,
+          sortOrder: regionInstances.length,
+        }
+      );
+      setInstances([...instances, inst]);
+      setPickerRegionId(null);
+      setConfigInstance(inst);
+    }
   };
 
   const handleConfigSave = async (
@@ -240,7 +270,7 @@ export function DashboardEditor() {
 
   const handleConfigDelete = async (instanceId: number) => {
     await api.delete(`/api/instances/${instanceId}`);
-    setInstances(instances.filter((i) => i.id !== instanceId));
+    setInstances(instances.filter((i) => i.id !== instanceId && i.parentInstanceId !== instanceId));
     setConfigInstance(null);
     message.success("Component removed");
   };
@@ -278,334 +308,356 @@ export function DashboardEditor() {
         />
       )}
 
-      <Tabs
-        items={[
-          {
-            key: "settings",
-            label: "Settings",
-            children: (
-              <Form
-                form={form}
-                layout="vertical"
-                onFinish={onFinish}
-                initialValues={{
-                  accessMode: "public",
-                  interactiveMode: false,
-                  globalStyles: {},
-                  layoutSwitchMode: "tabs",
-                  layoutRotateInterval: 30,
-                }}
-              >
-                <Form.Item
-                  name="name"
-                  label="Name"
-                  rules={[{ required: true }]}
-                >
-                  <Input />
-                </Form.Item>
-                <Form.Item
-                  name="slug"
-                  label="Slug"
-                  rules={[
-                    { required: true },
-                    {
-                      pattern: /^[a-z0-9-]+$/,
-                      message: "Lowercase, numbers, hyphens only",
-                    },
-                  ]}
-                >
-                  <Input />
-                </Form.Item>
-                <Form.Item name="accessMode" label="Access Mode">
-                  <Select
-                    options={[
-                      { value: "public", label: "Public" },
-                      { value: "password", label: "Password" },
-                      { value: "header", label: "Header" },
-                    ]}
-                  />
-                </Form.Item>
-                {accessMode === "password" && (
-                  <Form.Item name="password" label="Password">
-                    <Input.Password />
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={onFinish}
+        initialValues={{
+          accessMode: "public",
+          interactiveMode: false,
+          globalStyles: {},
+          layoutSwitchMode: "tabs",
+          layoutRotateInterval: 30,
+        }}
+      >
+        <Tabs
+          items={[
+            {
+              key: "settings",
+              label: "Settings",
+              children: (
+                <div>
+                  <Form.Item
+                    name="name"
+                    label="Name"
+                    rules={[{ required: true }]}
+                  >
+                    <Input />
                   </Form.Item>
-                )}
-                {accessMode === "header" && (
-                  <>
-                    <Form.Item name="headerName" label="Header Name">
-                      <Input />
-                    </Form.Item>
-                    <Form.Item name="headerValue" label="Header Value">
-                      <Input />
-                    </Form.Item>
-                  </>
-                )}
-                <Form.Item
-                  name="interactiveMode"
-                  label="Interactive Mode"
-                  valuePropName="checked"
-                >
-                  <Switch />
-                </Form.Item>
-                <Form.Item name="layoutSwitchMode" label="Layout Switch Mode">
-                  <Select
-                    options={[
-                      { value: "tabs", label: "Tabs" },
-                      { value: "auto-rotate", label: "Auto Rotate" },
+                  <Form.Item
+                    name="slug"
+                    label="Slug"
+                    rules={[
+                      { required: true },
+                      {
+                        pattern: /^[a-z0-9-]+$/,
+                        message: "Lowercase, numbers, hyphens only",
+                      },
                     ]}
-                  />
-                </Form.Item>
-                <Form.Item
-                  name="layoutRotateInterval"
-                  label="Rotate Interval (s)"
-                >
-                  <InputNumber min={5} />
-                </Form.Item>
-                <Form.Item>
-                  <Space>
-                    <Button
-                      type="primary"
-                      htmlType="submit"
-                      loading={loading}
-                    >
-                      {isNew ? "Create" : "Save"}
-                    </Button>
-                    <Button onClick={() => navigate("/dashboards")}>
-                      Cancel
-                    </Button>
-                  </Space>
-                </Form.Item>
-              </Form>
-            ),
-          },
-          ...(!isNew
-            ? [
-                {
-                  key: "layouts",
-                  label: "Layouts",
-                  children: (
-                    <div>
-                      {dashLayouts.map((dl, i) => (
-                        <Space
-                          key={i}
-                          style={{ display: "flex", marginBottom: 8 }}
-                        >
-                          <Select
-                            style={{ width: 200 }}
-                            value={dl.layoutId}
-                            onChange={(v) => {
-                              const next = [...dashLayouts];
-                              next[i] = { ...next[i], layoutId: v };
-                              setDashLayouts(next);
-                            }}
-                            options={allLayouts.map((l) => ({
-                              value: l.id,
-                              label: l.name,
-                            }))}
-                          />
-                          <Input
-                            placeholder="Tab label"
-                            value={dl.label ?? ""}
-                            onChange={(e) => {
-                              const next = [...dashLayouts];
-                              next[i] = {
-                                ...next[i],
-                                label: e.target.value || null,
-                              };
-                              setDashLayouts(next);
-                            }}
-                            style={{ width: 150 }}
-                          />
-                          <Button
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() =>
-                              setDashLayouts(
-                                dashLayouts.filter((_, j) => j !== i)
-                              )
-                            }
-                          />
-                        </Space>
-                      ))}
-                      <Space>
-                        <Button icon={<PlusOutlined />} onClick={addLayout}>
-                          Add Layout
-                        </Button>
-                        <Button type="primary" onClick={saveLayouts}>
-                          Save Layouts
-                        </Button>
-                      </Space>
-                    </div>
-                  ),
-                },
-                {
-                  key: "components",
-                  label: "Components",
-                  children: (
-                    <div>
-                      {dashLayouts.length === 0 ? (
-                        <div
-                          style={{
-                            color: "#999",
-                            padding: 24,
-                            textAlign: "center",
-                          }}
-                        >
-                          Add layouts in the Layouts tab first.
-                        </div>
-                      ) : (
-                        <>
-                          <Tabs
-                            activeKey={String(activeDlIndex)}
-                            onChange={(k) => setActiveDlIndex(Number(k))}
-                            items={dashLayouts.map((dl, i) => {
-                              const layout = allLayouts.find(
-                                (l) => l.id === dl.layoutId
-                              );
-                              return {
-                                key: String(i),
-                                label:
-                                  dl.label || layout?.name || `Layout ${i + 1}`,
-                              };
-                            })}
-                            style={{ marginBottom: 16 }}
-                          />
-
-                          {(() => {
-                            const layout = allLayouts.find(
-                              (l) => l.id === activeDl?.layoutId
-                            );
-                            if (!layout?.structure) return null;
-                            return (
-                              <VisualLayoutGrid
-                                gridTemplate={layout.structure.gridTemplate}
-                                regions={layout.structure.regions}
-                                instances={instances}
-                                components={allComponents}
-                                onAddClick={(regionId) =>
-                                  setPickerRegionId(regionId)
-                                }
-                                onInstanceClick={(inst) =>
-                                  setConfigInstance(inst)
-                                }
-                                onReorder={handleReorder}
-                              />
-                            );
-                          })()}
-                        </>
-                      )}
-
-                      <ComponentPickerModal
-                        open={pickerRegionId !== null}
-                        components={allComponents}
-                        onSelect={handlePickerSelect}
-                        onCancel={() => setPickerRegionId(null)}
-                      />
-
-                      <ComponentConfigModal
-                        open={configInstance !== null}
-                        instance={configInstance}
-                        component={
-                          configInstance
-                            ? allComponents.find(
-                                (c) => c.id === configInstance.componentId
-                              ) ?? null
-                            : null
-                        }
-                        regionLabel={(() => {
-                          const layout = allLayouts.find(
-                            (l) => l.id === activeDl?.layoutId
-                          );
-                          const region = layout?.structure?.regions?.find(
-                            (r) => r.id === configInstance?.regionId
-                          );
-                          return region?.label || region?.id || "";
-                        })()}
-                        globalStyles={{
-                          ...Object.fromEntries(
-                            Object.entries({ ...STANDARD_VARIABLE_DEFAULTS, ...standardVariables })
-                              .filter(([k]) => k !== "backgroundType" && k !== "backgroundImage")
-                          ),
-                          ...(form.getFieldValue("globalStyles") ?? {}),
-                          ...Object.fromEntries(
-                            globalStyleEntries.filter((e) => e.key).map((e) => [e.key, e.value])
-                          ),
-                        }}
-                        standardVariables={standardVariables as Record<string, string>}
-                        onSave={handleConfigSave}
-                        onDelete={handleConfigDelete}
-                        onCancel={() => setConfigInstance(null)}
-                      />
-                    </div>
-                  ),
-                },
-                {
-                  key: "styles",
-                  label: "Global Styles",
-                  children: (
-                    <div>
-                      <StandardVariablesForm
-                        value={standardVariables}
-                        onChange={setStandardVariables}
-                      />
-
-                      <div style={{ marginTop: 24, borderTop: "1px solid #303030", paddingTop: 16 }}>
-                        <div style={{ fontWeight: 500, marginBottom: 12 }}>Custom Variables</div>
-                        {globalStyleEntries.map((entry, i) => (
+                  >
+                    <Input />
+                  </Form.Item>
+                  <Form.Item name="accessMode" label="Access Mode">
+                    <Select
+                      options={[
+                        { value: "public", label: "Public" },
+                        { value: "password", label: "Password" },
+                        { value: "header", label: "Header" },
+                      ]}
+                    />
+                  </Form.Item>
+                  {accessMode === "password" && (
+                    <Form.Item name="password" label="Password">
+                      <Input.Password />
+                    </Form.Item>
+                  )}
+                  {accessMode === "header" && (
+                    <>
+                      <Form.Item name="headerName" label="Header Name">
+                        <Input />
+                      </Form.Item>
+                      <Form.Item name="headerValue" label="Header Value">
+                        <Input />
+                      </Form.Item>
+                    </>
+                  )}
+                  <Form.Item
+                    name="interactiveMode"
+                    label="Interactive Mode"
+                    valuePropName="checked"
+                  >
+                    <Switch />
+                  </Form.Item>
+                  <Form.Item
+                    name="maxWidth"
+                    label="Max Width"
+                    tooltip="Maximum width of the layout area (e.g. 1200px, 80%). Leave empty for full width."
+                  >
+                    <Input placeholder="e.g. 1200px, 80%" allowClear />
+                  </Form.Item>
+                  <Form.Item
+                    name="padding"
+                    label="Padding"
+                    tooltip="Padding around the layout area (e.g. 16px, 2rem 4rem)"
+                  >
+                    <Input placeholder="e.g. 16px, 2rem 4rem" allowClear />
+                  </Form.Item>
+                  <Form.Item name="layoutSwitchMode" label="Layout Switch Mode">
+                    <Select
+                      options={[
+                        { value: "tabs", label: "Tabs" },
+                        { value: "auto-rotate", label: "Auto Rotate" },
+                      ]}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name="layoutRotateInterval"
+                    label="Rotate Interval (s)"
+                  >
+                    <InputNumber min={5} />
+                  </Form.Item>
+                </div>
+              ),
+            },
+            ...(!isNew
+              ? [
+                  {
+                    key: "layouts",
+                    label: "Layouts",
+                    children: (
+                      <div>
+                        {dashLayouts.map((dl, i) => (
                           <Space
                             key={i}
                             style={{ display: "flex", marginBottom: 8 }}
                           >
-                            <Input
-                              placeholder="Variable name"
-                              value={entry.key}
-                              onChange={(e) => {
-                                const next = [...globalStyleEntries];
-                                next[i] = { ...next[i], key: e.target.value };
-                                setGlobalStyleEntries(next);
-                              }}
+                            <Select
                               style={{ width: 200 }}
+                              value={dl.layoutId}
+                              onChange={(v) => {
+                                const next = [...dashLayouts];
+                                next[i] = { ...next[i], layoutId: v };
+                                setDashLayouts(next);
+                              }}
+                              options={allLayouts.map((l) => ({
+                                value: l.id,
+                                label: l.name,
+                              }))}
                             />
                             <Input
-                              placeholder="Value"
-                              value={entry.value}
+                              placeholder="Tab label"
+                              value={dl.label ?? ""}
                               onChange={(e) => {
-                                const next = [...globalStyleEntries];
-                                next[i] = { ...next[i], value: e.target.value };
-                                setGlobalStyleEntries(next);
+                                const next = [...dashLayouts];
+                                next[i] = {
+                                  ...next[i],
+                                  label: e.target.value || null,
+                                };
+                                setDashLayouts(next);
                               }}
-                              style={{ width: 200 }}
+                              style={{ width: 150 }}
                             />
                             <Button
                               danger
                               icon={<DeleteOutlined />}
                               onClick={() =>
-                                setGlobalStyleEntries(
-                                  globalStyleEntries.filter((_, j) => j !== i)
+                                setDashLayouts(
+                                  dashLayouts.filter((_, j) => j !== i)
                                 )
                               }
                             />
                           </Space>
                         ))}
-                        <Button
-                          icon={<PlusOutlined />}
-                          onClick={() =>
-                            setGlobalStyleEntries([
-                              ...globalStyleEntries,
-                              { key: "", value: "" },
-                            ])
-                          }
-                        >
-                          Add Style Variable
+                        <Button icon={<PlusOutlined />} onClick={addLayout}>
+                          Add Layout
                         </Button>
                       </div>
-                    </div>
-                  ),
-                },
-              ]
-            : []),
-        ]}
-      />
+                    ),
+                  },
+                  {
+                    key: "components",
+                    label: "Components",
+                    children: (
+                      <div>
+                        {dashLayouts.length === 0 ? (
+                          <div
+                            style={{
+                              color: "#999",
+                              padding: 24,
+                              textAlign: "center",
+                            }}
+                          >
+                            Add layouts in the Layouts tab first.
+                          </div>
+                        ) : (
+                          <>
+                            <Tabs
+                              activeKey={String(activeDlIndex)}
+                              onChange={(k) => setActiveDlIndex(Number(k))}
+                              items={dashLayouts.map((dl, i) => {
+                                const layout = allLayouts.find(
+                                  (l) => l.id === dl.layoutId
+                                );
+                                return {
+                                  key: String(i),
+                                  label:
+                                    dl.label || layout?.name || `Layout ${i + 1}`,
+                                };
+                              })}
+                              style={{ marginBottom: 16 }}
+                            />
+
+                            {(() => {
+                              const layout = allLayouts.find(
+                                (l) => l.id === activeDl?.layoutId
+                              );
+                              if (!layout?.structure) return null;
+                              return (
+                                <VisualLayoutGrid
+                                  gridTemplate={layout.structure.gridTemplate}
+                                  regions={layout.structure.regions}
+                                  instances={instances}
+                                  components={allComponents}
+                                  onAddClick={(regionId) =>
+                                    setPickerRegionId(regionId)
+                                  }
+                                  onInstanceClick={(inst) =>
+                                    setConfigInstance(inst)
+                                  }
+                                  onReorder={handleReorder}
+                                  onAddToContainer={(containerInstanceId) =>
+                                    setPickerContainerInstanceId(containerInstanceId)
+                                  }
+                                />
+                              );
+                            })()}
+                          </>
+                        )}
+
+                        <ComponentPickerModal
+                          open={pickerRegionId !== null || pickerContainerInstanceId !== null}
+                          components={
+                            pickerContainerInstanceId !== null
+                              ? allComponents.filter((c) => !c.isContainer)
+                              : allComponents
+                          }
+                          onSelect={handlePickerSelect}
+                          onCancel={() => {
+                            setPickerRegionId(null);
+                            setPickerContainerInstanceId(null);
+                          }}
+                        />
+
+                        <ComponentConfigModal
+                          open={configInstance !== null}
+                          instance={configInstance}
+                          component={
+                            configInstance
+                              ? allComponents.find(
+                                  (c) => c.id === configInstance.componentId
+                                ) ?? null
+                              : null
+                          }
+                          regionLabel={(() => {
+                            const layout = allLayouts.find(
+                              (l) => l.id === activeDl?.layoutId
+                            );
+                            const region = layout?.structure?.regions?.find(
+                              (r) => r.id === configInstance?.regionId
+                            );
+                            return region?.label || region?.id || "";
+                          })()}
+                          globalStyles={{
+                            ...Object.fromEntries(
+                              Object.entries({ ...STANDARD_VARIABLE_DEFAULTS, ...standardVariables })
+                                .filter(([k]) => k !== "backgroundType" && k !== "backgroundImage")
+                            ),
+                            ...(form.getFieldValue("globalStyles") ?? {}),
+                            ...Object.fromEntries(
+                              globalStyleEntries.filter((e) => e.key).map((e) => [e.key, e.value])
+                            ),
+                          }}
+                          standardVariables={standardVariables as Record<string, string>}
+                          onSave={handleConfigSave}
+                          onDelete={handleConfigDelete}
+                          onCancel={() => setConfigInstance(null)}
+                        />
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "styles",
+                    label: "Global Styles",
+                    children: (
+                      <div>
+                        <StandardVariablesForm
+                          value={standardVariables}
+                          onChange={setStandardVariables}
+                        />
+
+                        <div style={{ marginTop: 24, borderTop: "1px solid #303030", paddingTop: 16 }}>
+                          <div style={{ fontWeight: 500, marginBottom: 12 }}>Custom Variables</div>
+                          {globalStyleEntries.map((entry, i) => (
+                            <Space
+                              key={i}
+                              style={{ display: "flex", marginBottom: 8 }}
+                            >
+                              <Input
+                                placeholder="Variable name"
+                                value={entry.key}
+                                onChange={(e) => {
+                                  const next = [...globalStyleEntries];
+                                  next[i] = { ...next[i], key: e.target.value };
+                                  setGlobalStyleEntries(next);
+                                }}
+                                style={{ width: 200 }}
+                              />
+                              <Input
+                                placeholder="Value"
+                                value={entry.value}
+                                onChange={(e) => {
+                                  const next = [...globalStyleEntries];
+                                  next[i] = { ...next[i], value: e.target.value };
+                                  setGlobalStyleEntries(next);
+                                }}
+                                style={{ width: 200 }}
+                              />
+                              <Button
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() =>
+                                  setGlobalStyleEntries(
+                                    globalStyleEntries.filter((_, j) => j !== i)
+                                  )
+                                }
+                              />
+                            </Space>
+                          ))}
+                          <Button
+                            icon={<PlusOutlined />}
+                            onClick={() =>
+                              setGlobalStyleEntries([
+                                ...globalStyleEntries,
+                                { key: "", value: "" },
+                              ])
+                            }
+                          >
+                            Add Style Variable
+                          </Button>
+                        </div>
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
+
+        <Form.Item style={{ marginTop: 16 }}>
+          <Space>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={loading}
+            >
+              {isNew ? "Create" : "Save"}
+            </Button>
+            <Button onClick={() => navigate("/dashboards")}>
+              Cancel
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
     </Card>
   );
 }
