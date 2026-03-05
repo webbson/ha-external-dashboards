@@ -38,7 +38,7 @@ Build order matters: shared → admin/display → server
 
 ## Data Model
 
-- `dashboards` — slug, accessKey, accessMode, globalStyles, layoutSwitchMode
+- `dashboards` — slug, accessKey, accessMode, globalStyles, standardVariables (JSON: colors/typography/borders/gaps/background), layoutSwitchMode
 - `layouts` — name, structure (JSON: gridTemplate + regions)
 - `dashboard_layouts` — join table with sortOrder, label
 - `components` — template (Handlebars), styles (CSS), parameterDefs, entitySelectorDefs (with optional allowedDomains), testEntityBindings
