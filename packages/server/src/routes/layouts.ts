@@ -7,7 +7,7 @@ import { broadcastReloadForDashboards } from "../ws/popup-broadcast.js";
 
 const regionSchema = z.object({
   id: z.string(),
-  label: z.string(),
+  applyChromeTo: z.enum(["components", "region"]).optional(),
   flexDirection: z.enum(["column", "row"]).optional(),
   justifyContent: z.enum(["flex-start", "center", "flex-end", "space-between", "space-around", "space-evenly"]).optional(),
   alignItems: z.enum(["stretch", "flex-start", "center", "flex-end"]).optional(),

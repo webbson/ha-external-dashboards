@@ -38,13 +38,26 @@ Build order matters: shared → admin/display → server
 
 ## Data Model
 
-- `dashboards` — slug, accessKey, accessMode, globalStyles, standardVariables (JSON: colors/typography/borders/gaps/background), layoutSwitchMode
-- `layouts` — name, structure (JSON: gridTemplate + regions)
+- `themes` — name, standardVariables (JSON: colors/typography/borders/gaps/background), globalStyles (JSON: custom CSS variables)
+- `dashboards` — slug, accessKey, accessMode, themeId (FK → themes), layoutSwitchMode
+- `layouts` — name, structure (JSON: gridTemplate + regions with applyChromeTo)
 - `dashboard_layouts` — join table with sortOrder, label
 - `components` — template (Handlebars), styles (CSS), parameterDefs, entitySelectorDefs (with optional allowedDomains), testEntityBindings
 - `component_instances` — placed in dashboard_layout regions with parameterValues, entityBindings, visibilityRules
-- `assets` — uploaded files in /config/assets/
-- `popups` — text/image/video content with timeout, targetDashboardIds
+- `assets` — uploaded files in /config/assets/, virtual folder field for organization
+
+## Styling Architecture
+
+- Theme chrome (bg, border, radius, padding) applied externally by the renderer, not in component CSS
+- Region `applyChromeTo` controls whether chrome wraps each component ("components") or the region ("region")
+- Components only contain internal layout/content styles, no base chrome
+- Popups are ephemeral (POST /api/trigger/popup), not persisted
+
+## Cascade Behavior
+
+- Saving a component, layout, or theme triggers reload on all affected dashboards
+- Components, layouts, and themes cannot be deleted while in use (409 response with usageCount)
+- All list endpoints include computed usageCount
 
 ## Entity Data Flow
 
