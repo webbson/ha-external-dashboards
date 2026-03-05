@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Form, Input, Button, Card, Space, Typography, message } from "antd";
+import { Form, Input, Button, Card, Checkbox, Space, Typography, Select, message } from "antd";
 import { api } from "../api.js";
 
 function parseGridAreas(gridTemplate: string): string[] {
@@ -19,7 +19,11 @@ const { Text } = Typography;
 
 interface Region {
   id: string;
-  label: string;
+  applyChromeTo?: "components" | "region";
+  flexDirection?: "column" | "row";
+  justifyContent?: "flex-start" | "center" | "flex-end" | "space-between" | "space-around" | "space-evenly";
+  alignItems?: "stretch" | "flex-start" | "center" | "flex-end";
+  flexGrow?: boolean;
 }
 
 interface LayoutData {
@@ -86,7 +90,7 @@ function GridPreview({
             fontSize: 12,
           }}
         >
-          {r.label || r.id}
+          {r.id}
         </div>
       ))}
     </div>
@@ -98,7 +102,7 @@ export function LayoutEditor() {
   const navigate = useNavigate();
   const [form] = Form.useForm<LayoutData>();
   const [loading, setLoading] = useState(false);
-  const [regionLabels, setRegionLabels] = useState<Record<string, string>>({});
+  const [regionSettings, setRegionSettings] = useState<Record<string, Omit<Region, "id">>>({});
   const isNew = !id;
 
   const gridTemplate =
@@ -113,9 +117,9 @@ export function LayoutEditor() {
     () =>
       detectedAreas.map((area) => ({
         id: area,
-        label: regionLabels[area] ?? area,
+        ...regionSettings[area],
       })),
-    [detectedAreas, regionLabels]
+    [detectedAreas, regionSettings]
   );
 
   useEffect(() => {
@@ -128,11 +132,17 @@ export function LayoutEditor() {
             name: data.name,
             structure: { gridTemplate: data.structure.gridTemplate },
           });
-          const labels: Record<string, string> = {};
+          const settings: Record<string, Omit<Region, "id">> = {};
           for (const r of data.structure.regions) {
-            labels[r.id] = r.label;
+            settings[r.id] = {
+              applyChromeTo: (r as any).applyChromeTo,
+              flexDirection: r.flexDirection,
+              justifyContent: r.justifyContent,
+              alignItems: r.alignItems,
+              flexGrow: r.flexGrow,
+            };
           }
-          setRegionLabels(labels);
+          setRegionSettings(settings);
         })
         .finally(() => setLoading(false));
     }
@@ -201,23 +211,92 @@ export function LayoutEditor() {
           <Form.Item label="Detected Regions">
             <Space direction="vertical" style={{ width: "100%" }}>
               {detectedAreas.map((area) => (
-                <Space key={area} align="center">
+                <div key={area} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
                   <Text code style={{ minWidth: 80, display: "inline-block" }}>
                     {area}
                   </Text>
-                  <Input
-                    placeholder="Label (optional)"
-                    value={regionLabels[area] ?? ""}
-                    onChange={(e) =>
-                      setRegionLabels((prev) => ({
+                  <Select
+                    size="small"
+                    style={{ width: 160 }}
+                    value={regionSettings[area]?.applyChromeTo ?? "components"}
+                    onChange={(val) =>
+                      setRegionSettings((prev) => ({
                         ...prev,
-                        [area]: e.target.value,
+                        [area]: { ...prev[area], applyChromeTo: val },
                       }))
                     }
-                    style={{ width: 200 }}
-                    size="small"
+                    options={[
+                      { label: "Chrome → Components", value: "components" },
+                      { label: "Chrome → Region", value: "region" },
+                    ]}
                   />
-                </Space>
+                  <Select
+                    size="small"
+                    style={{ width: 110 }}
+                    value={regionSettings[area]?.flexDirection ?? "column"}
+                    onChange={(val) =>
+                      setRegionSettings((prev) => ({
+                        ...prev,
+                        [area]: { ...prev[area], flexDirection: val },
+                      }))
+                    }
+                    options={[
+                      { label: "Column", value: "column" },
+                      { label: "Row", value: "row" },
+                    ]}
+                  />
+                  <Select
+                    size="small"
+                    style={{ width: 140 }}
+                    placeholder="Justify"
+                    value={regionSettings[area]?.justifyContent}
+                    allowClear
+                    onChange={(val) =>
+                      setRegionSettings((prev) => ({
+                        ...prev,
+                        [area]: { ...prev[area], justifyContent: val },
+                      }))
+                    }
+                    options={[
+                      { label: "Start", value: "flex-start" },
+                      { label: "Center", value: "center" },
+                      { label: "End", value: "flex-end" },
+                      { label: "Space Between", value: "space-between" },
+                      { label: "Space Around", value: "space-around" },
+                      { label: "Space Evenly", value: "space-evenly" },
+                    ]}
+                  />
+                  <Select
+                    size="small"
+                    style={{ width: 120 }}
+                    placeholder="Align"
+                    value={regionSettings[area]?.alignItems}
+                    allowClear
+                    onChange={(val) =>
+                      setRegionSettings((prev) => ({
+                        ...prev,
+                        [area]: { ...prev[area], alignItems: val },
+                      }))
+                    }
+                    options={[
+                      { label: "Stretch", value: "stretch" },
+                      { label: "Start", value: "flex-start" },
+                      { label: "Center", value: "center" },
+                      { label: "End", value: "flex-end" },
+                    ]}
+                  />
+                  <Checkbox
+                    checked={regionSettings[area]?.flexGrow ?? false}
+                    onChange={(e) =>
+                      setRegionSettings((prev) => ({
+                        ...prev,
+                        [area]: { ...prev[area], flexGrow: e.target.checked },
+                      }))
+                    }
+                  >
+                    Fill
+                  </Checkbox>
+                </div>
               ))}
             </Space>
           </Form.Item>
