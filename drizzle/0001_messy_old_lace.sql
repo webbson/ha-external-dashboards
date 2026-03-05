@@ -1,0 +1,1 @@
+ALTER TABLE `components` ADD `test_entity_bindings` text DEFAULT 'null';
