@@ -40,8 +40,7 @@ const prebuiltComponents: PrebuiltComponent[] = [
   setTimeout(tick, 1000);
 })();
 </script>`,
-    styles: `:host { background: var(--db-component-bg, transparent); border: var(--db-border-style, none); border-radius: var(--db-border-radius, 0px); padding: var(--db-component-padding, 0px); font-family: var(--db-font-family, inherit); font-size: var(--db-font-size, 16px); }
-.clock { text-align: center; padding: 20px; }
+    styles: `.clock { text-align: center; padding: 20px; }
 .clock-time { font-size: 4em; font-weight: 200; color: var(--db-font-color, #fff); }
 .clock-date { font-size: 1.2em; color: var(--db-font-color-secondary, #aaa); margin-top: 8px; }`,
     parameterDefs: [],
@@ -55,8 +54,7 @@ const prebuiltComponents: PrebuiltComponent[] = [
   <div class="entity-label">{{param "label"}}</div>
   <div class="entity-state">{{state (param "entity")}}{{#if (param "unit")}} <span class="unit">{{param "unit"}}</span>{{/if}}</div>
 </div>`,
-    styles: `:host { background: var(--db-component-bg, transparent); border: var(--db-border-style, none); border-radius: var(--db-border-radius, 0px); padding: var(--db-component-padding, 0px); font-family: var(--db-font-family, inherit); font-size: var(--db-font-size, 16px); }
-.entity-value { padding: 16px; text-align: center; }
+    styles: `.entity-value { padding: 16px; text-align: center; }
 .entity-label { font-size: 0.9em; color: var(--db-font-color-secondary, #aaa); margin-bottom: 4px; }
 .entity-state { font-size: 2.5em; font-weight: 300; color: var(--db-font-color, #fff); }
 .unit { font-size: 0.4em; color: var(--db-font-color-secondary, #aaa); }`,
@@ -88,8 +86,7 @@ const prebuiltComponents: PrebuiltComponent[] = [
     </div>
   </div>
 </div>`,
-    styles: `:host { background: var(--db-component-bg, transparent); border: var(--db-border-style, none); border-radius: var(--db-border-radius, 0px); padding: var(--db-component-padding, 0px); font-family: var(--db-font-family, inherit); font-size: var(--db-font-size, 16px); }
-.weather-card { padding: 20px; }
+    styles: `.weather-card { padding: 20px; }
 .weather-main { text-align: center; margin-bottom: 16px; }
 .weather-temp { font-size: 3.5em; font-weight: 200; color: var(--db-font-color, #fff); }
 .weather-condition { color: var(--db-font-color-secondary, #aaa); }
@@ -111,8 +108,7 @@ const prebuiltComponents: PrebuiltComponent[] = [
   <div class="media-artist">{{attr (param "entity") "media_artist"}}</div>
   <div class="media-state">{{state (param "entity")}}</div>
 </div>`,
-    styles: `:host { background: var(--db-component-bg, transparent); border: var(--db-border-style, none); border-radius: var(--db-border-radius, 0px); padding: var(--db-component-padding, 0px); font-family: var(--db-font-family, inherit); font-size: var(--db-font-size, 16px); }
-.media-player { padding: 16px; }
+    styles: `.media-player { padding: 16px; }
 .media-title { font-size: 1.3em; font-weight: 500; color: var(--db-font-color, #fff); }
 .media-artist { color: var(--db-font-color-secondary, #aaa); margin-top: 4px; }
 .media-state { margin-top: 8px; font-size: 0.85em; color: var(--db-accent-color, #4fc3f7); text-transform: capitalize; }`,
@@ -120,34 +116,6 @@ const prebuiltComponents: PrebuiltComponent[] = [
     entitySelectorDefs: [
       { name: "entity", label: "Media Player Entity", mode: "single", allowedDomains: ["media_player"] },
     ],
-    isContainer: false,
-    containerConfig: null,
-  },
-  {
-    name: "Image Slideshow",
-    template: `<div class="slideshow" id="slideshow-{{param "id"}}">
-  <img class="slideshow-img" src="" alt="Slideshow" />
-</div>
-<script>
-(function() {
-  var urls = '{{param "urls"}}'.split(',').map(s => s.trim()).filter(Boolean);
-  var idx = 0;
-  var el = document.querySelector('#slideshow-{{param "id"}} .slideshow-img');
-  if (el && urls.length) {
-    el.src = urls[0];
-    if (urls.length > 1) setInterval(function() { idx = (idx + 1) % urls.length; el.src = urls[idx]; }, (parseInt('{{param "interval"}}') || 5) * 1000);
-  }
-})();
-</script>`,
-    styles: `:host { border: var(--db-border-style, none); border-radius: var(--db-border-radius, 0px); padding: var(--db-component-padding, 0px); overflow: hidden; }
-.slideshow { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-.slideshow-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--db-border-radius, 0px); }`,
-    parameterDefs: [
-      { name: "id", label: "Unique ID", type: "string", default: "ss1" },
-      { name: "urls", label: "Image URLs (comma-separated)", type: "string", default: "" },
-      { name: "interval", label: "Interval (seconds)", type: "number", default: 5 },
-    ],
-    entitySelectorDefs: [],
     isContainer: false,
     containerConfig: null,
   },
