@@ -9,9 +9,11 @@ import {
   Space,
   Button,
   Popconfirm,
+  Typography,
 } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import { EntitySelector } from "../selectors/EntitySelector.js";
+import { MdiIconSelector } from "../selectors/MdiIconSelector.js";
 import { LivePreview } from "../preview/LivePreview.js";
 
 interface ParameterDef {
@@ -45,6 +47,9 @@ interface ComponentInstance {
   parameterValues: Record<string, string | number | boolean>;
   entityBindings: Record<string, string | string[]>;
   visibilityRules: VisibilityRule[];
+  parentInstanceId: number | null;
+  tabLabel: string | null;
+  tabIcon: string | null;
 }
 
 interface ComponentDef {
@@ -86,6 +91,8 @@ export function ComponentConfigModal({
     Record<string, string | string[]>
   >({});
   const [visibilityRules, setVisibilityRules] = useState<VisibilityRule[]>([]);
+  const [tabLabel, setTabLabel] = useState<string>("");
+  const [tabIcon, setTabIcon] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -97,6 +104,8 @@ export function ComponentConfigModal({
       setParameterValues({ ...defaults, ...instance.parameterValues });
       setEntityBindings({ ...instance.entityBindings });
       setVisibilityRules([...instance.visibilityRules]);
+      setTabLabel(instance?.tabLabel ?? "");
+      setTabIcon(instance?.tabIcon ?? null);
     }
   }, [instance, component]);
 
@@ -104,8 +113,13 @@ export function ComponentConfigModal({
 
   const handleSave = useCallback(() => {
     if (!instance) return;
-    onSave(instance.id, { parameterValues, entityBindings, visibilityRules });
-  }, [instance, parameterValues, entityBindings, visibilityRules, onSave]);
+    onSave(instance.id, {
+      parameterValues,
+      entityBindings,
+      visibilityRules,
+      ...(instance.parentInstanceId != null ? { tabLabel: tabLabel || null, tabIcon } : {}),
+    });
+  }, [instance, parameterValues, entityBindings, visibilityRules, tabLabel, tabIcon, onSave]);
 
   if (!instance || !component) return null;
 
@@ -117,7 +131,7 @@ export function ComponentConfigModal({
       title={`${component.name} — ${regionLabel}`}
       open={open}
       onCancel={onCancel}
-      width={900}
+      width="95vw"
       footer={
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <Popconfirm
@@ -140,6 +154,20 @@ export function ComponentConfigModal({
     >
       <div style={{ display: "flex", gap: 24 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
+          {instance?.parentInstanceId != null && (
+            <div style={{ marginBottom: 16, padding: 12, background: "rgba(114, 46, 209, 0.08)", borderRadius: 8 }}>
+              <Typography.Text strong style={{ display: "block", marginBottom: 8 }}>Tab Settings</Typography.Text>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Tab Label</label>
+                <Input value={tabLabel} onChange={(e) => setTabLabel(e.target.value)} placeholder="Tab label" />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Tab Icon</label>
+                <MdiIconSelector value={tabIcon} onChange={setTabIcon} />
+              </div>
+            </div>
+          )}
+
           {hasEntityDefs && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontWeight: 500, marginBottom: 8 }}>
@@ -331,7 +359,7 @@ export function ComponentConfigModal({
           />
         </div>
 
-        <div style={{ width: 350, flexShrink: 0 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <LivePreview
             template={component.template}
             styles={component.styles}
