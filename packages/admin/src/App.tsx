@@ -6,6 +6,7 @@ import {
   AppstoreOutlined,
   FileImageOutlined,
   NotificationOutlined,
+  FormatPainterOutlined,
 } from "@ant-design/icons";
 import { DashboardList } from "./pages/DashboardList.js";
 import { DashboardEditor } from "./pages/DashboardEditor.js";
@@ -14,13 +15,15 @@ import { LayoutEditor } from "./pages/LayoutEditor.js";
 import { ComponentList } from "./pages/ComponentList.js";
 import { ComponentEditor } from "./pages/ComponentEditor.js";
 import { AssetList } from "./pages/AssetList.js";
-import { PopupList } from "./pages/PopupList.js";
-import { PopupEditor } from "./pages/PopupEditor.js";
+import { PopupTrigger } from "./pages/PopupTrigger.js";
+import { ThemeList } from "./pages/ThemeList.js";
+import { ThemeEditor } from "./pages/ThemeEditor.js";
 
 const { Sider, Content } = Layout;
 
 const menuItems = [
   { key: "/dashboards", icon: <DashboardOutlined />, label: "Dashboards" },
+  { key: "/themes", icon: <FormatPainterOutlined />, label: "Themes" },
   { key: "/layouts", icon: <LayoutOutlined />, label: "Layouts" },
   { key: "/components", icon: <AppstoreOutlined />, label: "Components" },
   { key: "/assets", icon: <FileImageOutlined />, label: "Assets" },
@@ -62,6 +65,9 @@ export function App() {
             <Route path="/dashboards" element={<DashboardList />} />
             <Route path="/dashboards/new" element={<DashboardEditor />} />
             <Route path="/dashboards/:id" element={<DashboardEditor />} />
+            <Route path="/themes" element={<ThemeList />} />
+            <Route path="/themes/new" element={<ThemeEditor />} />
+            <Route path="/themes/:id" element={<ThemeEditor />} />
             <Route path="/layouts" element={<LayoutList />} />
             <Route path="/layouts/new" element={<LayoutEditor />} />
             <Route path="/layouts/:id" element={<LayoutEditor />} />
@@ -69,9 +75,7 @@ export function App() {
             <Route path="/components/new" element={<ComponentEditor />} />
             <Route path="/components/:id" element={<ComponentEditor />} />
             <Route path="/assets" element={<AssetList />} />
-            <Route path="/popups" element={<PopupList />} />
-            <Route path="/popups/new" element={<PopupEditor />} />
-            <Route path="/popups/:id" element={<PopupEditor />} />
+            <Route path="/popups" element={<PopupTrigger />} />
           </Routes>
         </Content>
       </Layout>
