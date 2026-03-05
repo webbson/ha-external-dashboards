@@ -84,6 +84,34 @@ export async function componentRoutes(app: FastifyInstance) {
     }
   );
 
+  app.post<{ Params: { id: string } }>(
+    "/api/components/:id/copy",
+    async (req, reply) => {
+      const id = parseInt(req.params.id);
+      const [source] = await db
+        .select()
+        .from(components)
+        .where(eq(components.id, id));
+      if (!source) return reply.code(404).send({ error: "Not found" });
+
+      const [row] = await db
+        .insert(components)
+        .values({
+          name: `${source.name} (Copy)`,
+          template: source.template,
+          styles: source.styles,
+          parameterDefs: source.parameterDefs,
+          entitySelectorDefs: source.entitySelectorDefs,
+          isContainer: source.isContainer,
+          containerConfig: source.containerConfig,
+          testEntityBindings: source.testEntityBindings,
+          isPrebuilt: false,
+        })
+        .returning();
+      return reply.code(201).send(row);
+    }
+  );
+
   app.delete<{ Params: { id: string } }>(
     "/api/components/:id",
     async (req, reply) => {
