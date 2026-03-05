@@ -25,6 +25,8 @@ export const dashboards = sqliteTable("dashboards", {
     .$type<Record<string, string>>()
     .notNull()
     .default(sql`'{}'`),
+  maxWidth: text("max_width"),
+  padding: text("padding"),
   layoutSwitchMode: text("layout_switch_mode", {
     enum: ["tabs", "auto-rotate"],
   })
@@ -144,6 +146,8 @@ export const componentInstances = sqliteTable("component_instances", {
     .notNull()
     .default(sql`'[]'`),
   parentInstanceId: integer("parent_instance_id"),
+  tabLabel: text("tab_label"),
+  tabIcon: text("tab_icon"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
