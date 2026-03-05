@@ -1,0 +1,23 @@
+name: "External Dashboards"
+description: "Create and display dashboards outside of Home Assistant"
+version: "0.0.1"
+slug: "external_dashboards"
+url: "https://github.com/tom-stevens/ha-external-dashboards"
+arch:
+  - aarch64
+  - amd64
+  - armv7
+init: false
+homeassistant_api: true
+ingress: true
+ingress_port: 8080
+panel_icon: "mdi:view-dashboard-outline"
+panel_title: "External Dashboards"
+ports:
+  8099/tcp: 8099
+ports_description:
+  8099/tcp: "External dashboard display port"
+map:
+  - config:rw
+options: {}
+schema: {}
