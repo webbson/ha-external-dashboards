@@ -2,7 +2,8 @@ import { FastifyInstance } from "fastify";
 import "@fastify/multipart";
 import { db } from "../db/connection.js";
 import { assets } from "../db/schema.js";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,7 +18,11 @@ function ensureAssetsDir() {
 }
 
 export async function assetRoutes(app: FastifyInstance) {
-  app.get("/api/assets", async () => {
+  app.get("/api/assets", async (req) => {
+    const folder = (req.query as Record<string, string>).folder;
+    if (folder !== undefined) {
+      return db.select().from(assets).where(folder === "" ? sql`${assets.folder} IS NULL` : eq(assets.folder, folder));
+    }
     return db.select().from(assets);
   });
 
@@ -56,6 +61,14 @@ export async function assetRoutes(app: FastifyInstance) {
     }
   );
 
+  app.get("/api/assets/folders", async () => {
+    const rows = await db
+      .selectDistinct({ folder: assets.folder })
+      .from(assets)
+      .where(sql`${assets.folder} IS NOT NULL`);
+    return rows.map((r) => r.folder).sort();
+  });
+
   app.post("/api/assets/upload", async (req, reply) => {
     ensureAssetsDir();
     const data = await req.file();
@@ -63,6 +76,9 @@ export async function assetRoutes(app: FastifyInstance) {
 
     const buffer = await data.toBuffer();
     const fileName = `${Date.now()}-${data.filename}`;
+    const folder = data.fields?.folder
+      ? (data.fields.folder as { value: string }).value || null
+      : null;
     const filePath = path.join(ASSETS_DIR, fileName);
     fs.writeFileSync(filePath, buffer);
 
@@ -73,11 +89,27 @@ export async function assetRoutes(app: FastifyInstance) {
         fileName,
         mimeType: data.mimetype,
         fileSize: buffer.length,
+        folder,
       })
       .returning();
 
     return reply.code(201).send(row);
   });
+
+  app.put<{ Params: { id: string } }>(
+    "/api/assets/:id",
+    async (req, reply) => {
+      const id = parseInt(req.params.id);
+      const body = z.object({ folder: z.string().nullable() }).parse(req.body);
+      const [row] = await db
+        .update(assets)
+        .set({ folder: body.folder })
+        .where(eq(assets.id, id))
+        .returning();
+      if (!row) return reply.code(404).send({ error: "Not found" });
+      return row;
+    }
+  );
 
   app.delete<{ Params: { id: string } }>(
     "/api/assets/:id",
