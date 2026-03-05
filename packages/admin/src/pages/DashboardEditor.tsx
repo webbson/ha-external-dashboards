@@ -18,8 +18,6 @@ import { ComponentPickerModal } from "../components/dashboard/ComponentPickerMod
 import { ComponentConfigModal } from "../components/dashboard/ComponentConfigModal.js";
 import { VisualLayoutGrid } from "../components/dashboard/VisualLayoutGrid.js";
 import { api } from "../api.js";
-import { StandardVariablesForm } from "../components/dashboard/StandardVariablesForm.js";
-import type { StandardVariables } from "@ha-external-dashboards/shared";
 import { STANDARD_VARIABLE_DEFAULTS } from "@ha-external-dashboards/shared";
 
 interface Dashboard {
@@ -33,8 +31,7 @@ interface Dashboard {
   interactiveMode: boolean;
   maxWidth?: string | null;
   padding?: string | null;
-  globalStyles: Record<string, string>;
-  standardVariables?: Partial<StandardVariables>;
+  themeId?: number | null;
   layoutSwitchMode: string;
   layoutRotateInterval: number;
   layouts?: DashboardLayout[];
@@ -52,7 +49,7 @@ interface Layout {
   name: string;
   structure?: {
     gridTemplate: string;
-    regions: { id: string; label: string }[];
+    regions: { id: string }[];
   };
 }
 
@@ -110,12 +107,10 @@ export function DashboardEditor() {
   const [loading, setLoading] = useState(false);
   const [allLayouts, setAllLayouts] = useState<Layout[]>([]);
   const [allComponents, setAllComponents] = useState<Component[]>([]);
+  const [allThemes, setAllThemes] = useState<{ id: number; name: string }[]>([]);
   const [dashLayouts, setDashLayouts] = useState<DashboardLayout[]>([]);
   const [instances, setInstances] = useState<ComponentInstance[]>([]);
-  const [globalStyleEntries, setGlobalStyleEntries] = useState<
-    { key: string; value: string }[]
-  >([]);
-  const [standardVariables, setStandardVariables] = useState<Partial<StandardVariables>>({});
+  const [selectedTheme, setSelectedTheme] = useState<{ standardVariables: Record<string, string>; globalStyles: Record<string, string> } | null>(null);
   const [pickerRegionId, setPickerRegionId] = useState<string | null>(null);
   const [pickerContainerInstanceId, setPickerContainerInstanceId] = useState<number | null>(null);
   const [configInstance, setConfigInstance] = useState<ComponentInstance | null>(
@@ -126,6 +121,7 @@ export function DashboardEditor() {
 
   const accessMode = Form.useWatch("accessMode", form);
   const interactiveMode = Form.useWatch("interactiveMode", form);
+  const themeId = Form.useWatch("themeId", form);
 
   const activeDl = dashLayouts[activeDlIndex] ?? null;
   const activeDlId = activeDl?.id ?? null;
@@ -133,6 +129,7 @@ export function DashboardEditor() {
   useEffect(() => {
     api.get<Layout[]>("/api/layouts").then(setAllLayouts);
     api.get<Component[]>("/api/components").then(setAllComponents);
+    api.get<{ id: number; name: string }[]>("/api/themes").then(setAllThemes);
   }, []);
 
   useEffect(() => {
@@ -143,11 +140,6 @@ export function DashboardEditor() {
         .then((data) => {
           form.setFieldsValue(data);
           setDashLayouts(data.layouts ?? []);
-          const gs = data.globalStyles ?? {};
-          setGlobalStyleEntries(
-            Object.entries(gs).map(([key, value]) => ({ key, value }))
-          );
-          setStandardVariables(data.standardVariables ?? {});
         })
         .finally(() => setLoading(false));
     }
@@ -164,6 +156,14 @@ export function DashboardEditor() {
       setInstances([]);
     }
   }, [activeDlId]);
+
+  useEffect(() => {
+    if (themeId) {
+      api.get<{ standardVariables: Record<string, string>; globalStyles: Record<string, string> }>(`/api/themes/${themeId}`).then(setSelectedTheme);
+    } else {
+      setSelectedTheme(null);
+    }
+  }, [themeId]);
 
   const saveLayouts = async () => {
     if (!id) return;
@@ -182,17 +182,11 @@ export function DashboardEditor() {
   const onFinish = async (values: Dashboard) => {
     setLoading(true);
     try {
-      const globalStyles: Record<string, string> = {};
-      for (const e of globalStyleEntries) {
-        if (e.key) globalStyles[e.key] = e.value;
-      }
-      const payload = { ...values, globalStyles, standardVariables };
-
       if (isNew) {
-        await api.post("/api/dashboards", payload);
+        await api.post("/api/dashboards", values);
         message.success("Dashboard created");
       } else {
-        await api.put(`/api/dashboards/${id}`, payload);
+        await api.put(`/api/dashboards/${id}`, values);
         await saveLayouts();
         message.success("Dashboard updated");
       }
@@ -315,7 +309,6 @@ export function DashboardEditor() {
         initialValues={{
           accessMode: "public",
           interactiveMode: false,
-          globalStyles: {},
           layoutSwitchMode: "tabs",
           layoutRotateInterval: 30,
         }}
@@ -391,6 +384,13 @@ export function DashboardEditor() {
                     tooltip="Padding around the layout area (e.g. 16px, 2rem 4rem)"
                   >
                     <Input placeholder="e.g. 16px, 2rem 4rem" allowClear />
+                  </Form.Item>
+                  <Form.Item name="themeId" label="Theme">
+                    <Select
+                      allowClear
+                      placeholder="No theme"
+                      options={allThemes.map((t) => ({ value: t.id, label: t.name }))}
+                    />
                   </Form.Item>
                   <Form.Item name="layoutSwitchMode" label="Layout Switch Mode">
                     <Select
@@ -555,86 +555,20 @@ export function DashboardEditor() {
                             const region = layout?.structure?.regions?.find(
                               (r) => r.id === configInstance?.regionId
                             );
-                            return region?.label || region?.id || "";
+                            return region?.id || "";
                           })()}
                           globalStyles={{
                             ...Object.fromEntries(
-                              Object.entries({ ...STANDARD_VARIABLE_DEFAULTS, ...standardVariables })
+                              Object.entries({ ...STANDARD_VARIABLE_DEFAULTS, ...(selectedTheme?.standardVariables ?? {}) })
                                 .filter(([k]) => k !== "backgroundType" && k !== "backgroundImage")
                             ),
-                            ...(form.getFieldValue("globalStyles") ?? {}),
-                            ...Object.fromEntries(
-                              globalStyleEntries.filter((e) => e.key).map((e) => [e.key, e.value])
-                            ),
+                            ...(selectedTheme?.globalStyles ?? {}),
                           }}
-                          standardVariables={standardVariables as Record<string, string>}
+                          standardVariables={(selectedTheme?.standardVariables ?? {}) as Record<string, string>}
                           onSave={handleConfigSave}
                           onDelete={handleConfigDelete}
                           onCancel={() => setConfigInstance(null)}
                         />
-                      </div>
-                    ),
-                  },
-                  {
-                    key: "styles",
-                    label: "Global Styles",
-                    children: (
-                      <div>
-                        <StandardVariablesForm
-                          value={standardVariables}
-                          onChange={setStandardVariables}
-                        />
-
-                        <div style={{ marginTop: 24, borderTop: "1px solid #303030", paddingTop: 16 }}>
-                          <div style={{ fontWeight: 500, marginBottom: 12 }}>Custom Variables</div>
-                          {globalStyleEntries.map((entry, i) => (
-                            <Space
-                              key={i}
-                              style={{ display: "flex", marginBottom: 8 }}
-                            >
-                              <Input
-                                placeholder="Variable name"
-                                value={entry.key}
-                                onChange={(e) => {
-                                  const next = [...globalStyleEntries];
-                                  next[i] = { ...next[i], key: e.target.value };
-                                  setGlobalStyleEntries(next);
-                                }}
-                                style={{ width: 200 }}
-                              />
-                              <Input
-                                placeholder="Value"
-                                value={entry.value}
-                                onChange={(e) => {
-                                  const next = [...globalStyleEntries];
-                                  next[i] = { ...next[i], value: e.target.value };
-                                  setGlobalStyleEntries(next);
-                                }}
-                                style={{ width: 200 }}
-                              />
-                              <Button
-                                danger
-                                icon={<DeleteOutlined />}
-                                onClick={() =>
-                                  setGlobalStyleEntries(
-                                    globalStyleEntries.filter((_, j) => j !== i)
-                                  )
-                                }
-                              />
-                            </Space>
-                          ))}
-                          <Button
-                            icon={<PlusOutlined />}
-                            onClick={() =>
-                              setGlobalStyleEntries([
-                                ...globalStyleEntries,
-                                { key: "", value: "" },
-                              ])
-                            }
-                          >
-                            Add Style Variable
-                          </Button>
-                        </div>
                       </div>
                     ),
                   },
