@@ -22,3 +22,9 @@ export function broadcastPopup(
 export function broadcastReload(dashboardId: number) {
   connectionManager.broadcastToDashboard(dashboardId, { type: "reload" });
 }
+
+export function broadcastReloadForDashboards(dashboardIds: number[]) {
+  for (const id of dashboardIds) {
+    broadcastReload(id);
+  }
+}

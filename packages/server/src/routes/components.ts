@@ -1,13 +1,14 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { db } from "../db/connection.js";
-import { components } from "../db/schema.js";
-import { eq } from "drizzle-orm";
+import { components, componentInstances, dashboardLayouts } from "../db/schema.js";
+import { eq, sql } from "drizzle-orm";
+import { broadcastReloadForDashboards } from "../ws/popup-broadcast.js";
 
 const parameterDefSchema = z.object({
   name: z.string(),
   label: z.string(),
-  type: z.enum(["string", "number", "boolean", "color", "select"]),
+  type: z.enum(["string", "number", "boolean", "color", "select", "icon"]),
   default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   options: z
     .array(z.object({ label: z.string(), value: z.string() }))
@@ -47,7 +48,24 @@ const updateSchema = createSchema.partial();
 
 export async function componentRoutes(app: FastifyInstance) {
   app.get("/api/components", async () => {
-    return db.select().from(components);
+    const rows = await db
+      .select({
+        id: components.id,
+        name: components.name,
+        template: components.template,
+        styles: components.styles,
+        parameterDefs: components.parameterDefs,
+        entitySelectorDefs: components.entitySelectorDefs,
+        isContainer: components.isContainer,
+        containerConfig: components.containerConfig,
+        testEntityBindings: components.testEntityBindings,
+        isPrebuilt: components.isPrebuilt,
+        createdAt: components.createdAt,
+        updatedAt: components.updatedAt,
+        usageCount: sql<number>`(select count(*) from component_instances where component_instances.component_id = ${components.id})`.as("usage_count"),
+      })
+      .from(components);
+    return rows;
   });
 
   app.get<{ Params: { id: string } }>(
@@ -80,6 +98,20 @@ export async function componentRoutes(app: FastifyInstance) {
         .where(eq(components.id, id))
         .returning();
       if (!row) return reply.code(404).send({ error: "Not found" });
+
+      // Cascade reload to all dashboards using this component
+      const affected = await db
+        .selectDistinct({ dashboardId: dashboardLayouts.dashboardId })
+        .from(componentInstances)
+        .innerJoin(
+          dashboardLayouts,
+          eq(componentInstances.dashboardLayoutId, dashboardLayouts.id)
+        )
+        .where(eq(componentInstances.componentId, id));
+      if (affected.length > 0) {
+        broadcastReloadForDashboards(affected.map((r) => r.dashboardId));
+      }
+
       return row;
     }
   );
@@ -116,6 +148,20 @@ export async function componentRoutes(app: FastifyInstance) {
     "/api/components/:id",
     async (req, reply) => {
       const id = parseInt(req.params.id);
+
+      // Check if component is in use
+      const [usage] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(componentInstances)
+        .where(eq(componentInstances.componentId, id));
+
+      if (usage.count > 0) {
+        return reply.code(409).send({
+          error: "Component is in use and cannot be deleted",
+          usageCount: usage.count,
+        });
+      }
+
       const [row] = await db
         .delete(components)
         .where(eq(components.id, id))

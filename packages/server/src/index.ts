@@ -12,7 +12,7 @@ import { setupWebSocketProxy } from "./ws/proxy.js";
 import { dashboardRoutes } from "./routes/dashboards.js";
 import { layoutRoutes } from "./routes/layouts.js";
 import { componentRoutes } from "./routes/components.js";
-import { popupRoutes } from "./routes/popups.js";
+import { themeRoutes } from "./routes/themes.js";
 import { assetRoutes } from "./routes/assets.js";
 import { haProxyRoutes } from "./routes/ha-proxy.js";
 import { previewRoutes } from "./routes/preview.js";
@@ -58,12 +58,22 @@ async function start() {
   await admin.register(dashboardRoutes);
   await admin.register(layoutRoutes);
   await admin.register(componentRoutes);
-  await admin.register(popupRoutes);
+  await admin.register(themeRoutes);
   await admin.register(assetRoutes);
   await admin.register(haProxyRoutes);
   await admin.register(previewRoutes);
   await admin.register(popupTriggerRoutes);
   await admin.register(settingsRoutes);
+
+  // Shared assets path
+  const assetsDir = path.resolve(__dirname, "../../..", process.env.ASSETS_DIR ?? "/config/assets");
+
+  // Serve assets on admin server (for preview background images etc.)
+  await admin.register(fastifyStatic, {
+    root: assetsDir,
+    prefix: "/assets/",
+    wildcard: false,
+  });
 
   // Serve admin SPA
   const adminDir = isDev
@@ -73,6 +83,7 @@ async function start() {
   await admin.register(fastifyStatic, {
     root: adminDir,
     prefix: "/",
+    decorateReply: false,
     wildcard: false,
   });
 
@@ -120,7 +131,6 @@ async function start() {
   });
 
   // Serve assets
-  const assetsDir = path.resolve(__dirname, "../../..", process.env.ASSETS_DIR ?? "/config/assets");
   await external.register(fastifyStatic, {
     root: assetsDir,
     prefix: "/assets/",
