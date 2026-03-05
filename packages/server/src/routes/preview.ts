@@ -2,8 +2,8 @@ import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { haClient } from "../ws/ha-client.js";
 import Handlebars from "handlebars";
-import { STANDARD_VARIABLE_DEFAULTS, STANDARD_VARIABLE_CSS_MAP } from "@ha-dashboards/shared";
-import type { StandardVariables } from "@ha-dashboards/shared";
+import { STANDARD_VARIABLE_DEFAULTS, STANDARD_VARIABLE_CSS_MAP } from "@ha-external-dashboards/shared";
+import type { StandardVariables } from "@ha-external-dashboards/shared";
 
 // Register the same helpers server-side for preview rendering
 import "../template/helpers.js";

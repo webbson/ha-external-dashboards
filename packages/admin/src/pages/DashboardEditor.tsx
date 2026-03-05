@@ -19,8 +19,8 @@ import { ComponentConfigModal } from "../components/dashboard/ComponentConfigMod
 import { VisualLayoutGrid } from "../components/dashboard/VisualLayoutGrid.js";
 import { api } from "../api.js";
 import { StandardVariablesForm } from "../components/dashboard/StandardVariablesForm.js";
-import type { StandardVariables } from "@ha-dashboards/shared";
-import { STANDARD_VARIABLE_DEFAULTS } from "@ha-dashboards/shared";
+import type { StandardVariables } from "@ha-external-dashboards/shared";
+import { STANDARD_VARIABLE_DEFAULTS } from "@ha-external-dashboards/shared";
 
 interface Dashboard {
   id?: number;

@@ -1,7 +1,7 @@
 import { ColorPicker, Input, Radio, Select } from "antd";
 import { useEffect, useState } from "react";
-import type { StandardVariables } from "@ha-dashboards/shared";
-import { STANDARD_VARIABLE_DEFAULTS } from "@ha-dashboards/shared";
+import type { StandardVariables } from "@ha-external-dashboards/shared";
+import { STANDARD_VARIABLE_DEFAULTS } from "@ha-external-dashboards/shared";
 import { api } from "../../api.js";
 
 interface Asset {
