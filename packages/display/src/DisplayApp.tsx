@@ -13,6 +13,7 @@ interface DashboardConfig {
     accessMode: string;
     interactiveMode: boolean;
     globalStyles: Record<string, string>;
+    standardVariables?: Record<string, string>;
     layoutSwitchMode: "tabs" | "auto-rotate";
     layoutRotateInterval: number;
   };
@@ -107,6 +108,65 @@ export function DisplayApp() {
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
+
+  // Inject standard variables as CSS custom properties
+  useEffect(() => {
+    if (!config?.dashboard.standardVariables) return;
+
+    const vars = config.dashboard.standardVariables;
+    const defaults: Record<string, string> = {
+      componentBg: "transparent",
+      fontColor: "#ffffff",
+      fontColorSecondary: "#aaaaaa",
+      accentColor: "#1890ff",
+      fontFamily: "inherit",
+      fontSize: "16px",
+      borderStyle: "none",
+      borderRadius: "0px",
+      componentPadding: "0px",
+      componentGap: "0px",
+      backgroundColor: "#000000",
+    };
+    const cssMap: Record<string, string> = {
+      componentBg: "--db-component-bg",
+      fontColor: "--db-font-color",
+      fontColorSecondary: "--db-font-color-secondary",
+      accentColor: "--db-accent-color",
+      fontFamily: "--db-font-family",
+      fontSize: "--db-font-size",
+      borderStyle: "--db-border-style",
+      borderRadius: "--db-border-radius",
+      componentPadding: "--db-component-padding",
+      componentGap: "--db-component-gap",
+      backgroundColor: "--db-background-color",
+    };
+
+    const merged = { ...defaults, ...vars };
+    const root = document.documentElement;
+    for (const [key, cssProp] of Object.entries(cssMap)) {
+      root.style.setProperty(cssProp, merged[key] ?? defaults[key]);
+    }
+
+    // Apply background
+    const bgType = (vars.backgroundType as string) || "color";
+    if (bgType === "image" && vars.backgroundImage) {
+      document.body.style.backgroundColor = "";
+      document.body.style.backgroundImage = `url(/assets/${vars.backgroundImage})`;
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center";
+    } else {
+      document.body.style.backgroundImage = "";
+      document.body.style.backgroundColor = `var(--db-background-color)`;
+    }
+
+    return () => {
+      for (const cssProp of Object.values(cssMap)) {
+        root.style.removeProperty(cssProp);
+      }
+      document.body.style.backgroundImage = "";
+      document.body.style.backgroundColor = "";
+    };
+  }, [config]);
 
   // Connect WebSocket once config is loaded
   useEffect(() => {
@@ -244,7 +304,6 @@ export function DisplayApp() {
       style={{
         width: "100vw",
         height: "100vh",
-        background: "#0a0a1a",
         color: "#eee",
         fontFamily: "system-ui, sans-serif",
         overflow: "hidden",
@@ -254,7 +313,10 @@ export function DisplayApp() {
         dashboardLayouts={config.layouts}
         components={config.components}
         entities={entities}
-        globalStyles={config.dashboard.globalStyles}
+        globalStyles={{
+          ...config.dashboard.standardVariables,
+          ...config.dashboard.globalStyles,
+        }}
         layoutSwitchMode={config.dashboard.layoutSwitchMode}
         layoutRotateInterval={config.dashboard.layoutRotateInterval}
       />

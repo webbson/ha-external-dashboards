@@ -18,6 +18,9 @@ import { ComponentPickerModal } from "../components/dashboard/ComponentPickerMod
 import { ComponentConfigModal } from "../components/dashboard/ComponentConfigModal.js";
 import { VisualLayoutGrid } from "../components/dashboard/VisualLayoutGrid.js";
 import { api } from "../api.js";
+import { StandardVariablesForm } from "../components/dashboard/StandardVariablesForm.js";
+import type { StandardVariables } from "@ha-dashboards/shared";
+import { STANDARD_VARIABLE_DEFAULTS } from "@ha-dashboards/shared";
 
 interface Dashboard {
   id?: number;
@@ -29,6 +32,7 @@ interface Dashboard {
   headerValue?: string;
   interactiveMode: boolean;
   globalStyles: Record<string, string>;
+  standardVariables?: Partial<StandardVariables>;
   layoutSwitchMode: string;
   layoutRotateInterval: number;
   layouts?: DashboardLayout[];
@@ -105,6 +109,7 @@ export function DashboardEditor() {
   const [globalStyleEntries, setGlobalStyleEntries] = useState<
     { key: string; value: string }[]
   >([]);
+  const [standardVariables, setStandardVariables] = useState<Partial<StandardVariables>>({});
   const [pickerRegionId, setPickerRegionId] = useState<string | null>(null);
   const [configInstance, setConfigInstance] = useState<ComponentInstance | null>(
     null
@@ -135,6 +140,7 @@ export function DashboardEditor() {
           setGlobalStyleEntries(
             Object.entries(gs).map(([key, value]) => ({ key, value }))
           );
+          setStandardVariables(data.standardVariables ?? {});
         })
         .finally(() => setLoading(false));
     }
@@ -159,7 +165,7 @@ export function DashboardEditor() {
       for (const e of globalStyleEntries) {
         if (e.key) globalStyles[e.key] = e.value;
       }
-      const payload = { ...values, globalStyles };
+      const payload = { ...values, globalStyles, standardVariables };
 
       if (isNew) {
         await api.post("/api/dashboards", payload);
@@ -515,7 +521,16 @@ export function DashboardEditor() {
                           );
                           return region?.label || region?.id || "";
                         })()}
-                        globalStyles={form.getFieldValue("globalStyles") ?? {}}
+                        globalStyles={{
+                          ...Object.fromEntries(
+                            Object.entries({ ...STANDARD_VARIABLE_DEFAULTS, ...standardVariables })
+                              .filter(([k]) => k !== "backgroundType" && k !== "backgroundImage")
+                          ),
+                          ...(form.getFieldValue("globalStyles") ?? {}),
+                          ...Object.fromEntries(
+                            globalStyleEntries.filter((e) => e.key).map((e) => [e.key, e.value])
+                          ),
+                        }}
                         onSave={handleConfigSave}
                         onDelete={handleConfigDelete}
                         onCancel={() => setConfigInstance(null)}
@@ -528,53 +543,61 @@ export function DashboardEditor() {
                   label: "Global Styles",
                   children: (
                     <div>
-                      {globalStyleEntries.map((entry, i) => (
-                        <Space
-                          key={i}
-                          style={{ display: "flex", marginBottom: 8 }}
+                      <StandardVariablesForm
+                        value={standardVariables}
+                        onChange={setStandardVariables}
+                      />
+
+                      <div style={{ marginTop: 24, borderTop: "1px solid #303030", paddingTop: 16 }}>
+                        <div style={{ fontWeight: 500, marginBottom: 12 }}>Custom Variables</div>
+                        {globalStyleEntries.map((entry, i) => (
+                          <Space
+                            key={i}
+                            style={{ display: "flex", marginBottom: 8 }}
+                          >
+                            <Input
+                              placeholder="Variable name"
+                              value={entry.key}
+                              onChange={(e) => {
+                                const next = [...globalStyleEntries];
+                                next[i] = { ...next[i], key: e.target.value };
+                                setGlobalStyleEntries(next);
+                              }}
+                              style={{ width: 200 }}
+                            />
+                            <Input
+                              placeholder="Value"
+                              value={entry.value}
+                              onChange={(e) => {
+                                const next = [...globalStyleEntries];
+                                next[i] = { ...next[i], value: e.target.value };
+                                setGlobalStyleEntries(next);
+                              }}
+                              style={{ width: 200 }}
+                            />
+                            <Button
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={() =>
+                                setGlobalStyleEntries(
+                                  globalStyleEntries.filter((_, j) => j !== i)
+                                )
+                              }
+                            />
+                          </Space>
+                        ))}
+                        <Button
+                          icon={<PlusOutlined />}
+                          onClick={() =>
+                            setGlobalStyleEntries([
+                              ...globalStyleEntries,
+                              { key: "", value: "" },
+                            ])
+                          }
                         >
-                          <Input
-                            placeholder="Variable name"
-                            value={entry.key}
-                            onChange={(e) => {
-                              const next = [...globalStyleEntries];
-                              next[i] = { ...next[i], key: e.target.value };
-                              setGlobalStyleEntries(next);
-                            }}
-                            style={{ width: 200 }}
-                          />
-                          <Input
-                            placeholder="Value"
-                            value={entry.value}
-                            onChange={(e) => {
-                              const next = [...globalStyleEntries];
-                              next[i] = { ...next[i], value: e.target.value };
-                              setGlobalStyleEntries(next);
-                            }}
-                            style={{ width: 200 }}
-                          />
-                          <Button
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() =>
-                              setGlobalStyleEntries(
-                                globalStyleEntries.filter((_, j) => j !== i)
-                              )
-                            }
-                          />
-                        </Space>
-                      ))}
-                      <Button
-                        icon={<PlusOutlined />}
-                        onClick={() =>
-                          setGlobalStyleEntries([
-                            ...globalStyleEntries,
-                            { key: "", value: "" },
-                          ])
-                        }
-                      >
-                        Add Style Variable
-                      </Button>
+                          Add Style Variable
+                        </Button>
+                      </div>
                     </div>
                   ),
                 },
