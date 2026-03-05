@@ -15,6 +15,8 @@ const createSchema = z.object({
   headerName: z.string().optional(),
   headerValue: z.string().optional(),
   interactiveMode: z.boolean().default(false),
+  maxWidth: z.string().nullable().optional(),
+  padding: z.string().nullable().optional(),
   globalStyles: z.record(z.string()).default({}),
   standardVariables: z.record(z.string()).default({}),
   layoutSwitchMode: z.enum(["tabs", "auto-rotate"]).default("tabs"),
@@ -64,6 +66,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
         headerName: body.headerName ?? null,
         headerValue: body.headerValue ?? null,
         interactiveMode: body.interactiveMode,
+        maxWidth: body.maxWidth ?? null,
+        padding: body.padding ?? null,
         globalStyles: body.globalStyles,
         standardVariables: body.standardVariables,
         layoutSwitchMode: body.layoutSwitchMode,
@@ -129,6 +133,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
       const body = z
         .array(
           z.object({
+            id: z.number().int().optional(),
             layoutId: z.number().int(),
             sortOrder: z.number().int(),
             label: z.string().nullable().default(null),
@@ -136,19 +141,32 @@ export async function dashboardRoutes(app: FastifyInstance) {
         )
         .parse(req.body);
 
-      await db
-        .delete(dashboardLayouts)
+      const existing = await db
+        .select()
+        .from(dashboardLayouts)
         .where(eq(dashboardLayouts.dashboardId, dashboardId));
 
-      if (body.length > 0) {
-        await db.insert(dashboardLayouts).values(
-          body.map((l) => ({
+      const incomingIds = new Set(body.filter((l) => l.id).map((l) => l.id!));
+      const toDelete = existing.filter((e) => !incomingIds.has(e.id));
+
+      for (const dl of toDelete) {
+        await db.delete(dashboardLayouts).where(eq(dashboardLayouts.id, dl.id));
+      }
+
+      for (const l of body) {
+        if (l.id && existing.some((e) => e.id === l.id)) {
+          await db
+            .update(dashboardLayouts)
+            .set({ layoutId: l.layoutId, sortOrder: l.sortOrder, label: l.label })
+            .where(eq(dashboardLayouts.id, l.id));
+        } else {
+          await db.insert(dashboardLayouts).values({
             dashboardId,
             layoutId: l.layoutId,
             sortOrder: l.sortOrder,
             label: l.label,
-          }))
-        );
+          });
+        }
       }
 
       return db
@@ -192,6 +210,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
             )
             .default([]),
           parentInstanceId: z.number().int().nullable().default(null),
+          tabLabel: z.string().nullable().default(null),
+          tabIcon: z.string().nullable().default(null),
         })
         .parse(req.body);
 
@@ -223,6 +243,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
             })
           ),
           parentInstanceId: z.number().int().nullable(),
+          tabLabel: z.string().nullable(),
+          tabIcon: z.string().nullable(),
         })
         .partial()
         .parse(req.body);
