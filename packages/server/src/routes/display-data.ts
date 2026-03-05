@@ -80,6 +80,7 @@ export async function displayDataRoutes(app: FastifyInstance) {
           accessMode: dashboard.accessMode,
           interactiveMode: dashboard.interactiveMode,
           globalStyles: dashboard.globalStyles,
+          standardVariables: dashboard.standardVariables,
           layoutSwitchMode: dashboard.layoutSwitchMode,
           layoutRotateInterval: dashboard.layoutRotateInterval,
         },

@@ -16,6 +16,7 @@ const createSchema = z.object({
   headerValue: z.string().optional(),
   interactiveMode: z.boolean().default(false),
   globalStyles: z.record(z.string()).default({}),
+  standardVariables: z.record(z.string()).default({}),
   layoutSwitchMode: z.enum(["tabs", "auto-rotate"]).default("tabs"),
   layoutRotateInterval: z.number().int().positive().default(30),
 });
@@ -64,6 +65,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         headerValue: body.headerValue ?? null,
         interactiveMode: body.interactiveMode,
         globalStyles: body.globalStyles,
+        standardVariables: body.standardVariables,
         layoutSwitchMode: body.layoutSwitchMode,
         layoutRotateInterval: body.layoutRotateInterval,
       })

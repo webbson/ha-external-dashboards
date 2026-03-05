@@ -2,6 +2,8 @@ import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { haClient } from "../ws/ha-client.js";
 import Handlebars from "handlebars";
+import { STANDARD_VARIABLE_DEFAULTS, STANDARD_VARIABLE_CSS_MAP } from "@ha-dashboards/shared";
+import type { StandardVariables } from "@ha-dashboards/shared";
 
 // Register the same helpers server-side for preview rendering
 import "../template/helpers.js";
@@ -12,7 +14,18 @@ const renderSchema = z.object({
   entityBindings: z.record(z.union([z.string(), z.array(z.string())])).default({}),
   parameterValues: z.record(z.union([z.string(), z.number(), z.boolean()])).default({}),
   globalStyles: z.record(z.string()).default({}),
+  standardVariables: z.record(z.string()).default({}),
 });
+
+function buildStandardVarsCss(vars: Partial<StandardVariables>): string {
+  const merged = { ...STANDARD_VARIABLE_DEFAULTS, ...vars };
+  const lines: string[] = [];
+  for (const [key, cssProp] of Object.entries(STANDARD_VARIABLE_CSS_MAP)) {
+    const value = merged[key as keyof typeof STANDARD_VARIABLE_CSS_MAP];
+    if (value) lines.push(`  ${cssProp}: ${value};`);
+  }
+  return `:root {\n${lines.join("\n")}\n}`;
+}
 
 export async function previewRoutes(app: FastifyInstance) {
   app.post("/api/preview/render", async (req) => {
@@ -52,9 +65,10 @@ export async function previewRoutes(app: FastifyInstance) {
         globalStyles: body.globalStyles,
       });
 
+      const standardCss = buildStandardVarsCss(body.standardVariables as Partial<StandardVariables>);
       return {
         html,
-        styles: body.styles,
+        styles: `${standardCss}\n${body.styles}`,
       };
     } catch (err) {
       return {
