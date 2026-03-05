@@ -27,6 +27,12 @@ export function ComponentList() {
 
   useEffect(load, []);
 
+  const handleCopy = async (id: number) => {
+    const copied = await api.post<Component>(`/api/components/${id}/copy`, {});
+    message.success("Component copied");
+    navigate(`/components/${copied.id}`);
+  };
+
   const handleDelete = async (id: number) => {
     await api.delete(`/api/components/${id}`);
     message.success("Component deleted");
@@ -47,7 +53,7 @@ export function ComponentList() {
       <Table
         rowKey="id"
         loading={loading}
-        dataSource={data}
+        dataSource={data.filter((c) => !(c.isContainer && c.isPrebuilt))}
         columns={[
           { title: "Name", dataIndex: "name" },
           {
@@ -74,6 +80,9 @@ export function ComponentList() {
               <Space>
                 <Button size="small" onClick={() => navigate(`/components/${record.id}`)}>
                   Edit
+                </Button>
+                <Button size="small" onClick={() => handleCopy(record.id)}>
+                  Copy
                 </Button>
                 <Popconfirm
                   title="Delete this component?"
