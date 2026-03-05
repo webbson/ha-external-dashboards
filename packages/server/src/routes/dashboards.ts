@@ -263,6 +263,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
     "/api/instances/:instanceId",
     async (req, reply) => {
       const id = parseInt(req.params.instanceId);
+      // Delete children first (cascade)
+      await db
+        .delete(componentInstances)
+        .where(eq(componentInstances.parentInstanceId, id));
+      // Then delete the instance itself
       const [row] = await db
         .delete(componentInstances)
         .where(eq(componentInstances.id, id))
