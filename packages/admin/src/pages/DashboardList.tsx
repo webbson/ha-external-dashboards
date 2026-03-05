@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Table, Button, Space, Popconfirm, Tag, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Table, Button, Space, Popconfirm, Tag, Tooltip, message } from "antd";
+import { PlusOutlined, LinkOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
 interface Dashboard {
@@ -16,6 +16,7 @@ interface Dashboard {
 export function DashboardList() {
   const [data, setData] = useState<Dashboard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [externalBaseUrl, setExternalBaseUrl] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const load = () => {
@@ -27,6 +28,12 @@ export function DashboardList() {
   };
 
   useEffect(load, []);
+
+  useEffect(() => {
+    api.get<{ externalBaseUrl: string | null }>("/api/settings").then((s) => {
+      setExternalBaseUrl(s.externalBaseUrl);
+    });
+  }, []);
 
   const handleDelete = async (id: number) => {
     await api.delete(`/api/dashboards/${id}`);
@@ -69,6 +76,27 @@ export function DashboardList() {
             title: "Actions",
             render: (_, record) => (
               <Space>
+                <Tooltip
+                  title={
+                    externalBaseUrl
+                      ? undefined
+                      : "Set EXTERNAL_BASE_URL to enable"
+                  }
+                >
+                  <Button
+                    size="small"
+                    icon={<LinkOutlined />}
+                    disabled={!externalBaseUrl}
+                    onClick={() =>
+                      window.open(
+                        `${externalBaseUrl}/d/${record.slug}`,
+                        "_blank"
+                      )
+                    }
+                  >
+                    Open
+                  </Button>
+                </Tooltip>
                 <Button size="small" onClick={() => navigate(`/dashboards/${record.id}`)}>
                   Edit
                 </Button>

@@ -16,6 +16,7 @@ import { popupRoutes } from "./routes/popups.js";
 import { assetRoutes } from "./routes/assets.js";
 import { haProxyRoutes } from "./routes/ha-proxy.js";
 import { previewRoutes } from "./routes/preview.js";
+import { settingsRoutes } from "./routes/settings.js";
 import { popupTriggerRoutes } from "./routes/popup-trigger.js";
 import { displayDataRoutes } from "./routes/display-data.js";
 import { ingressAuth } from "./middleware/auth.js";
@@ -62,6 +63,7 @@ async function start() {
   await admin.register(haProxyRoutes);
   await admin.register(previewRoutes);
   await admin.register(popupTriggerRoutes);
+  await admin.register(settingsRoutes);
 
   // Serve admin SPA
   const adminDir = isDev
@@ -115,7 +117,6 @@ async function start() {
     root: displayDir,
     prefix: "/",
     wildcard: false,
-    decorateReply: false,
   });
 
   // Serve assets
