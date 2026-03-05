@@ -9,6 +9,7 @@ interface Component {
   name: string;
   isContainer: boolean;
   isPrebuilt: boolean;
+  usageCount: number;
   createdAt: string;
 }
 
@@ -34,9 +35,13 @@ export function ComponentList() {
   };
 
   const handleDelete = async (id: number) => {
-    await api.delete(`/api/components/${id}`);
-    message.success("Component deleted");
-    load();
+    try {
+      await api.delete(`/api/components/${id}`);
+      message.success("Component deleted");
+      load();
+    } catch (err) {
+      message.error((err as Error).message);
+    }
   };
 
   return (
@@ -75,6 +80,13 @@ export function ComponentList() {
               ),
           },
           {
+            title: "Usage",
+            dataIndex: "usageCount",
+            render: (v: number) => (
+              <Tag>{v} instance{v !== 1 ? "s" : ""}</Tag>
+            ),
+          },
+          {
             title: "Actions",
             render: (_, record) => (
               <Space>
@@ -87,8 +99,9 @@ export function ComponentList() {
                 <Popconfirm
                   title="Delete this component?"
                   onConfirm={() => handleDelete(record.id)}
+                  disabled={record.usageCount > 0}
                 >
-                  <Button size="small" danger>
+                  <Button size="small" danger disabled={record.usageCount > 0}>
                     Delete
                   </Button>
                 </Popconfirm>

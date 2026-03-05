@@ -25,9 +25,14 @@ export const api = {
   put: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
-  upload: async <T>(path: string, file: File): Promise<T> => {
+  upload: async <T>(path: string, file: File, fields?: Record<string, string>): Promise<T> => {
     const form = new FormData();
     form.append("file", file);
+    if (fields) {
+      for (const [key, value] of Object.entries(fields)) {
+        form.append(key, value);
+      }
+    }
     const res = await fetch(`${BASE}${path}`, { method: "POST", body: form });
     if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
     return res.json() as Promise<T>;
