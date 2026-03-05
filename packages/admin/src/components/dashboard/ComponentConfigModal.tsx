@@ -62,6 +62,7 @@ interface ComponentConfigModalProps {
   component: ComponentDef | null;
   regionLabel: string;
   globalStyles?: Record<string, string>;
+  standardVariables?: Record<string, string>;
   onSave: (instanceId: number, updates: Partial<ComponentInstance>) => void;
   onDelete: (instanceId: number) => void;
   onCancel: () => void;
@@ -73,6 +74,7 @@ export function ComponentConfigModal({
   component,
   regionLabel,
   globalStyles = {},
+  standardVariables = {},
   onSave,
   onDelete,
   onCancel,
@@ -336,7 +338,7 @@ export function ComponentConfigModal({
             entityBindings={entityBindings}
             parameterValues={parameterValues}
             globalStyles={globalStyles}
-
+            standardVariables={standardVariables}
           />
         </div>
       </div>

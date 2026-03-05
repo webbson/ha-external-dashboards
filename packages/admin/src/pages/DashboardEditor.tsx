@@ -531,6 +531,7 @@ export function DashboardEditor() {
                             globalStyleEntries.filter((e) => e.key).map((e) => [e.key, e.value])
                           ),
                         }}
+                        standardVariables={standardVariables as Record<string, string>}
                         onSave={handleConfigSave}
                         onDelete={handleConfigDelete}
                         onCancel={() => setConfigInstance(null)}

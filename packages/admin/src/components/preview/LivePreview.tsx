@@ -9,6 +9,7 @@ interface LivePreviewProps {
   entityBindings: Record<string, string | string[]>;
   parameterValues: Record<string, string | number | boolean>;
   globalStyles?: Record<string, string>;
+  standardVariables?: Record<string, string>;
 }
 
 export function LivePreview({
@@ -17,6 +18,7 @@ export function LivePreview({
   entityBindings,
   parameterValues,
   globalStyles = {},
+  standardVariables = {},
 }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loading, setLoading] = useState(false);
@@ -31,6 +33,7 @@ export function LivePreview({
         entityBindings,
         parameterValues,
         globalStyles,
+        standardVariables,
       })
       .then(({ html, styles: css }) => {
         const iframe = iframeRef.current;
@@ -53,7 +56,7 @@ export function LivePreview({
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [template, styles, entityBindings, parameterValues, globalStyles]);
+  }, [template, styles, entityBindings, parameterValues, globalStyles, standardVariables]);
 
   // Render once on mount when template exists
   const initialRender = useRef(false);
