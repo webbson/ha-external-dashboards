@@ -7,6 +7,24 @@ import { EntityDataViewer } from "../components/preview/EntityDataViewer.js";
 import { EntitySelector } from "../components/selectors/EntitySelector.js";
 import { api } from "../api.js";
 
+const DEFAULT_TEMPLATE = `<div class="component">
+  {{!-- your content here --}}
+</div>`;
+
+const DEFAULT_STYLES = `:host {
+  background: var(--db-component-bg, transparent);
+  border: var(--db-border-style, none);
+  border-radius: var(--db-border-radius, 0px);
+  padding: var(--db-component-padding, 0px);
+  font-family: var(--db-font-family, inherit);
+  font-size: var(--db-font-size, 16px);
+  color: var(--db-font-color, #fff);
+}
+
+.component {
+  padding: 16px;
+}`;
+
 interface ParameterDef {
   name: string;
   label: string;
@@ -33,17 +51,33 @@ interface ComponentData {
   testEntityBindings: Record<string, string | string[]> | null;
 }
 
+interface DashboardSummary {
+  id: number;
+  name: string;
+  globalStyles: Record<string, string>;
+  standardVariables?: Record<string, string>;
+}
+
 export function ComponentEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const isNew = !id;
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [template, setTemplate] = useState("");
-  const [styles, setStyles] = useState("");
+  const [template, setTemplate] = useState(isNew ? DEFAULT_TEMPLATE : "");
+  const [styles, setStyles] = useState(isNew ? DEFAULT_STYLES : "");
   const [parameterDefs, setParameterDefs] = useState<ParameterDef[]>([]);
   const [entitySelectorDefs, setEntitySelectorDefs] = useState<EntitySelectorDef[]>([]);
   const [testEntityBindings, setTestEntityBindings] = useState<Record<string, string | string[]>>({});
-  const isNew = !id;
+  const [dashboards, setDashboards] = useState<DashboardSummary[]>([]);
+  const [selectedDashboardId, setSelectedDashboardId] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.get<DashboardSummary[]>("/api/dashboards").then((list) => {
+      setDashboards(list);
+      if (list.length > 0) setSelectedDashboardId(list[0].id);
+    });
+  }, []);
 
   useEffect(() => {
     if (!isNew) {
@@ -63,6 +97,7 @@ export function ComponentEditor() {
   }, [id, isNew, form]);
 
   const isContainer = Form.useWatch("isContainer", form);
+  const activeDashboard = dashboards.find((d) => d.id === selectedDashboardId);
 
   const onFinish = async (values: Record<string, unknown>) => {
     setLoading(true);
@@ -169,11 +204,23 @@ export function ComponentEditor() {
 
       <EntityDataViewer entityBindings={testEntityBindings} />
 
+      {dashboards.length > 0 && (
+        <Select
+          value={selectedDashboardId}
+          onChange={setSelectedDashboardId}
+          options={dashboards.map((d) => ({ value: d.id, label: d.name }))}
+          style={{ width: 200, marginBottom: 8 }}
+          placeholder="Preview with dashboard styles"
+          size="small"
+        />
+      )}
       <LivePreview
         template={template}
         styles={styles}
         entityBindings={testEntityBindings}
         parameterValues={{}}
+        globalStyles={activeDashboard?.globalStyles ?? {}}
+        standardVariables={activeDashboard?.standardVariables ?? {}}
       />
 
       <Space style={{ marginTop: 16 }}>
