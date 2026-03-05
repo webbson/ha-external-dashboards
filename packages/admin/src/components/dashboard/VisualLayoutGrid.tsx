@@ -27,11 +27,16 @@ interface ComponentInstance {
   regionId: string;
   sortOrder: number;
   entityBindings: Record<string, string | string[]>;
+  parentInstanceId?: number | null;
+  tabLabel?: string | null;
+  tabIcon?: string | null;
 }
 
 interface ComponentDef {
   id: number;
   name: string;
+  isContainer: boolean;
+  containerConfig?: { type: string; rotateInterval?: number } | null;
 }
 
 interface VisualLayoutGridProps {
@@ -46,16 +51,27 @@ interface VisualLayoutGridProps {
     newRegionId: string,
     newSortOrder: number
   ) => void;
+  onAddToContainer?: (containerInstanceId: number) => void;
 }
 
 function SortableCard({
   instance,
   componentName,
+  component,
+  children: childInstances,
+  componentMap,
   onClick,
+  onChildClick,
+  onAddChild,
 }: {
   instance: ComponentInstance;
   componentName: string;
+  component: ComponentDef | undefined;
+  children: ComponentInstance[];
+  componentMap: Record<number, ComponentDef>;
   onClick: () => void;
+  onChildClick: (inst: ComponentInstance) => void;
+  onAddChild: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: instance.id });
@@ -64,6 +80,94 @@ function SortableCard({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  if (component?.isContainer) {
+    return (
+      <div ref={setNodeRef} style={{ ...style, marginBottom: 6 }}>
+        <div
+          style={{
+            border: "2px solid rgba(114, 46, 209, 0.4)",
+            borderRadius: 8,
+            background: "rgba(114, 46, 209, 0.08)",
+            padding: 8,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 8,
+            }}
+          >
+            <span
+              {...attributes}
+              {...listeners}
+              style={{ cursor: "grab", color: "#666" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <HolderOutlined />
+            </span>
+            <span
+              style={{
+                fontWeight: 500,
+                fontSize: 13,
+                color: "#b380d9",
+                cursor: "pointer",
+              }}
+              onClick={onClick}
+            >
+              {componentName}
+            </span>
+            <span
+              style={{ fontSize: 11, color: "#888", marginLeft: "auto" }}
+            >
+              {component.containerConfig?.type ?? "container"}
+            </span>
+          </div>
+
+          {childInstances.map((child) => (
+            <div
+              key={child.id}
+              onClick={() => onChildClick(child)}
+              style={{
+                padding: "6px 10px",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 4,
+                marginBottom: 4,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+              }}
+            >
+              <span>
+                {child.tabLabel ||
+                  componentMap[child.componentId]?.name ||
+                  "Child"}
+              </span>
+            </div>
+          ))}
+
+          <Button
+            type="dashed"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddChild();
+            }}
+            block
+            style={{ marginTop: 4 }}
+          >
+            Add Child
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const bindingSummary = Object.values(instance.entityBindings)
     .flat()
@@ -124,6 +228,7 @@ export function VisualLayoutGrid({
   onAddClick,
   onInstanceClick,
   onReorder,
+  onAddToContainer,
 }: VisualLayoutGridProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -133,11 +238,25 @@ export function VisualLayoutGrid({
     const map: Record<string, ComponentInstance[]> = {};
     for (const region of regions) {
       map[region.id] = instances
-        .filter((i) => i.regionId === region.id)
+        .filter((i) => i.regionId === region.id && !i.parentInstanceId)
         .sort((a, b) => a.sortOrder - b.sortOrder);
     }
     return map;
   }, [regions, instances]);
+
+  const childrenOf = useMemo(() => {
+    const map: Record<number, ComponentInstance[]> = {};
+    for (const inst of instances) {
+      if (inst.parentInstanceId) {
+        if (!map[inst.parentInstanceId]) map[inst.parentInstanceId] = [];
+        map[inst.parentInstanceId].push(inst);
+      }
+    }
+    for (const key of Object.keys(map)) {
+      map[Number(key)].sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+    return map;
+  }, [instances]);
 
   const componentMap = useMemo(() => {
     const map: Record<number, ComponentDef> = {};
@@ -226,7 +345,12 @@ export function VisualLayoutGrid({
                     componentName={
                       componentMap[inst.componentId]?.name ?? "Unknown"
                     }
+                    component={componentMap[inst.componentId]}
+                    children={childrenOf[inst.id] || []}
+                    componentMap={componentMap}
                     onClick={() => onInstanceClick(inst)}
+                    onChildClick={(child) => onInstanceClick(child)}
+                    onAddChild={() => onAddToContainer?.(inst.id)}
                   />
                 ))}
               </SortableContext>
