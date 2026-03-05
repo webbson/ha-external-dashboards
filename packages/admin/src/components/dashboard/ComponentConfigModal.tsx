@@ -84,7 +84,7 @@ export function ComponentConfigModal({
     Record<string, string | string[]>
   >({});
   const [visibilityRules, setVisibilityRules] = useState<VisibilityRule[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+
 
   useEffect(() => {
     if (instance && component) {
@@ -98,9 +98,7 @@ export function ComponentConfigModal({
     }
   }, [instance, component]);
 
-  useEffect(() => {
-    setRefreshKey((k) => k + 1);
-  }, [entityBindings, parameterValues]);
+
 
   const handleSave = useCallback(() => {
     if (!instance) return;
@@ -338,7 +336,7 @@ export function ComponentConfigModal({
             entityBindings={entityBindings}
             parameterValues={parameterValues}
             globalStyles={globalStyles}
-            refreshKey={refreshKey}
+
           />
         </div>
       </div>
