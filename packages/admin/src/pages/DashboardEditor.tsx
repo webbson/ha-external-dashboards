@@ -11,6 +11,8 @@ import {
   Space,
   Alert,
   Tabs,
+  Row,
+  Col,
   message,
 } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
@@ -122,6 +124,7 @@ export function DashboardEditor() {
   const accessMode = Form.useWatch("accessMode", form);
   const interactiveMode = Form.useWatch("interactiveMode", form);
   const themeId = Form.useWatch("themeId", form);
+  const layoutSwitchMode = Form.useWatch("layoutSwitchMode", form);
 
   const activeDl = dashLayouts[activeDlIndex] ?? null;
   const activeDlId = activeDl?.id ?? null;
@@ -320,92 +323,116 @@ export function DashboardEditor() {
               label: "Settings",
               children: (
                 <div>
-                  <Form.Item
-                    name="name"
-                    label="Name"
-                    rules={[{ required: true }]}
-                  >
-                    <Input />
-                  </Form.Item>
-                  <Form.Item
-                    name="slug"
-                    label="Slug"
-                    rules={[
-                      { required: true },
-                      {
-                        pattern: /^[a-z0-9-]+$/,
-                        message: "Lowercase, numbers, hyphens only",
-                      },
-                    ]}
-                  >
-                    <Input />
-                  </Form.Item>
-                  <Form.Item name="accessMode" label="Access Mode">
-                    <Select
-                      options={[
-                        { value: "public", label: "Public" },
-                        { value: "password", label: "Password" },
-                        { value: "header", label: "Header" },
-                      ]}
-                    />
-                  </Form.Item>
+                  <Row gutter={16}>
+                    <Col span={8}>
+                      <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="slug"
+                        label="Slug"
+                        rules={[
+                          { required: true },
+                          { pattern: /^[a-z0-9-]+$/, message: "Lowercase, numbers, hyphens only" },
+                        ]}
+                      >
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item name="accessMode" label="Access Mode">
+                        <Select
+                          options={[
+                            { value: "public", label: "Public" },
+                            { value: "password", label: "Password" },
+                            { value: "header", label: "Header" },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
                   {accessMode === "password" && (
-                    <Form.Item name="password" label="Password">
-                      <Input.Password />
-                    </Form.Item>
+                    <Row gutter={16}>
+                      <Col span={8}>
+                        <Form.Item name="password" label="Password">
+                          <Input.Password />
+                        </Form.Item>
+                      </Col>
+                    </Row>
                   )}
+
                   {accessMode === "header" && (
-                    <>
-                      <Form.Item name="headerName" label="Header Name">
-                        <Input />
-                      </Form.Item>
-                      <Form.Item name="headerValue" label="Header Value">
-                        <Input />
-                      </Form.Item>
-                    </>
+                    <Row gutter={16}>
+                      <Col span={8}>
+                        <Form.Item name="headerName" label="Header Name">
+                          <Input />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item name="headerValue" label="Header Value">
+                          <Input />
+                        </Form.Item>
+                      </Col>
+                    </Row>
                   )}
-                  <Form.Item
-                    name="interactiveMode"
-                    label="Interactive Mode"
-                    valuePropName="checked"
-                  >
-                    <Switch />
-                  </Form.Item>
-                  <Form.Item
-                    name="maxWidth"
-                    label="Max Width"
-                    tooltip="Maximum width of the layout area (e.g. 1200px, 80%). Leave empty for full width."
-                  >
-                    <Input placeholder="e.g. 1200px, 80%" allowClear />
-                  </Form.Item>
-                  <Form.Item
-                    name="padding"
-                    label="Padding"
-                    tooltip="Padding around the layout area (e.g. 16px, 2rem 4rem)"
-                  >
-                    <Input placeholder="e.g. 16px, 2rem 4rem" allowClear />
-                  </Form.Item>
-                  <Form.Item name="themeId" label="Theme">
-                    <Select
-                      allowClear
-                      placeholder="No theme"
-                      options={allThemes.map((t) => ({ value: t.id, label: t.name }))}
-                    />
-                  </Form.Item>
-                  <Form.Item name="layoutSwitchMode" label="Layout Switch Mode">
-                    <Select
-                      options={[
-                        { value: "tabs", label: "Tabs" },
-                        { value: "auto-rotate", label: "Auto Rotate" },
-                      ]}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    name="layoutRotateInterval"
-                    label="Rotate Interval (s)"
-                  >
-                    <InputNumber min={5} />
-                  </Form.Item>
+
+                  <Row gutter={16}>
+                    <Col span={8}>
+                      <Form.Item name="themeId" label="Theme">
+                        <Select
+                          allowClear
+                          placeholder="No theme"
+                          options={allThemes.map((t) => ({ value: t.id, label: t.name }))}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="maxWidth"
+                        label="Max Width"
+                        tooltip="Maximum width of the layout area (e.g. 1200px, 80%). Leave empty for full width."
+                      >
+                        <Input placeholder="e.g. 1200px, 80%" allowClear />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="padding"
+                        label="Padding"
+                        tooltip="Padding around the layout area (e.g. 16px, 2rem 4rem)"
+                      >
+                        <Input placeholder="e.g. 16px, 2rem 4rem" allowClear />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={16}>
+                    <Col span={8}>
+                      <Form.Item name="interactiveMode" label="Interactive Mode" valuePropName="checked">
+                        <Switch />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item name="layoutSwitchMode" label="Layout Switch Mode">
+                        <Select
+                          options={[
+                            { value: "tabs", label: "Tabs" },
+                            { value: "auto-rotate", label: "Auto Rotate" },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                    {layoutSwitchMode === "auto-rotate" && (
+                      <Col span={8}>
+                        <Form.Item name="layoutRotateInterval" label="Rotate Interval (s)">
+                          <InputNumber min={5} />
+                        </Form.Item>
+                      </Col>
+                    )}
+                  </Row>
                 </div>
               ),
             },
