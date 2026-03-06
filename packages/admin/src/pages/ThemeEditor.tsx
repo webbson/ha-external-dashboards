@@ -11,9 +11,10 @@ import {
   ColorPicker,
   Radio,
   Select,
+  Tooltip,
   message,
 } from "antd";
-import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 import type { StandardVariables } from "@ha-external-dashboards/shared";
 import { STANDARD_VARIABLE_DEFAULTS } from "@ha-external-dashboards/shared";
@@ -101,11 +102,31 @@ export function ThemeEditor() {
     }
   };
 
-  const colorField = (label: string, key: keyof StandardVariables) => (
+  const fieldLabel = (label: string, tooltip?: string) => (
+    <div style={{ fontSize: 12, color: "#999", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
+      {label}
+      {tooltip && (
+        <Tooltip title={tooltip}>
+          <InfoCircleOutlined style={{ fontSize: 11, color: "#bbb", cursor: "help" }} />
+        </Tooltip>
+      )}
+    </div>
+  );
+
+  const sectionHeader = (label: string, tooltip?: string) => (
+    <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 8, marginTop: 16, display: "flex", alignItems: "center", gap: 6 }}>
+      {label}
+      {tooltip && (
+        <Tooltip title={tooltip}>
+          <InfoCircleOutlined style={{ fontSize: 12, color: "#bbb", cursor: "help" }} />
+        </Tooltip>
+      )}
+    </div>
+  );
+
+  const colorField = (label: string, key: keyof StandardVariables, tooltip?: string) => (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>
-        {label}
-      </div>
+      {fieldLabel(label, tooltip)}
       <ColorPicker
         value={merged[key]}
         onChange={(_, hex) => update(key, hex)}
@@ -117,12 +138,11 @@ export function ThemeEditor() {
   const textField = (
     label: string,
     key: keyof StandardVariables,
-    placeholder?: string
+    placeholder?: string,
+    tooltip?: string
   ) => (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>
-        {label}
-      </div>
+      {fieldLabel(label, tooltip)}
       <Input
         value={merged[key]}
         onChange={(e) => update(key, e.target.value)}
@@ -135,7 +155,7 @@ export function ThemeEditor() {
     <Card title={isNew ? "New Theme" : "Edit Theme"} loading={loading}>
       <Form form={form} layout="vertical" onFinish={onFinish}>
         <Row gutter={16}>
-          {/* Column 1: Name + Colors */}
+          {/* Column 1: Name + Colors + Background */}
           <Col span={8}>
             <Form.Item
               name="name"
@@ -145,71 +165,13 @@ export function ThemeEditor() {
               <Input />
             </Form.Item>
 
-            <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 8 }}>
-              Colors
-            </div>
-            {colorField("Component Background", "componentBg")}
-            {colorField("Primary Font Color", "fontColor")}
-            {colorField("Secondary Font Color", "fontColorSecondary")}
-            {colorField("Accent Color", "accentColor")}
-          </Col>
+            {sectionHeader("Colors", "Global color palette used by components via CSS variables")}
+            {colorField("Component Background", "componentBg", "Background fill for component chrome wrappers. Use in CSS as var(--db-component-bg)")}
+            {colorField("Primary Font Color", "fontColor", "Main text color for component content. Use in CSS as var(--db-font-color)")}
+            {colorField("Secondary Font Color", "fontColorSecondary", "Muted text for labels, captions, metadata. Use in CSS as var(--db-font-color-secondary)")}
+            {colorField("Accent Color", "accentColor", "Highlights, active states, links, progress bars. Use in CSS as var(--db-accent-color)")}
 
-          {/* Column 2: Typography + Component Chrome + Layout */}
-          <Col span={8}>
-            <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 8 }}>
-              Typography
-            </div>
-            {textField("Font Family", "fontFamily", "inherit")}
-            {textField("Font Size", "fontSize", "16px")}
-
-            <div
-              style={{
-                fontWeight: 500,
-                fontSize: 13,
-                marginBottom: 8,
-                marginTop: 16,
-              }}
-            >
-              Component Chrome
-            </div>
-            {textField("Border Style", "borderStyle", "none")}
-            {textField("Border Radius", "borderRadius", "0px")}
-            {textField("Component Padding", "componentPadding", "0px")}
-
-            <div
-              style={{
-                fontWeight: 500,
-                fontSize: 13,
-                marginBottom: 8,
-                marginTop: 16,
-              }}
-            >
-              Layout
-            </div>
-            {textField("Component Gap", "componentGap", "0px")}
-
-            <div
-              style={{
-                fontWeight: 500,
-                fontSize: 13,
-                marginBottom: 8,
-                marginTop: 16,
-              }}
-            >
-              Tab Bar
-            </div>
-            {colorField("Background", "tabBarBg")}
-            {colorField("Inactive Color", "tabBarColor")}
-            {colorField("Active Color", "tabBarActiveColor")}
-            {colorField("Active Background", "tabBarActiveBg")}
-            {textField("Font Size", "tabBarFontSize", "14px")}
-          </Col>
-
-          {/* Column 3: Background + Custom Variables */}
-          <Col span={8}>
-            <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 8 }}>
-              Background
-            </div>
+            {sectionHeader("Background", "Full-page background behind all layouts and components")}
             <Radio.Group
               value={merged.backgroundType}
               onChange={(e) => update("backgroundType", e.target.value)}
@@ -257,17 +219,23 @@ export function ThemeEditor() {
                 )}
               </div>
             )}
+          </Col>
 
-            <div
-              style={{
-                fontWeight: 500,
-                fontSize: 13,
-                marginBottom: 8,
-                marginTop: 16,
-              }}
-            >
-              Custom Variables
-            </div>
+          {/* Column 2: Typography + Component Chrome + Layout */}
+          <Col span={8}>
+            {sectionHeader("Typography", "Font settings inherited by all components")}
+            {textField("Font Family", "fontFamily", "inherit", "CSS font-family value. Use in CSS as var(--db-font-family)")}
+            {textField("Font Size", "fontSize", "16px", "Base font size for component content. Use in CSS as var(--db-font-size)")}
+
+            {sectionHeader("Component Chrome", "Outer wrapper styling applied around each component or region")}
+            {textField("Border Style", "borderStyle", "none", "CSS border shorthand, e.g. '1px solid #333'. Use in CSS as var(--db-border-style)")}
+            {textField("Border Radius", "borderRadius", "0px", "Corner rounding for component chrome. Use in CSS as var(--db-border-radius)")}
+            {textField("Component Padding", "componentPadding", "0px", "Inner padding of component chrome wrappers. Use in CSS as var(--db-component-padding)")}
+
+            {sectionHeader("Layout", "Spacing between components in layout regions")}
+            {textField("Component Gap", "componentGap", "0px", "Gap between components within a region. Use in CSS as var(--db-component-gap)")}
+
+            {sectionHeader("Custom Variables", "Define your own CSS variables for use in component templates. Access in Handlebars via {{globalStyles.myVar}} or in CSS as var(--myVar)")}
             {globalStyleEntries.map((entry, i) => (
               <Space
                 key={i}
@@ -313,6 +281,16 @@ export function ThemeEditor() {
             >
               Add Variable
             </Button>
+          </Col>
+
+          {/* Column 3: Tab Bar */}
+          <Col span={8}>
+            {sectionHeader("Tab Bar", "Styling for the dashboard layout tab bar. Only visible when a dashboard has multiple layouts in tab mode")}
+            {colorField("Background", "tabBarBg", "Background color of the entire tab bar container. Use in CSS as var(--db-tab-bar-bg)")}
+            {colorField("Inactive Color", "tabBarColor", "Text and icon color for non-selected tabs. Use in CSS as var(--db-tab-bar-color)")}
+            {colorField("Active Color", "tabBarActiveColor", "Text and icon color for the selected tab. Use in CSS as var(--db-tab-bar-active-color)")}
+            {colorField("Active Background", "tabBarActiveBg", "Pill background color for the selected tab. Use in CSS as var(--db-tab-bar-active-bg)")}
+            {textField("Font Size", "tabBarFontSize", "14px", "Font and icon size for tab labels. Use in CSS as var(--db-tab-bar-font-size)")}
           </Col>
         </Row>
 
