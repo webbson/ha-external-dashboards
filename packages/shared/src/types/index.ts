@@ -62,6 +62,11 @@ export interface StandardVariables {
   backgroundType: "color" | "image";
   backgroundColor: string;
   backgroundImage: string;
+  tabBarBg: string;
+  tabBarColor: string;
+  tabBarActiveColor: string;
+  tabBarActiveBg: string;
+  tabBarFontSize: string;
 }
 
 export const STANDARD_VARIABLE_DEFAULTS: StandardVariables = {
@@ -78,6 +83,11 @@ export const STANDARD_VARIABLE_DEFAULTS: StandardVariables = {
   backgroundType: "color",
   backgroundColor: "#000000",
   backgroundImage: "",
+  tabBarBg: "transparent",
+  tabBarColor: "rgba(255,255,255,0.6)",
+  tabBarActiveColor: "#ffffff",
+  tabBarActiveBg: "rgba(255,255,255,0.15)",
+  tabBarFontSize: "14px",
 };
 
 export const STANDARD_VARIABLE_CSS_MAP: Record<
@@ -95,4 +105,9 @@ export const STANDARD_VARIABLE_CSS_MAP: Record<
   componentPadding: "--db-component-padding",
   componentGap: "--db-component-gap",
   backgroundColor: "--db-background-color",
+  tabBarBg: "--db-tab-bar-bg",
+  tabBarColor: "--db-tab-bar-color",
+  tabBarActiveColor: "--db-tab-bar-active-color",
+  tabBarActiveBg: "--db-tab-bar-active-bg",
+  tabBarFontSize: "--db-tab-bar-font-size",
 };
