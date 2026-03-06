@@ -145,38 +145,41 @@ const patterns: PatternEntry[] = [
 {{attr (param "entity") "friendly_name"}}`,
   },
   {
+    name: "Script scoping with comp",
+    description:
+      'Scripts in components automatically receive a "comp" variable — a reference to the component\'s container element. Use comp.querySelector() instead of document.getElementById().',
+    code: `<div class="my-widget">
+  <span class="label">Hello</span>
+</div>
+<script>
+var label = comp.querySelector('.label');
+label.textContent = 'Updated!';
+</script>`,
+  },
+  {
     name: "Interactive: Toggle a light/switch",
     description:
-      'Call HA services from templates using window.__ha.callService(). Requires interactive mode enabled on the dashboard.',
-    code: `<div id="my-toggle">Toggle Light</div>
+      'Call HA services using window.__ha.callService(). Requires interactive mode. Use comp to reference the component.',
+    code: `<div class="toggle">Toggle Light</div>
 <script>
-(function() {
-  var entityId = '{{param "entity"}}';
-  var el = document.getElementById('my-toggle');
-  if (el && window.__ha) {
-    el.style.cursor = 'pointer';
-    el.addEventListener('click', function() {
-      window.__ha.callService(entityId.split('.')[0], 'toggle', { entity_id: entityId });
-    });
-  }
-})();
+var entityId = '{{param "entity"}}';
+comp.style.cursor = 'pointer';
+comp.addEventListener('click', function() {
+  if (window.__ha) window.__ha.callService(entityId.split('.')[0], 'toggle', { entity_id: entityId });
+});
 </script>`,
   },
   {
     name: "Interactive: Open a dialog",
     description:
       'Open built-in interactive dialogs. Available types: light-control. Requires interactive mode.',
-    code: `<div id="my-card">Open Light Controls</div>
+    code: `<div class="card">Open Light Controls</div>
 <script>
-(function() {
-  var entityId = '{{param "entity"}}';
-  var el = document.getElementById('my-card');
-  if (el && window.__ha) {
-    el.style.cursor = 'pointer';
-    el.addEventListener('click', function() {
-      window.__ha.openDialog('light-control', { entityId: entityId });
-    });
-  }
+var entityId = '{{param "entity"}}';
+comp.style.cursor = 'pointer';
+comp.addEventListener('click', function() {
+  if (window.__ha) window.__ha.openDialog('light-control', { entityId: entityId });
+});
 })();
 </script>`,
   },

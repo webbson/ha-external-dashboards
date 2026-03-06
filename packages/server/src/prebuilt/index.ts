@@ -168,7 +168,7 @@ const prebuiltComponents: PrebuiltComponent[] = [
   },
   {
     name: "Light Switch",
-    template: `<div class="light-switch" id="light-switch-{{param "entity"}}">
+    template: `<div class="light-switch">
   {{#stateEquals (param "entity") "on"}}
     <div class="light-switch-icon on">{{mdiIcon "mdi:lightbulb" size="36" color="var(--db-accent-color, #4fc3f7)"}}</div>
   {{else}}
@@ -180,17 +180,12 @@ const prebuiltComponents: PrebuiltComponent[] = [
   {{/if}}
 </div>
 <script>
-(function() {
-  var entityId = '{{param "entity"}}';
-  var domain = entityId.split('.')[0];
-  var el = document.getElementById('light-switch-' + entityId);
-  if (el && window.__ha) {
-    el.style.cursor = 'pointer';
-    el.addEventListener('click', function() {
-      window.__ha.callService(domain, 'toggle', { entity_id: entityId });
-    });
-  }
-})();
+var entityId = '{{param "entity"}}';
+var domain = entityId.split('.')[0];
+comp.style.cursor = 'pointer';
+comp.addEventListener('click', function() {
+  if (window.__ha) window.__ha.callService(domain, 'toggle', { entity_id: entityId });
+});
 </script>`,
     styles: `.light-switch { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 16px; gap: 8px; user-select: none; -webkit-tap-highlight-color: transparent; }
 .light-switch:active { opacity: 0.7; }
@@ -210,7 +205,7 @@ const prebuiltComponents: PrebuiltComponent[] = [
   },
   {
     name: "Light Card",
-    template: `<div class="light-card" id="light-card-{{param "entity"}}">
+    template: `<div class="light-card">
   <div class="light-card-main">
     {{#stateEquals (param "entity") "on"}}
       <div class="light-card-icon on">{{mdiIcon "mdi:lightbulb" size="40" color="var(--db-accent-color, #4fc3f7)"}}</div>
@@ -226,16 +221,11 @@ const prebuiltComponents: PrebuiltComponent[] = [
   </div>
 </div>
 <script>
-(function() {
-  var entityId = '{{param "entity"}}';
-  var el = document.getElementById('light-card-' + entityId);
-  if (el && window.__ha) {
-    el.style.cursor = 'pointer';
-    el.addEventListener('click', function() {
-      window.__ha.openDialog('light-control', { entityId: entityId });
-    });
-  }
-})();
+var entityId = '{{param "entity"}}';
+comp.style.cursor = 'pointer';
+comp.addEventListener('click', function() {
+  if (window.__ha) window.__ha.openDialog('light-control', { entityId: entityId });
+});
 </script>`,
     styles: `.light-card { padding: 16px; user-select: none; -webkit-tap-highlight-color: transparent; }
 .light-card:active { opacity: 0.7; }
