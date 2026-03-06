@@ -57,6 +57,7 @@ export function PopupOverlay({ popup, onDismiss }: PopupOverlayProps) {
         <video
           src={popup.content.mediaUrl}
           autoPlay
+          muted
           style={{ maxWidth: "90%", maxHeight: "90%" }}
         />
       )}
