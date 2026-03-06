@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { DashboardRenderer } from "./runtime/DashboardRenderer.js";
 import { PopupOverlay } from "./runtime/PopupOverlay.js";
+import { DialogOverlay } from "./runtime/DialogOverlay.js";
 import { DisplayClient } from "./ws/DisplayClient.js";
 import type { EntityState } from "./template/engine.js";
 
@@ -364,6 +365,12 @@ export function DisplayApp() {
         layoutRotateInterval={config.dashboard.layoutRotateInterval}
       />
       <PopupOverlay popup={popup} onDismiss={() => setPopup(null)} />
+      <DialogOverlay
+        dialogState={dialogState}
+        onClose={() => setDialogState(null)}
+        entities={entities}
+        callService={(domain, service, data) => clientRef.current?.callService(domain, service, data)}
+      />
     </div>
   );
 }
