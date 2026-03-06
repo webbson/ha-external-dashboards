@@ -45,6 +45,7 @@ interface DashboardLayout {
   layoutId: number;
   sortOrder: number;
   label: string | null;
+  icon: string | null;
 }
 
 interface Layout {
@@ -183,6 +184,7 @@ export function DashboardEditor() {
         layoutId: l.layoutId,
         sortOrder: i,
         label: l.label,
+        icon: l.icon,
       }))
     );
     setDashLayouts(result);
@@ -432,8 +434,8 @@ export function DashboardEditor() {
             ...(!isNew
               ? [
                   {
-                    key: "layouts",
-                    label: "Layouts",
+                    key: "content",
+                    label: "Content",
                     children: (
                       <div>
                         {dashLayouts.length === 0 ? (
@@ -451,48 +453,51 @@ export function DashboardEditor() {
                           <>
                             <Tabs
                               activeKey={String(activeDlIndex)}
-                              onChange={(k) => setActiveDlIndex(Number(k))}
-                              tabBarExtraContent={
-                                <Button
-                                  type="text"
-                                  icon={<PlusOutlined />}
-                                  onClick={() =>
-                                    setLayoutTabModal({
-                                      open: true,
-                                      mode: "add",
-                                      index: -1,
-                                    })
-                                  }
-                                />
-                              }
-                              items={dashLayouts.map((dl, i) => {
-                                const layout = allLayouts.find(
-                                  (l) => l.id === dl.layoutId
-                                );
-                                return {
-                                  key: String(i),
-                                  label: (
-                                    <span>
-                                      {dl.label || layout?.name || `Layout ${i + 1}`}
-                                      <EditOutlined
-                                        style={{
-                                          marginLeft: 6,
-                                          fontSize: 11,
-                                          opacity: 0.5,
-                                        }}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setLayoutTabModal({
-                                            open: true,
-                                            mode: "edit",
-                                            index: i,
-                                          });
-                                        }}
-                                      />
-                                    </span>
-                                  ),
-                                };
-                              })}
+                              onChange={(k) => {
+                                if (k === "__add__") {
+                                  setLayoutTabModal({
+                                    open: true,
+                                    mode: "add",
+                                    index: -1,
+                                  });
+                                } else {
+                                  setActiveDlIndex(Number(k));
+                                }
+                              }}
+                              items={[
+                                ...dashLayouts.map((dl, i) => {
+                                  const layout = allLayouts.find(
+                                    (l) => l.id === dl.layoutId
+                                  );
+                                  return {
+                                    key: String(i),
+                                    label: (
+                                      <span>
+                                        {dl.label || layout?.name || `Layout ${i + 1}`}
+                                        <EditOutlined
+                                          style={{
+                                            marginLeft: 6,
+                                            fontSize: 11,
+                                            opacity: 0.5,
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setLayoutTabModal({
+                                              open: true,
+                                              mode: "edit",
+                                              index: i,
+                                            });
+                                          }}
+                                        />
+                                      </span>
+                                    ),
+                                  };
+                                }),
+                                {
+                                  key: "__add__",
+                                  label: <PlusOutlined style={{ fontSize: 12 }} />,
+                                },
+                              ]}
                               style={{ marginBottom: 16 }}
                             />
 
@@ -595,9 +600,14 @@ export function DashboardEditor() {
                               ? dashLayouts[layoutTabModal.index]?.label
                               : undefined
                           }
+                          icon={
+                            layoutTabModal?.mode === "edit" && layoutTabModal.index >= 0
+                              ? dashLayouts[layoutTabModal.index]?.icon
+                              : undefined
+                          }
                           allLayouts={allLayouts}
                           canRemove={dashLayouts.length > 1}
-                          onSave={(layoutId, label) => {
+                          onSave={(layoutId, label, icon) => {
                             if (layoutTabModal?.mode === "add") {
                               setDashLayouts([
                                 ...dashLayouts,
@@ -606,6 +616,7 @@ export function DashboardEditor() {
                                   layoutId,
                                   sortOrder: dashLayouts.length,
                                   label,
+                                  icon,
                                 },
                               ]);
                               setActiveDlIndex(dashLayouts.length);
@@ -618,6 +629,7 @@ export function DashboardEditor() {
                                 ...next[layoutTabModal.index],
                                 layoutId,
                                 label,
+                                icon,
                               };
                               setDashLayouts(next);
                             }
