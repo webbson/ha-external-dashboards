@@ -80,6 +80,7 @@ export const dashboardLayouts = sqliteTable("dashboard_layouts", {
     .references(() => layouts.id, { onDelete: "cascade" }),
   sortOrder: integer("sort_order").notNull().default(0),
   label: text("label"),
+  icon: text("icon"),
 });
 
 export const components = sqliteTable("components", {
