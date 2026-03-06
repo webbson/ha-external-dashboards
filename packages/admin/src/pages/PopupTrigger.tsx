@@ -11,12 +11,21 @@ import {
   Radio,
   Row,
   Col,
+  Collapse,
   message,
 } from "antd";
 import { SendOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
 const { Text, Paragraph } = Typography;
+
+const preStyle: React.CSSProperties = {
+  background: "#f5f5f5",
+  padding: 12,
+  borderRadius: 4,
+  fontSize: 12,
+  overflowX: "auto",
+};
 
 interface Dashboard {
   id: number;
@@ -37,6 +46,7 @@ export function PopupTrigger() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [mediaSource, setMediaSource] = useState<"asset" | "url">("asset");
   const contentType = Form.useWatch(["content", "type"], form);
+  const mediaUrl = Form.useWatch(["content", "mediaUrl"], form);
 
   useEffect(() => {
     api.get<Dashboard[]>("/api/dashboards").then(setDashboards);
@@ -48,6 +58,16 @@ export function PopupTrigger() {
     if (contentType === "video") return a.mimeType.startsWith("video/");
     return false;
   });
+
+  const selectedAsset = mediaUrl
+    ? assets.find((a) => `/assets/${a.fileName}` === mediaUrl)
+    : undefined;
+
+  const previewUrl = mediaUrl
+    ? selectedAsset
+      ? `/api/assets/${selectedAsset.id}/file`
+      : mediaUrl
+    : undefined;
 
   const handleContentTypeChange = () => {
     form.setFieldValue(["content", "mediaUrl"], undefined);
@@ -171,6 +191,35 @@ export function PopupTrigger() {
                   <Input placeholder="https://example.com/image.png" />
                 </Form.Item>
               )}
+              {previewUrl && contentType === "image" && (
+                <div style={{ marginTop: 8 }}>
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    style={{
+                      maxWidth: 300,
+                      maxHeight: 180,
+                      borderRadius: 4,
+                      border: "1px solid #333",
+                      objectFit: "cover",
+                    }}
+                  />
+                </div>
+              )}
+              {previewUrl && contentType === "video" && (
+                <div style={{ marginTop: 8 }}>
+                  <video
+                    src={previewUrl}
+                    controls
+                    style={{
+                      maxWidth: 300,
+                      maxHeight: 180,
+                      borderRadius: 4,
+                      border: "1px solid #333",
+                    }}
+                  />
+                </div>
+              )}
             </Col>
           </Row>
         )}
@@ -186,34 +235,89 @@ export function PopupTrigger() {
           </Button>
         </Form.Item>
       </Form>
-      <Alert
-        type="info"
+      <Collapse
         style={{ marginTop: 16 }}
-        message="Home Assistant Integration"
-        description={
-          <div>
-            <Paragraph>
-              <Text>
-                Add this to your HA <Text code>configuration.yaml</Text>:
-              </Text>
-            </Paragraph>
-            <pre
-              style={{
-                background: "#f5f5f5",
-                padding: 12,
-                borderRadius: 4,
-                fontSize: 12,
-              }}
-            >
-              {`rest_command:
-  trigger_popup:
-    url: "http://localhost:8099/api/trigger/popup"
+        items={[
+          {
+            key: "ha-integration",
+            label: "Home Assistant Integration Examples",
+            children: (
+              <div>
+                <Paragraph>
+                  <Text>
+                    Add these to your HA <Text code>configuration.yaml</Text>{" "}
+                    and call them from automations or scripts.
+                  </Text>
+                </Paragraph>
+
+                <div style={{ fontWeight: 500, marginBottom: 4 }}>
+                  Text popup
+                </div>
+                <pre style={preStyle}>
+                  {`rest_command:
+  popup_text:
+    url: "http://<your-host>:8099/api/trigger/popup"
     method: POST
     content_type: "application/json"
-    payload: '{"content":{"type":"text","body":"{{ message }}"},"timeout":10}'`}
-            </pre>
-          </div>
-        }
+    payload: '{"content":{"type":"text","body":"{{ message }}"},"timeout":{{ timeout | default(10) }}}'`}
+                </pre>
+
+                <div style={{ fontWeight: 500, marginTop: 16, marginBottom: 4 }}>
+                  Image popup
+                </div>
+                <pre style={preStyle}>
+                  {`rest_command:
+  popup_image:
+    url: "http://<your-host>:8099/api/trigger/popup"
+    method: POST
+    content_type: "application/json"
+    payload: '{"content":{"type":"image","mediaUrl":"{{ media_url }}"},"timeout":{{ timeout | default(15) }}}'`}
+                </pre>
+
+                <div style={{ fontWeight: 500, marginTop: 16, marginBottom: 4 }}>
+                  Video popup
+                </div>
+                <pre style={preStyle}>
+                  {`rest_command:
+  popup_video:
+    url: "http://<your-host>:8099/api/trigger/popup"
+    method: POST
+    content_type: "application/json"
+    payload: '{"content":{"type":"video","mediaUrl":"{{ media_url }}"},"timeout":{{ timeout | default(30) }}}'`}
+                </pre>
+
+                <div style={{ fontWeight: 500, marginTop: 16, marginBottom: 4 }}>
+                  Target specific dashboards
+                </div>
+                <pre style={preStyle}>
+                  {`rest_command:
+  popup_targeted:
+    url: "http://<your-host>:8099/api/trigger/popup"
+    method: POST
+    content_type: "application/json"
+    payload: '{"content":{"type":"text","body":"{{ message }}"},"timeout":10,"targetDashboardIds":[{{ dashboard_id }}]}'`}
+                </pre>
+
+                <div style={{ fontWeight: 500, marginTop: 16, marginBottom: 4 }}>
+                  Automation example
+                </div>
+                <pre style={preStyle}>
+                  {`automation:
+  - alias: "Doorbell popup"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.doorbell
+        to: "on"
+    action:
+      - service: rest_command.popup_image
+        data:
+          media_url: "/assets/doorbell-snapshot.jpg"
+          timeout: 20`}
+                </pre>
+              </div>
+            ),
+          },
+        ]}
       />
     </Card>
   );
