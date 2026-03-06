@@ -120,6 +120,53 @@ const prebuiltComponents: PrebuiltComponent[] = [
     containerConfig: null,
   },
   {
+    name: "Entity List",
+    template: `<div class="entity-list">
+  {{#if (param "title")}}<div class="entity-list-title">{{param "title"}}</div>{{/if}}
+  {{#eachEntity "entities"}}
+  <div class="entity-list-row">
+    {{#if (param "showIcon")}}<div class="entity-list-icon">{{mdiIcon (iconFor this.domain) size="20"}}</div>{{/if}}
+    {{#if (param "showFriendlyName")}}<div class="entity-list-name">{{this.attributes.friendly_name}}</div>{{/if}}
+    <div class="entity-list-spacer"></div>
+    {{#if (param "showState")}}<div class="entity-list-state">{{this.state}}{{#if (param "showUnit")}} {{this.attributes.unit_of_measurement}}{{/if}}</div>{{/if}}
+    {{#if (param "showLastChanged")}}<div class="entity-list-time">{{relativeTime this.last_changed}}</div>{{/if}}
+  </div>
+  {{/eachEntity}}
+  {{#eachEntity "entityPattern"}}
+  <div class="entity-list-row">
+    {{#if (param "showIcon")}}<div class="entity-list-icon">{{mdiIcon (iconFor this.domain) size="20"}}</div>{{/if}}
+    {{#if (param "showFriendlyName")}}<div class="entity-list-name">{{this.attributes.friendly_name}}</div>{{/if}}
+    <div class="entity-list-spacer"></div>
+    {{#if (param "showState")}}<div class="entity-list-state">{{this.state}}{{#if (param "showUnit")}} {{this.attributes.unit_of_measurement}}{{/if}}</div>{{/if}}
+    {{#if (param "showLastChanged")}}<div class="entity-list-time">{{relativeTime this.last_changed}}</div>{{/if}}
+  </div>
+  {{/eachEntity}}
+</div>`,
+    styles: `.entity-list { padding: 8px 0; }
+.entity-list-title { font-size: 1.1em; font-weight: 500; color: var(--db-font-color, #fff); padding: 4px 12px 12px; }
+.entity-list-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.entity-list-row:last-child { border-bottom: none; }
+.entity-list-icon { color: var(--db-accent-color, #4fc3f7); display: flex; align-items: center; }
+.entity-list-name { font-size: 0.9em; color: var(--db-font-color, #fff); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entity-list-spacer { flex: 1; }
+.entity-list-state { font-size: 0.9em; color: var(--db-font-color, #fff); font-weight: 500; white-space: nowrap; }
+.entity-list-time { font-size: 0.75em; color: var(--db-font-color-secondary, #aaa); white-space: nowrap; }`,
+    parameterDefs: [
+      { name: "title", label: "Title", type: "string", default: "" },
+      { name: "showIcon", label: "Show Icon", type: "boolean", default: true },
+      { name: "showFriendlyName", label: "Show Name", type: "boolean", default: true },
+      { name: "showState", label: "Show State", type: "boolean", default: true },
+      { name: "showUnit", label: "Show Unit", type: "boolean", default: true },
+      { name: "showLastChanged", label: "Show Last Changed", type: "boolean", default: false },
+    ],
+    entitySelectorDefs: [
+      { name: "entities", label: "Entities", mode: "multiple" },
+      { name: "entityPattern", label: "Entity Pattern", mode: "glob" },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
     name: "Tabs Container",
     template: `<div class="tabs-container"><!-- children rendered by display runtime --></div>`,
     styles: `.tabs-container { width: 100%; height: 100%; }`,
