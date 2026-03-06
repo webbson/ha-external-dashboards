@@ -167,6 +167,48 @@ const prebuiltComponents: PrebuiltComponent[] = [
     containerConfig: null,
   },
   {
+    name: "Light Switch",
+    template: `<div class="light-switch" id="light-switch-{{param "entity"}}">
+  {{#stateEquals (param "entity") "on"}}
+    <div class="light-switch-icon on">{{mdiIcon "mdi:lightbulb" size="36" color="var(--db-accent-color, #4fc3f7)"}}</div>
+  {{else}}
+    <div class="light-switch-icon off">{{mdiIcon "mdi:lightbulb-outline" size="36" color="var(--db-font-color-secondary, #666)"}}</div>
+  {{/stateEquals}}
+  <div class="light-switch-label">{{param "label"}}</div>
+  {{#if (param "showState")}}
+    <div class="light-switch-state">{{state (param "entity")}}</div>
+  {{/if}}
+</div>
+<script>
+(function() {
+  var entityId = '{{param "entity"}}';
+  var domain = entityId.split('.')[0];
+  var el = document.getElementById('light-switch-' + entityId);
+  if (el && window.__ha) {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', function() {
+      window.__ha.callService(domain, 'toggle', { entity_id: entityId });
+    });
+  }
+})();
+</script>`,
+    styles: `.light-switch { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 16px; gap: 8px; user-select: none; -webkit-tap-highlight-color: transparent; }
+.light-switch:active { opacity: 0.7; }
+.light-switch-icon { transition: all 0.2s; }
+.light-switch-icon.on { filter: drop-shadow(0 0 8px var(--db-accent-color, #4fc3f7)); }
+.light-switch-label { font-size: 0.9em; color: var(--db-font-color, #fff); text-align: center; }
+.light-switch-state { font-size: 0.8em; color: var(--db-font-color-secondary, #aaa); text-transform: capitalize; }`,
+    parameterDefs: [
+      { name: "label", label: "Label", type: "string", default: "Light" },
+      { name: "showState", label: "Show State", type: "boolean", default: true },
+    ],
+    entitySelectorDefs: [
+      { name: "entity", label: "Entity", mode: "single", allowedDomains: ["light", "switch"] },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
     name: "Tabs Container",
     template: `<div class="tabs-container"><!-- children rendered by display runtime --></div>`,
     styles: `.tabs-container { width: 100%; height: 100%; }`,
