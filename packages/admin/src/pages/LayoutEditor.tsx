@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Form, Input, Button, Card, Checkbox, Space, Typography, Select, message } from "antd";
+import { Form, Input, Button, Card, Checkbox, Space, Typography, Select, Table, Tooltip, message } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
 function parseGridAreas(gridTemplate: string): string[] {
@@ -209,96 +210,172 @@ export function LayoutEditor() {
 
         {detectedAreas.length > 0 && (
           <Form.Item label="Detected Regions">
-            <Space direction="vertical" style={{ width: "100%" }}>
-              {detectedAreas.map((area) => (
-                <div key={area} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
-                  <Text code style={{ minWidth: 80, display: "inline-block" }}>
-                    {area}
-                  </Text>
-                  <Select
-                    size="small"
-                    style={{ width: 160 }}
-                    value={regionSettings[area]?.applyChromeTo ?? "components"}
-                    onChange={(val) =>
-                      setRegionSettings((prev) => ({
-                        ...prev,
-                        [area]: { ...prev[area], applyChromeTo: val },
-                      }))
-                    }
-                    options={[
-                      { label: "Chrome → Components", value: "components" },
-                      { label: "Chrome → Region", value: "region" },
-                    ]}
-                  />
-                  <Select
-                    size="small"
-                    style={{ width: 110 }}
-                    value={regionSettings[area]?.flexDirection ?? "column"}
-                    onChange={(val) =>
-                      setRegionSettings((prev) => ({
-                        ...prev,
-                        [area]: { ...prev[area], flexDirection: val },
-                      }))
-                    }
-                    options={[
-                      { label: "Column", value: "column" },
-                      { label: "Row", value: "row" },
-                    ]}
-                  />
-                  <Select
-                    size="small"
-                    style={{ width: 140 }}
-                    placeholder="Justify"
-                    value={regionSettings[area]?.justifyContent}
-                    allowClear
-                    onChange={(val) =>
-                      setRegionSettings((prev) => ({
-                        ...prev,
-                        [area]: { ...prev[area], justifyContent: val },
-                      }))
-                    }
-                    options={[
-                      { label: "Start", value: "flex-start" },
-                      { label: "Center", value: "center" },
-                      { label: "End", value: "flex-end" },
-                      { label: "Space Between", value: "space-between" },
-                      { label: "Space Around", value: "space-around" },
-                      { label: "Space Evenly", value: "space-evenly" },
-                    ]}
-                  />
-                  <Select
-                    size="small"
-                    style={{ width: 120 }}
-                    placeholder="Align"
-                    value={regionSettings[area]?.alignItems}
-                    allowClear
-                    onChange={(val) =>
-                      setRegionSettings((prev) => ({
-                        ...prev,
-                        [area]: { ...prev[area], alignItems: val },
-                      }))
-                    }
-                    options={[
-                      { label: "Stretch", value: "stretch" },
-                      { label: "Start", value: "flex-start" },
-                      { label: "Center", value: "center" },
-                      { label: "End", value: "flex-end" },
-                    ]}
-                  />
-                  <Checkbox
-                    checked={regionSettings[area]?.flexGrow ?? false}
-                    onChange={(e) =>
-                      setRegionSettings((prev) => ({
-                        ...prev,
-                        [area]: { ...prev[area], flexGrow: e.target.checked },
-                      }))
-                    }
-                  >
-                    Fill
-                  </Checkbox>
-                </div>
-              ))}
-            </Space>
+            <Table<Region>
+              size="small"
+              pagination={false}
+              dataSource={regions}
+              rowKey="id"
+              columns={[
+                {
+                  title: "Region",
+                  dataIndex: "id",
+                  width: 100,
+                  render: (id: string) => (
+                    <Typography.Text code>{id}</Typography.Text>
+                  ),
+                },
+                {
+                  title: (
+                    <Space size={4}>
+                      Styling
+                      <Tooltip title="Whether the theme's background, border, and padding wraps each component individually or the entire region as one block">
+                        <InfoCircleOutlined style={{ cursor: "help" }} />
+                      </Tooltip>
+                    </Space>
+                  ),
+                  dataIndex: "applyChromeTo",
+                  width: 160,
+                  render: (_: unknown, record: Region) => (
+                    <Select
+                      size="small"
+                      style={{ width: "100%" }}
+                      value={regionSettings[record.id]?.applyChromeTo ?? "components"}
+                      onChange={(val) =>
+                        setRegionSettings((prev) => ({
+                          ...prev,
+                          [record.id]: { ...prev[record.id], applyChromeTo: val },
+                        }))
+                      }
+                      options={[
+                        { label: "Each component", value: "components" },
+                        { label: "Whole region", value: "region" },
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  title: (
+                    <Space size={4}>
+                      Direction
+                      <Tooltip title="Stack components vertically (column) or horizontally (row) within this region">
+                        <InfoCircleOutlined style={{ cursor: "help" }} />
+                      </Tooltip>
+                    </Space>
+                  ),
+                  dataIndex: "flexDirection",
+                  width: 130,
+                  render: (_: unknown, record: Region) => (
+                    <Select
+                      size="small"
+                      style={{ width: "100%" }}
+                      value={regionSettings[record.id]?.flexDirection ?? "column"}
+                      onChange={(val) =>
+                        setRegionSettings((prev) => ({
+                          ...prev,
+                          [record.id]: { ...prev[record.id], flexDirection: val },
+                        }))
+                      }
+                      options={[
+                        { label: "Column \u2193", value: "column" },
+                        { label: "Row \u2192", value: "row" },
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  title: (
+                    <Space size={4}>
+                      Justify
+                      <Tooltip title="Controls spacing along the main axis (e.g. how components are distributed within the region)">
+                        <InfoCircleOutlined style={{ cursor: "help" }} />
+                      </Tooltip>
+                    </Space>
+                  ),
+                  dataIndex: "justifyContent",
+                  width: 150,
+                  render: (_: unknown, record: Region) => (
+                    <Select
+                      size="small"
+                      style={{ width: "100%" }}
+                      placeholder="—"
+                      value={regionSettings[record.id]?.justifyContent}
+                      allowClear
+                      onChange={(val) =>
+                        setRegionSettings((prev) => ({
+                          ...prev,
+                          [record.id]: { ...prev[record.id], justifyContent: val },
+                        }))
+                      }
+                      options={[
+                        { label: "Start", value: "flex-start" },
+                        { label: "Center", value: "center" },
+                        { label: "End", value: "flex-end" },
+                        { label: "Space Between", value: "space-between" },
+                        { label: "Space Around", value: "space-around" },
+                        { label: "Space Evenly", value: "space-evenly" },
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  title: (
+                    <Space size={4}>
+                      Align
+                      <Tooltip title="Controls alignment on the cross axis (e.g. stretch components to fill width, or center them)">
+                        <InfoCircleOutlined style={{ cursor: "help" }} />
+                      </Tooltip>
+                    </Space>
+                  ),
+                  dataIndex: "alignItems",
+                  width: 120,
+                  render: (_: unknown, record: Region) => (
+                    <Select
+                      size="small"
+                      style={{ width: "100%" }}
+                      placeholder="—"
+                      value={regionSettings[record.id]?.alignItems}
+                      allowClear
+                      onChange={(val) =>
+                        setRegionSettings((prev) => ({
+                          ...prev,
+                          [record.id]: { ...prev[record.id], alignItems: val },
+                        }))
+                      }
+                      options={[
+                        { label: "Stretch", value: "stretch" },
+                        { label: "Start", value: "flex-start" },
+                        { label: "Center", value: "center" },
+                        { label: "End", value: "flex-end" },
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  title: (
+                    <Space size={4}>
+                      Fill
+                      <Tooltip title="Components will grow to fill the available space in this region">
+                        <InfoCircleOutlined style={{ cursor: "help" }} />
+                      </Tooltip>
+                    </Space>
+                  ),
+                  dataIndex: "flexGrow",
+                  width: 80,
+                  align: "center" as const,
+                  render: (_: unknown, record: Region) => (
+                    <Checkbox
+                      checked={regionSettings[record.id]?.flexGrow ?? false}
+                      onChange={(e) =>
+                        setRegionSettings((prev) => ({
+                          ...prev,
+                          [record.id]: { ...prev[record.id], flexGrow: e.target.checked },
+                        }))
+                      }
+                    />
+                  ),
+                },
+              ]}
+            />
           </Form.Item>
         )}
 

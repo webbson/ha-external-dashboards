@@ -7,4 +7,15 @@ export default defineConfig({
   build: {
     outDir: "dist",
   },
+  server: {
+    proxy: {
+      "/api": "http://localhost:8099",
+      "/assets": "http://localhost:8099",
+      "/d/": "http://localhost:8099",
+      "/ws": {
+        target: "http://localhost:8099",
+        ws: true,
+      },
+    },
+  },
 });

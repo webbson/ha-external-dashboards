@@ -62,7 +62,7 @@ export async function componentRoutes(app: FastifyInstance) {
         isPrebuilt: components.isPrebuilt,
         createdAt: components.createdAt,
         updatedAt: components.updatedAt,
-        usageCount: sql<number>`(select count(*) from component_instances where component_instances.component_id = ${components.id})`.as("usage_count"),
+        usageCount: sql<number>`(select count(*) from "component_instances" where "component_instances"."component_id" = "components"."id")`.as("usage_count"),
       })
       .from(components);
     return rows;

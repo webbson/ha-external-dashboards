@@ -16,6 +16,8 @@ import {
   message,
 } from "antd";
 import { PlusOutlined, EditOutlined } from "@ant-design/icons";
+import Icon from "@mdi/react";
+import { getIconPath } from "../components/selectors/MdiIconSelector.js";
 import { ComponentPickerModal } from "../components/dashboard/ComponentPickerModal.js";
 import { ComponentConfigModal } from "../components/dashboard/ComponentConfigModal.js";
 import { VisualLayoutGrid } from "../components/dashboard/VisualLayoutGrid.js";
@@ -293,7 +295,7 @@ export function DashboardEditor() {
     <Card title={isNew ? "New Dashboard" : "Edit Dashboard"} loading={loading}>
       {accessMode === "public" && interactiveMode && (
         <Alert
-          message="Warning: Public dashboard with interactive mode enabled."
+          title="Warning: Public dashboard with interactive mode enabled."
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
@@ -472,7 +474,10 @@ export function DashboardEditor() {
                                   return {
                                     key: String(i),
                                     label: (
-                                      <span>
+                                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                        {dl.icon && getIconPath(dl.icon) && (
+                                          <Icon path={getIconPath(dl.icon)!} size={0.6} />
+                                        )}
                                         {dl.label || layout?.name || `Layout ${i + 1}`}
                                         <EditOutlined
                                           style={{

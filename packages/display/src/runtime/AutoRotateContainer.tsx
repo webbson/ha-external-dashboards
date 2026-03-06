@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ComponentRenderer } from "./ComponentRenderer.js";
 import { VisibilityGate } from "./VisibilityGate.js";
+import { useEntitySubset, getInstanceEntityIds } from "./useEntitySubset.js";
 import type { EntityState } from "../template/engine.js";
 
 interface ChildInstance {
@@ -57,16 +58,47 @@ export function AutoRotateContainer({
 
   return (
     <div style={{ width: "100%", height: "100%" }}>
-      <VisibilityGate rules={activeChild.visibilityRules} entities={entities}>
-        <ComponentRenderer
-          template={comp.template}
-          styles={comp.styles}
-          entities={entities}
-          parameterValues={{ ...activeChild.entityBindings, ...activeChild.parameterValues }}
-          globalStyles={globalStyles}
-          instanceId={activeChild.id}
-        />
-      </VisibilityGate>
+      <AutoRotateChildRenderer
+        child={activeChild}
+        comp={comp}
+        entities={entities}
+        globalStyles={globalStyles}
+      />
     </div>
+  );
+}
+
+function AutoRotateChildRenderer({
+  child,
+  comp,
+  entities,
+  globalStyles,
+}: {
+  child: ChildInstance;
+  comp: ComponentDef;
+  entities: Record<string, EntityState>;
+  globalStyles: Record<string, string>;
+}) {
+  const entityIds = useMemo(
+    () => getInstanceEntityIds(child.entityBindings, child.visibilityRules),
+    [child.entityBindings, child.visibilityRules]
+  );
+  const entitySubset = useEntitySubset(entities, entityIds);
+  const parameterValues = useMemo(
+    () => ({ ...child.entityBindings, ...child.parameterValues }),
+    [child.entityBindings, child.parameterValues]
+  );
+
+  return (
+    <VisibilityGate rules={child.visibilityRules} entities={entitySubset}>
+      <ComponentRenderer
+        template={comp.template}
+        styles={comp.styles}
+        entities={entitySubset}
+        parameterValues={parameterValues}
+        globalStyles={globalStyles}
+        instanceId={child.id}
+      />
+    </VisibilityGate>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import { renderTemplate, type EntityState, type TemplateContext } from "../template/engine.js";
 
 interface ComponentRendererProps {
@@ -12,7 +12,7 @@ interface ComponentRendererProps {
   applyChrome?: boolean;
 }
 
-export function ComponentRenderer({
+export const ComponentRenderer = memo(function ComponentRenderer({
   template,
   styles,
   entities,
@@ -73,4 +73,4 @@ export function ComponentRenderer({
       />
     </>
   );
-}
+});

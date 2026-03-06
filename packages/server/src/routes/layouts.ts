@@ -35,7 +35,7 @@ export async function layoutRoutes(app: FastifyInstance) {
         structure: layouts.structure,
         createdAt: layouts.createdAt,
         updatedAt: layouts.updatedAt,
-        usageCount: sql<number>`(select count(*) from dashboard_layouts where dashboard_layouts.layout_id = ${layouts.id})`.as("usage_count"),
+        usageCount: sql<number>`(select count(*) from "dashboard_layouts" where "dashboard_layouts"."layout_id" = "layouts"."id")`.as("usage_count"),
       })
       .from(layouts);
     return rows;

@@ -86,9 +86,9 @@ function SortableCard({
       <div ref={setNodeRef} style={{ ...style, marginBottom: 6 }}>
         <div
           style={{
-            border: "2px solid rgba(114, 46, 209, 0.4)",
+            border: "2px solid #d3adf7",
             borderRadius: 8,
-            background: "rgba(114, 46, 209, 0.08)",
+            background: "#f9f0ff",
             padding: 8,
           }}
         >
@@ -103,7 +103,7 @@ function SortableCard({
             <span
               {...attributes}
               {...listeners}
-              style={{ cursor: "grab", color: "#666" }}
+              style={{ cursor: "grab", color: "#b37feb" }}
               onClick={(e) => e.stopPropagation()}
             >
               <HolderOutlined />
@@ -112,7 +112,7 @@ function SortableCard({
               style={{
                 fontWeight: 500,
                 fontSize: 13,
-                color: "#b380d9",
+                color: "#722ed1",
                 cursor: "pointer",
               }}
               onClick={onClick}
@@ -120,7 +120,7 @@ function SortableCard({
               {componentName}
             </span>
             <span
-              style={{ fontSize: 11, color: "#888", marginLeft: "auto" }}
+              style={{ fontSize: 11, color: "#9254de", marginLeft: "auto" }}
             >
               {component.containerConfig?.type ?? "container"}
             </span>
@@ -132,8 +132,8 @@ function SortableCard({
               onClick={() => onChildClick(child)}
               style={{
                 padding: "6px 10px",
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.12)",
+                background: "#fff",
+                border: "1px solid #efdbff",
                 borderRadius: 4,
                 marginBottom: 4,
                 cursor: "pointer",
@@ -181,8 +181,8 @@ function SortableCard({
       style={{
         ...style,
         padding: "8px 12px",
-        background: "rgba(255,255,255,0.06)",
-        border: "1px solid rgba(255,255,255,0.12)",
+        background: "#fff",
+        border: "1px solid #e8e8e8",
         borderRadius: 6,
         marginBottom: 6,
         cursor: "pointer",
@@ -195,18 +195,18 @@ function SortableCard({
       <span
         {...attributes}
         {...listeners}
-        style={{ cursor: "grab", color: "#666" }}
+        style={{ cursor: "grab", color: "#bfbfbf" }}
         onClick={(e) => e.stopPropagation()}
       >
         <HolderOutlined />
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 500, fontSize: 13 }}>{componentName}</div>
+        <div style={{ fontWeight: 500, fontSize: 13, color: "#262626" }}>{componentName}</div>
         {bindingSummary && (
           <div
             style={{
               fontSize: 11,
-              color: "#888",
+              color: "#8c8c8c",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -303,8 +303,9 @@ export function VisualLayoutGrid({
           gap: 8,
           minHeight: 400,
           padding: 8,
-          background: "rgba(0,0,0,0.15)",
+          background: "#f5f5f5",
           borderRadius: 8,
+          border: "1px solid #e8e8e8",
         }}
       >
         {regions.map((region) => {
@@ -314,9 +315,10 @@ export function VisualLayoutGrid({
               key={region.id}
               style={{
                 gridArea: region.id,
-                border: "2px dashed rgba(255,255,255,0.15)",
+                border: "2px dashed #d9d9d9",
                 borderRadius: 8,
                 padding: 8,
+                background: "#fafafa",
                 display: "flex",
                 flexDirection: "column",
                 minHeight: 80,
@@ -325,10 +327,11 @@ export function VisualLayoutGrid({
               <Typography.Text
                 style={{
                   fontSize: 11,
-                  color: "#888",
+                  color: "#8c8c8c",
                   marginBottom: 6,
                   textTransform: "uppercase",
                   letterSpacing: 0.5,
+                  fontWeight: 600,
                 }}
               >
                 {region.label || region.id}

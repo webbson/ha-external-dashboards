@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { DashboardRenderer } from "./runtime/DashboardRenderer.js";
 import { PopupOverlay } from "./runtime/PopupOverlay.js";
 import { DialogOverlay } from "./runtime/DialogOverlay.js";
@@ -324,6 +324,14 @@ export function DisplayApp() {
     );
   }
 
+  const globalStyles = useMemo(
+    () => ({
+      ...config?.dashboard.standardVariables,
+      ...config?.dashboard.globalStyles,
+    }),
+    [config]
+  );
+
   if (!config) {
     return (
       <div
@@ -355,10 +363,7 @@ export function DisplayApp() {
         dashboardLayouts={config.layouts}
         components={config.components}
         entities={entities}
-        globalStyles={{
-          ...config.dashboard.standardVariables,
-          ...config.dashboard.globalStyles,
-        }}
+        globalStyles={globalStyles}
         maxWidth={config.dashboard.maxWidth}
         padding={config.dashboard.padding}
         layoutSwitchMode={config.dashboard.layoutSwitchMode}

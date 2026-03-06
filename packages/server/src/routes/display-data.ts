@@ -6,6 +6,7 @@ import {
   layouts,
   componentInstances,
   components,
+  themes,
 } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 
@@ -22,6 +23,18 @@ export async function displayDataRoutes(app: FastifyInstance) {
 
       if (!dashboard) {
         return reply.code(404).send({ error: "Dashboard not found" });
+      }
+
+      // Resolve theme if set
+      let themeData = { standardVariables: {} as Record<string, string>, globalStyles: {} as Record<string, string> };
+      if (dashboard.themeId) {
+        const [theme] = await db.select().from(themes).where(eq(themes.id, dashboard.themeId));
+        if (theme) {
+          themeData = {
+            standardVariables: theme.standardVariables as Record<string, string>,
+            globalStyles: theme.globalStyles as Record<string, string>,
+          };
+        }
       }
 
       // Get dashboard layouts with their layout structures
@@ -79,8 +92,10 @@ export async function displayDataRoutes(app: FastifyInstance) {
           accessKey: dashboard.accessKey,
           accessMode: dashboard.accessMode,
           interactiveMode: dashboard.interactiveMode,
-          globalStyles: dashboard.globalStyles,
-          standardVariables: dashboard.standardVariables,
+          maxWidth: dashboard.maxWidth,
+          padding: dashboard.padding,
+          globalStyles: themeData.globalStyles,
+          standardVariables: themeData.standardVariables,
           layoutSwitchMode: dashboard.layoutSwitchMode,
           layoutRotateInterval: dashboard.layoutRotateInterval,
         },

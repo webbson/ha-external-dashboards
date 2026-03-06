@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Icon from "@mdi/react";
 import * as mdiIcons from "@mdi/js";
 import { ComponentRenderer } from "./ComponentRenderer.js";
 import { VisibilityGate } from "./VisibilityGate.js";
+import { useEntitySubset, getInstanceEntityIds } from "./useEntitySubset.js";
 import type { EntityState } from "../template/engine.js";
 
 interface ChildInstance {
@@ -127,30 +128,53 @@ export function TabsContainer({
       </div>
 
       <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-        {activeChild &&
-          (() => {
-            const comp = components[activeChild.componentId];
-            if (!comp) return null;
-            return (
-              <VisibilityGate
-                rules={activeChild.visibilityRules}
-                entities={entities}
-              >
-                <ComponentRenderer
-                  template={comp.template}
-                  styles={comp.styles}
-                  entities={entities}
-                  parameterValues={{
-                    ...activeChild.entityBindings,
-                    ...activeChild.parameterValues,
-                  }}
-                  globalStyles={globalStyles}
-                  instanceId={activeChild.id}
-                />
-              </VisibilityGate>
-            );
-          })()}
+        {activeChild && (
+          <TabChildRenderer
+            child={activeChild}
+            components={components}
+            entities={entities}
+            globalStyles={globalStyles}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+function TabChildRenderer({
+  child,
+  components,
+  entities,
+  globalStyles,
+}: {
+  child: ChildInstance;
+  components: Record<number, ComponentDef>;
+  entities: Record<string, EntityState>;
+  globalStyles: Record<string, string>;
+}) {
+  const comp = components[child.componentId];
+  const entityIds = useMemo(
+    () => getInstanceEntityIds(child.entityBindings, child.visibilityRules),
+    [child.entityBindings, child.visibilityRules]
+  );
+  const entitySubset = useEntitySubset(entities, entityIds);
+  const parameterValues = useMemo(
+    () => ({ ...child.entityBindings, ...child.parameterValues }),
+    [child.entityBindings, child.parameterValues]
+  );
+
+  if (!comp) return null;
+
+  return (
+    <VisibilityGate rules={child.visibilityRules} entities={entitySubset}>
+      <ComponentRenderer
+        template={comp.template}
+        styles={comp.styles}
+        entities={entitySubset}
+        parameterValues={parameterValues}
+        globalStyles={globalStyles}
+        instanceId={child.id}
+      />
+    </VisibilityGate>
   );
 }

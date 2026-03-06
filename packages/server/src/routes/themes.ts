@@ -23,7 +23,7 @@ export async function themeRoutes(app: FastifyInstance) {
         globalStyles: themes.globalStyles,
         createdAt: themes.createdAt,
         updatedAt: themes.updatedAt,
-        usageCount: sql<number>`(select count(*) from dashboards where dashboards.theme_id = ${themes.id})`.as("usage_count"),
+        usageCount: sql<number>`(select count(*) from "dashboards" where "dashboards"."theme_id" = "themes"."id")`.as("usage_count"),
       })
       .from(themes);
     return rows;

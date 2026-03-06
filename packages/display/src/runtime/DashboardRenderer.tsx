@@ -108,12 +108,12 @@ export function DashboardRenderer({
 
   const hasTabs = layoutSwitchMode === "tabs" && dashboardLayouts.length > 1;
 
-  // Read tab bar theme values from globalStyles
-  const tabBarBg = globalStyles.tabBarBg ?? "transparent";
-  const tabBarColor = globalStyles.tabBarColor ?? "rgba(255,255,255,0.6)";
-  const tabBarActiveColor = globalStyles.tabBarActiveColor ?? "#ffffff";
-  const tabBarActiveBg = globalStyles.tabBarActiveBg ?? "rgba(255,255,255,0.15)";
-  const tabBarFontSize = globalStyles.tabBarFontSize ?? "14px";
+  // Use CSS variables set by DisplayApp (always includes defaults)
+  const tabBarBg = "var(--db-tab-bar-bg, transparent)";
+  const tabBarColor = "var(--db-tab-bar-color, rgba(255,255,255,0.6))";
+  const tabBarActiveColor = "var(--db-tab-bar-active-color, #ffffff)";
+  const tabBarActiveBg = "var(--db-tab-bar-active-bg, rgba(255,255,255,0.15))";
+  const tabBarFontSize = "var(--db-tab-bar-font-size, 14px)";
 
   const contentHeight = hasTabs ? "calc(100vh - 40px)" : "100vh";
 
@@ -153,8 +153,8 @@ export function DashboardRenderer({
                 {iconPath && (
                   <Icon
                     path={iconPath}
-                    size={tabBarFontSize}
-                    color={isActive ? tabBarActiveColor : tabBarColor}
+                    size="1em"
+                    color="currentColor"
                   />
                 )}
                 {dl.label}

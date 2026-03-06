@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Card, Collapse, Empty, Tag, message } from "antd";
+import Icon from "@mdi/react";
 import { api } from "../../api.js";
+import { getIconPath } from "../selectors/MdiIconSelector.js";
 
 interface HAEntity {
   entity_id: string;
@@ -10,6 +12,7 @@ interface HAEntity {
 
 interface EntityDataViewerProps {
   entityBindings: Record<string, string | string[]>;
+  compact?: boolean;
 }
 
 function copySnippet(text: string) {
@@ -42,7 +45,7 @@ const snippetStyle: React.CSSProperties = {
   transition: "background 0.15s",
 };
 
-export function EntityDataViewer({ entityBindings }: EntityDataViewerProps) {
+export function EntityDataViewer({ entityBindings, compact }: EntityDataViewerProps) {
   const [entities, setEntities] = useState<Record<string, HAEntity>>({});
 
   const entityIds = Array.from(
@@ -76,8 +79,8 @@ export function EntityDataViewer({ entityBindings }: EntityDataViewerProps) {
 
   if (entityIds.length === 0) return null;
 
-  return (
-    <Card title="Entity Data" size="small" style={{ marginTop: 16 }}>
+  const collapseContent = (
+    <>
       <div style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>
         Click any snippet to copy to clipboard
       </div>
@@ -141,7 +144,16 @@ export function EntityDataViewer({ entityBindings }: EntityDataViewerProps) {
                       </td>
                     </tr>
                     {Object.entries(entity.attributes).map(([key, value]) => {
-                      const snippet = attrSnippet(key);
+                      const strValue = typeof value === "object"
+                        ? JSON.stringify(value)
+                        : String(value ?? "");
+                      const isIconAttr = key === "icon" && typeof value === "string" && value.startsWith("mdi:");
+                      const iconPath = isIconAttr ? getIconPath(value as string) : undefined;
+                      const snippet = isIconAttr
+                        ? (paramName
+                          ? `{{mdiIcon (attr (param "${paramName}") "icon")}}`
+                          : `{{mdiIcon (attr "${id}" "icon")}}`)
+                        : attrSnippet(key);
                       return (
                         <tr
                           key={key}
@@ -151,9 +163,10 @@ export function EntityDataViewer({ entityBindings }: EntityDataViewerProps) {
                             {key}
                           </td>
                           <td style={{ padding: "6px 8px", fontSize: 12, color: "#aaa", wordBreak: "break-all" }}>
-                            {typeof value === "object"
-                              ? JSON.stringify(value)
-                              : String(value ?? "")}
+                            {iconPath && (
+                              <Icon path={iconPath} size="16px" style={{ verticalAlign: "middle", marginRight: 6 }} />
+                            )}
+                            {strValue}
                           </td>
                           <td style={{ padding: "6px 8px", textAlign: "right" }}>
                             <span
@@ -182,6 +195,14 @@ export function EntityDataViewer({ entityBindings }: EntityDataViewerProps) {
           };
         })}
       />
+    </>
+  );
+
+  if (compact) return collapseContent;
+
+  return (
+    <Card title="Entity Data" size="small" style={{ marginTop: 16 }}>
+      {collapseContent}
     </Card>
   );
 }

@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Tabs } from "antd";
+import { Tabs, Collapse, message } from "antd";
 import { CodeEditor } from "./CodeEditor.js";
 import { VisualEditor } from "./VisualEditor.js";
+import { TemplateHelperReference } from "./TemplateHelperReference.js";
 
 interface ParameterDef {
   name: string;
   label: string;
-  type: "string" | "number" | "boolean" | "color" | "select";
+  type: "string" | "number" | "boolean" | "color" | "select" | "icon";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
 }
@@ -48,7 +49,7 @@ export function HybridEditor({
       items={[
         {
           key: "visual",
-          label: "Visual",
+          label: "Settings",
           children: (
             <VisualEditor
               parameterDefs={parameterDefs}
@@ -62,11 +63,14 @@ export function HybridEditor({
           key: "template",
           label: "Template",
           children: (
-            <CodeEditor
-              value={template}
-              onChange={onTemplateChange}
-              language="handlebars"
-            />
+            <div>
+              <CodeEditor
+                value={template}
+                onChange={onTemplateChange}
+                language="handlebars"
+              />
+              <TemplateHelperReference />
+            </div>
           ),
         },
         {

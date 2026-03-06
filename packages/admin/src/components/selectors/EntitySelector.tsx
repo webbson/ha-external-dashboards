@@ -59,6 +59,7 @@ export function EntitySelector({ mode, value, onChange, allowedDomains }: Entity
         loading={loading}
         placeholder="Select areas"
         showSearch
+        style={{ width: "100%" }}
         options={Array.from(areas).map((a) => ({ value: a, label: a }))}
       />
     );
@@ -90,6 +91,7 @@ export function EntitySelector({ mode, value, onChange, allowedDomains }: Entity
         loading={loading}
         placeholder="Select entities"
         showSearch
+        style={{ width: "100%" }}
         filterOption={(input, option) =>
           (option?.label?.toString() ?? "")
             .toLowerCase()
@@ -108,6 +110,7 @@ export function EntitySelector({ mode, value, onChange, allowedDomains }: Entity
       loading={loading}
       placeholder="Select entity"
       showSearch
+      style={{ width: "100%" }}
       filterOption={(input, option) =>
         (option?.label?.toString() ?? "")
           .toLowerCase()

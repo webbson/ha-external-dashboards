@@ -36,7 +36,7 @@ export function ComponentPickerModal({
       onCancel={onCancel}
       footer={null}
       width={600}
-      destroyOnClose
+      destroyOnHidden
     >
       <Input
         placeholder="Search components..."

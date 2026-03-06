@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Form, Input, InputNumber, Switch, Select, Button, Card, Space } from "antd";
+import { Input, Select, Button, Card } from "antd";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { api } from "../../api.js";
 
 interface ParameterDef {
   name: string;
   label: string;
-  type: "string" | "number" | "boolean" | "color" | "select";
+  type: "string" | "number" | "boolean" | "color" | "select" | "icon";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
 }
@@ -24,6 +24,19 @@ interface VisualEditorProps {
   entitySelectorDefs: EntitySelectorDef[];
   onEntitySelectorDefsChange: (defs: EntitySelectorDef[]) => void;
 }
+
+const thStyle: React.CSSProperties = {
+  padding: "4px 8px",
+  fontSize: 12,
+  fontWeight: 500,
+  textAlign: "left",
+  color: "#999",
+  whiteSpace: "nowrap",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "4px 8px",
+};
 
 export function VisualEditor({
   parameterDefs,
@@ -98,35 +111,55 @@ export function VisualEditor({
           </Button>
         }
       >
-        {parameterDefs.map((param, i) => (
-          <Space key={i} align="start" style={{ display: "flex", marginBottom: 8 }}>
-            <Input
-              placeholder="Name"
-              value={param.name}
-              onChange={(e) => updateParam(i, { name: e.target.value })}
-              style={{ width: 120 }}
-            />
-            <Input
-              placeholder="Label"
-              value={param.label}
-              onChange={(e) => updateParam(i, { label: e.target.value })}
-              style={{ width: 120 }}
-            />
-            <Select
-              value={param.type}
-              onChange={(type) => updateParam(i, { type })}
-              style={{ width: 100 }}
-              options={[
-                { value: "string", label: "String" },
-                { value: "number", label: "Number" },
-                { value: "boolean", label: "Boolean" },
-                { value: "color", label: "Color" },
-                { value: "select", label: "Select" },
-              ]}
-            />
-            <MinusCircleOutlined onClick={() => removeParam(i)} />
-          </Space>
-        ))}
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+              <th style={thStyle}>Name</th>
+              <th style={thStyle}>Label</th>
+              <th style={thStyle}>Type</th>
+              <th style={{ ...thStyle, width: 32 }} />
+            </tr>
+          </thead>
+          <tbody>
+            {parameterDefs.map((param, i) => (
+              <tr key={i}>
+                <td style={tdStyle}>
+                  <Input
+                    size="small"
+                    value={param.name}
+                    onChange={(e) => updateParam(i, { name: e.target.value })}
+                  />
+                </td>
+                <td style={tdStyle}>
+                  <Input
+                    size="small"
+                    value={param.label}
+                    onChange={(e) => updateParam(i, { label: e.target.value })}
+                  />
+                </td>
+                <td style={tdStyle}>
+                  <Select
+                    size="small"
+                    value={param.type}
+                    onChange={(type) => updateParam(i, { type })}
+                    style={{ width: "100%" }}
+                    options={[
+                      { value: "string", label: "String" },
+                      { value: "number", label: "Number" },
+                      { value: "boolean", label: "Boolean" },
+                      { value: "color", label: "Color" },
+                      { value: "icon", label: "Icon" },
+                      { value: "select", label: "Select" },
+                    ]}
+                  />
+                </td>
+                <td style={{ ...tdStyle, textAlign: "center" }}>
+                  <MinusCircleOutlined onClick={() => removeParam(i)} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Card>
 
       <Card
@@ -142,55 +175,78 @@ export function VisualEditor({
           </Button>
         }
       >
-        {entitySelectorDefs.map((sel, i) => (
-          <Space key={i} align="start" style={{ display: "flex", marginBottom: 8 }}>
-            <Input
-              placeholder="Name"
-              value={sel.name}
-              onChange={(e) =>
-                updateEntitySelector(i, { name: e.target.value })
-              }
-              style={{ width: 120 }}
-            />
-            <Input
-              placeholder="Label"
-              value={sel.label}
-              onChange={(e) =>
-                updateEntitySelector(i, { label: e.target.value })
-              }
-              style={{ width: 120 }}
-            />
-            <Select
-              value={sel.mode}
-              onChange={(mode) => updateEntitySelector(i, { mode })}
-              style={{ width: 120 }}
-              options={[
-                { value: "single", label: "Single" },
-                { value: "multiple", label: "Multiple" },
-                { value: "glob", label: "Glob/Wildcard" },
-                { value: "area", label: "Area" },
-                { value: "tag", label: "Tag" },
-              ]}
-            />
-            <Select
-              mode="multiple"
-              placeholder="All domains"
-              value={sel.allowedDomains ?? []}
-              onChange={(domains) =>
-                updateEntitySelector(i, {
-                  allowedDomains: domains.length > 0 ? domains : undefined,
-                })
-              }
-              style={{ width: 200 }}
-              options={availableDomains.map((d) => ({
-                value: d,
-                label: d,
-              }))}
-              allowClear
-            />
-            <MinusCircleOutlined onClick={() => removeEntitySelector(i)} />
-          </Space>
-        ))}
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+              <th style={thStyle}>Name</th>
+              <th style={thStyle}>Label</th>
+              <th style={thStyle}>Mode</th>
+              <th style={thStyle}>Allowed Domains</th>
+              <th style={{ ...thStyle, width: 32 }} />
+            </tr>
+          </thead>
+          <tbody>
+            {entitySelectorDefs.map((sel, i) => (
+              <tr key={i}>
+                <td style={tdStyle}>
+                  <Input
+                    size="small"
+                    value={sel.name}
+                    onChange={(e) =>
+                      updateEntitySelector(i, { name: e.target.value })
+                    }
+                  />
+                </td>
+                <td style={tdStyle}>
+                  <Input
+                    size="small"
+                    value={sel.label}
+                    onChange={(e) =>
+                      updateEntitySelector(i, { label: e.target.value })
+                    }
+                  />
+                </td>
+                <td style={tdStyle}>
+                  <Select
+                    size="small"
+                    value={sel.mode}
+                    onChange={(mode) => updateEntitySelector(i, { mode })}
+                    style={{ width: "100%" }}
+                    options={[
+                      { value: "single", label: "Single" },
+                      { value: "multiple", label: "Multiple" },
+                      { value: "glob", label: "Glob/Wildcard" },
+                      { value: "area", label: "Area" },
+                      { value: "tag", label: "Tag" },
+                    ]}
+                  />
+                </td>
+                <td style={tdStyle}>
+                  <Select
+                    size="small"
+                    mode="multiple"
+                    placeholder="All domains"
+                    value={sel.allowedDomains ?? []}
+                    onChange={(domains) =>
+                      updateEntitySelector(i, {
+                        allowedDomains: domains.length > 0 ? domains : undefined,
+                      })
+                    }
+                    style={{ width: "100%" }}
+                    options={availableDomains.map((d) => ({
+                      value: d,
+                      label: d,
+                    }))}
+                    allowClear
+                  />
+                </td>
+                <td style={{ ...tdStyle, textAlign: "center" }}>
+                  <MinusCircleOutlined onClick={() => removeEntitySelector(i)} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Card>
     </div>
   );

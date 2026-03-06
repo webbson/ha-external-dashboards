@@ -19,7 +19,7 @@ import { LivePreview } from "../preview/LivePreview.js";
 interface ParameterDef {
   name: string;
   label: string;
-  type: "string" | "number" | "boolean" | "color" | "select";
+  type: "string" | "number" | "boolean" | "color" | "select" | "icon";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
 }
@@ -150,7 +150,7 @@ export function ComponentConfigModal({
           </Space>
         </div>
       }
-      destroyOnClose
+      destroyOnHidden
     >
       <div style={{ display: "flex", gap: 24 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -237,6 +237,16 @@ export function ComponentConfigModal({
                       }
                       options={def.options ?? []}
                       style={{ width: "100%" }}
+                    />
+                  ) : def.type === "icon" ? (
+                    <MdiIconSelector
+                      value={(parameterValues[def.name] as string) || null}
+                      onChange={(v) =>
+                        setParameterValues((prev) => ({
+                          ...prev,
+                          [def.name]: v ?? "",
+                        }))
+                      }
                     />
                   ) : def.type === "color" ? (
                     <Input

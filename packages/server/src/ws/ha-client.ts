@@ -124,11 +124,22 @@ export class HAClient {
   private handleEvent(msg: Record<string, unknown>) {
     const event = msg.event as {
       event_type: string;
-      data: { entity_id: string; new_state: HAState };
+      data: { entity_id: string; old_state: HAState | null; new_state: HAState };
     };
     if (event?.event_type === "state_changed" && event.data?.new_state) {
-      const { entity_id, new_state } = event.data;
+      const { entity_id, old_state, new_state } = event.data;
       this.states.set(entity_id, new_state);
+
+      // Skip forwarding if state value and attributes haven't changed
+      if (
+        old_state &&
+        old_state.state === new_state.state &&
+        JSON.stringify(old_state.attributes) ===
+          JSON.stringify(new_state.attributes)
+      ) {
+        return;
+      }
+
       this.onStateChanged?.(entity_id, new_state);
     }
   }
