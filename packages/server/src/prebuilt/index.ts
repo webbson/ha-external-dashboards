@@ -209,6 +209,52 @@ const prebuiltComponents: PrebuiltComponent[] = [
     containerConfig: null,
   },
   {
+    name: "Light Card",
+    template: `<div class="light-card" id="light-card-{{param "entity"}}">
+  <div class="light-card-main">
+    {{#stateEquals (param "entity") "on"}}
+      <div class="light-card-icon on">{{mdiIcon "mdi:lightbulb" size="40" color="var(--db-accent-color, #4fc3f7)"}}</div>
+    {{else}}
+      <div class="light-card-icon off">{{mdiIcon "mdi:lightbulb-outline" size="40" color="var(--db-font-color-secondary, #666)"}}</div>
+    {{/stateEquals}}
+    <div class="light-card-info">
+      <div class="light-card-name">{{#if (param "label")}}{{param "label"}}{{else}}{{attr (param "entity") "friendly_name"}}{{/if}}</div>
+      <div class="light-card-state">
+        {{state (param "entity")}}{{#stateEquals (param "entity") "on"}}{{#if (param "showBrightness")}} &middot; {{attr (param "entity") "brightness"}}{{/if}}{{/stateEquals}}
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  var entityId = '{{param "entity"}}';
+  var el = document.getElementById('light-card-' + entityId);
+  if (el && window.__ha) {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', function() {
+      window.__ha.openDialog('light-control', { entityId: entityId });
+    });
+  }
+})();
+</script>`,
+    styles: `.light-card { padding: 16px; user-select: none; -webkit-tap-highlight-color: transparent; }
+.light-card:active { opacity: 0.7; }
+.light-card-main { display: flex; align-items: center; gap: 14px; }
+.light-card-icon { display: flex; align-items: center; transition: all 0.2s; }
+.light-card-icon.on { filter: drop-shadow(0 0 10px var(--db-accent-color, #4fc3f7)); }
+.light-card-name { font-size: 1em; font-weight: 500; color: var(--db-font-color, #fff); }
+.light-card-state { font-size: 0.85em; color: var(--db-font-color-secondary, #aaa); margin-top: 2px; text-transform: capitalize; }`,
+    parameterDefs: [
+      { name: "label", label: "Label Override", type: "string", default: "" },
+      { name: "showBrightness", label: "Show Brightness", type: "boolean", default: true },
+    ],
+    entitySelectorDefs: [
+      { name: "entity", label: "Light Entity", mode: "single", allowedDomains: ["light"] },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
     name: "Tabs Container",
     template: `<div class="tabs-container"><!-- children rendered by display runtime --></div>`,
     styles: `.tabs-container { width: 100%; height: 100%; }`,
