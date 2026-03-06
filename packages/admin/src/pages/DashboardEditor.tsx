@@ -15,10 +15,11 @@ import {
   Col,
   message,
 } from "antd";
-import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined } from "@ant-design/icons";
 import { ComponentPickerModal } from "../components/dashboard/ComponentPickerModal.js";
 import { ComponentConfigModal } from "../components/dashboard/ComponentConfigModal.js";
 import { VisualLayoutGrid } from "../components/dashboard/VisualLayoutGrid.js";
+import { LayoutTabModal } from "../components/dashboard/LayoutTabModal.js";
 import { api } from "../api.js";
 import { STANDARD_VARIABLE_DEFAULTS } from "@ha-external-dashboards/shared";
 
@@ -119,6 +120,11 @@ export function DashboardEditor() {
     null
   );
   const [activeDlIndex, setActiveDlIndex] = useState(0);
+  const [layoutTabModal, setLayoutTabModal] = useState<{
+    open: boolean;
+    mode: "add" | "edit";
+    index: number;
+  } | null>(null);
   const isNew = !id;
 
   const accessMode = Form.useWatch("accessMode", form);
@@ -197,19 +203,6 @@ export function DashboardEditor() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const addLayout = () => {
-    if (allLayouts.length === 0) return;
-    setDashLayouts([
-      ...dashLayouts,
-      {
-        id: 0,
-        layoutId: allLayouts[0].id,
-        sortOrder: dashLayouts.length,
-        label: null,
-      },
-    ]);
   };
 
   const handlePickerSelect = async (componentId: number) => {
@@ -443,82 +436,61 @@ export function DashboardEditor() {
                     label: "Layouts",
                     children: (
                       <div>
-                        {dashLayouts.map((dl, i) => (
-                          <Space
-                            key={i}
-                            style={{ display: "flex", marginBottom: 8 }}
-                          >
-                            <Select
-                              style={{ width: 200 }}
-                              value={dl.layoutId}
-                              onChange={(v) => {
-                                const next = [...dashLayouts];
-                                next[i] = { ...next[i], layoutId: v };
-                                setDashLayouts(next);
-                              }}
-                              options={allLayouts.map((l) => ({
-                                value: l.id,
-                                label: l.name,
-                              }))}
-                            />
-                            <Input
-                              placeholder="Tab label"
-                              value={dl.label ?? ""}
-                              onChange={(e) => {
-                                const next = [...dashLayouts];
-                                next[i] = {
-                                  ...next[i],
-                                  label: e.target.value || null,
-                                };
-                                setDashLayouts(next);
-                              }}
-                              style={{ width: 150 }}
-                            />
-                            <Button
-                              danger
-                              icon={<DeleteOutlined />}
-                              onClick={() =>
-                                setDashLayouts(
-                                  dashLayouts.filter((_, j) => j !== i)
-                                )
-                              }
-                            />
-                          </Space>
-                        ))}
-                        <Button icon={<PlusOutlined />} onClick={addLayout}>
-                          Add Layout
-                        </Button>
-                      </div>
-                    ),
-                  },
-                  {
-                    key: "components",
-                    label: "Components",
-                    children: (
-                      <div>
                         {dashLayouts.length === 0 ? (
-                          <div
-                            style={{
-                              color: "#999",
-                              padding: 24,
-                              textAlign: "center",
-                            }}
-                          >
-                            Add layouts in the Layouts tab first.
+                          <div style={{ color: "#999", padding: 24, textAlign: "center" }}>
+                            <Button
+                              icon={<PlusOutlined />}
+                              onClick={() =>
+                                setLayoutTabModal({ open: true, mode: "add", index: -1 })
+                              }
+                            >
+                              Add First Layout
+                            </Button>
                           </div>
                         ) : (
                           <>
                             <Tabs
                               activeKey={String(activeDlIndex)}
                               onChange={(k) => setActiveDlIndex(Number(k))}
+                              tabBarExtraContent={
+                                <Button
+                                  type="text"
+                                  icon={<PlusOutlined />}
+                                  onClick={() =>
+                                    setLayoutTabModal({
+                                      open: true,
+                                      mode: "add",
+                                      index: -1,
+                                    })
+                                  }
+                                />
+                              }
                               items={dashLayouts.map((dl, i) => {
                                 const layout = allLayouts.find(
                                   (l) => l.id === dl.layoutId
                                 );
                                 return {
                                   key: String(i),
-                                  label:
-                                    dl.label || layout?.name || `Layout ${i + 1}`,
+                                  label: (
+                                    <span>
+                                      {dl.label || layout?.name || `Layout ${i + 1}`}
+                                      <EditOutlined
+                                        style={{
+                                          marginLeft: 6,
+                                          fontSize: 11,
+                                          opacity: 0.5,
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setLayoutTabModal({
+                                            open: true,
+                                            mode: "edit",
+                                            index: i,
+                                          });
+                                        }}
+                                      />
+                                    </span>
+                                  ),
                                 };
                               })}
                               style={{ marginBottom: 16 }}
@@ -552,7 +524,10 @@ export function DashboardEditor() {
                         )}
 
                         <ComponentPickerModal
-                          open={pickerRegionId !== null || pickerContainerInstanceId !== null}
+                          open={
+                            pickerRegionId !== null ||
+                            pickerContainerInstanceId !== null
+                          }
                           components={
                             pickerContainerInstanceId !== null
                               ? allComponents.filter((c) => !c.isContainer)
@@ -586,15 +561,84 @@ export function DashboardEditor() {
                           })()}
                           globalStyles={{
                             ...Object.fromEntries(
-                              Object.entries({ ...STANDARD_VARIABLE_DEFAULTS, ...(selectedTheme?.standardVariables ?? {}) })
-                                .filter(([k]) => k !== "backgroundType" && k !== "backgroundImage")
+                              Object.entries({
+                                ...STANDARD_VARIABLE_DEFAULTS,
+                                ...(selectedTheme?.standardVariables ?? {}),
+                              }).filter(
+                                ([k]) =>
+                                  k !== "backgroundType" && k !== "backgroundImage"
+                              )
                             ),
                             ...(selectedTheme?.globalStyles ?? {}),
                           }}
-                          standardVariables={(selectedTheme?.standardVariables ?? {}) as Record<string, string>}
+                          standardVariables={
+                            (selectedTheme?.standardVariables ?? {}) as Record<
+                              string,
+                              string
+                            >
+                          }
                           onSave={handleConfigSave}
                           onDelete={handleConfigDelete}
                           onCancel={() => setConfigInstance(null)}
+                        />
+
+                        <LayoutTabModal
+                          open={layoutTabModal?.open ?? false}
+                          mode={layoutTabModal?.mode ?? "add"}
+                          layoutId={
+                            layoutTabModal?.mode === "edit" && layoutTabModal.index >= 0
+                              ? dashLayouts[layoutTabModal.index]?.layoutId
+                              : undefined
+                          }
+                          label={
+                            layoutTabModal?.mode === "edit" && layoutTabModal.index >= 0
+                              ? dashLayouts[layoutTabModal.index]?.label
+                              : undefined
+                          }
+                          allLayouts={allLayouts}
+                          canRemove={dashLayouts.length > 1}
+                          onSave={(layoutId, label) => {
+                            if (layoutTabModal?.mode === "add") {
+                              setDashLayouts([
+                                ...dashLayouts,
+                                {
+                                  id: 0,
+                                  layoutId,
+                                  sortOrder: dashLayouts.length,
+                                  label,
+                                },
+                              ]);
+                              setActiveDlIndex(dashLayouts.length);
+                            } else if (
+                              layoutTabModal?.mode === "edit" &&
+                              layoutTabModal.index >= 0
+                            ) {
+                              const next = [...dashLayouts];
+                              next[layoutTabModal.index] = {
+                                ...next[layoutTabModal.index],
+                                layoutId,
+                                label,
+                              };
+                              setDashLayouts(next);
+                            }
+                            setLayoutTabModal(null);
+                          }}
+                          onRemove={() => {
+                            if (
+                              layoutTabModal?.mode === "edit" &&
+                              layoutTabModal.index >= 0
+                            ) {
+                              const next = dashLayouts.filter(
+                                (_, j) => j !== layoutTabModal.index
+                              );
+                              setDashLayouts(next);
+                              if (activeDlIndex >= next.length) {
+                                setActiveDlIndex(Math.max(0, next.length - 1));
+                              }
+                            }
+                            setLayoutTabModal(null);
+                          }}
+                          onCancel={() => setLayoutTabModal(null)}
                         />
                       </div>
                     ),
