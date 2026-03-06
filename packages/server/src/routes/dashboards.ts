@@ -17,8 +17,7 @@ const createSchema = z.object({
   interactiveMode: z.boolean().default(false),
   maxWidth: z.string().nullable().optional(),
   padding: z.string().nullable().optional(),
-  globalStyles: z.record(z.string()).default({}),
-  standardVariables: z.record(z.string()).default({}),
+  themeId: z.number().int().nullable().optional(),
   layoutSwitchMode: z.enum(["tabs", "auto-rotate"]).default("tabs"),
   layoutRotateInterval: z.number().int().positive().default(30),
 });
@@ -68,8 +67,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         interactiveMode: body.interactiveMode,
         maxWidth: body.maxWidth ?? null,
         padding: body.padding ?? null,
-        globalStyles: body.globalStyles,
-        standardVariables: body.standardVariables,
+        themeId: body.themeId ?? null,
         layoutSwitchMode: body.layoutSwitchMode,
         layoutRotateInterval: body.layoutRotateInterval,
       })
@@ -137,7 +135,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
             layoutId: z.number().int(),
             sortOrder: z.number().int(),
             label: z.string().nullable().default(null),
-          })
+            icon: z.string().nullable().default(null),
+          }).refine(
+            (item) => item.label || item.icon,
+            { message: "Each tab must have at least a label or an icon" }
+          )
         )
         .parse(req.body);
 
@@ -157,7 +159,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         if (l.id && existing.some((e) => e.id === l.id)) {
           await db
             .update(dashboardLayouts)
-            .set({ layoutId: l.layoutId, sortOrder: l.sortOrder, label: l.label })
+            .set({ layoutId: l.layoutId, sortOrder: l.sortOrder, label: l.label, icon: l.icon })
             .where(eq(dashboardLayouts.id, l.id));
         } else {
           await db.insert(dashboardLayouts).values({
@@ -165,6 +167,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
             layoutId: l.layoutId,
             sortOrder: l.sortOrder,
             label: l.label,
+            icon: l.icon,
           });
         }
       }
