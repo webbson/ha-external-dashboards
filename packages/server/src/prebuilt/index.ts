@@ -120,6 +120,131 @@ const prebuiltComponents: PrebuiltComponent[] = [
     containerConfig: null,
   },
   {
+    name: "Entity List",
+    template: `<div class="entity-list">
+  {{#if (param "title")}}<div class="entity-list-title">{{param "title"}}</div>{{/if}}
+  {{#eachEntity "entities"}}
+  <div class="entity-list-row">
+    {{#if (param "showIcon")}}<div class="entity-list-icon">{{mdiIcon (iconFor this.domain) size="20"}}</div>{{/if}}
+    {{#if (param "showFriendlyName")}}<div class="entity-list-name">{{this.attributes.friendly_name}}</div>{{/if}}
+    <div class="entity-list-spacer"></div>
+    {{#if (param "showState")}}<div class="entity-list-state">{{this.state}}{{#if (param "showUnit")}} {{this.attributes.unit_of_measurement}}{{/if}}</div>{{/if}}
+    {{#if (param "showLastChanged")}}<div class="entity-list-time">{{relativeTime this.last_changed}}</div>{{/if}}
+  </div>
+  {{/eachEntity}}
+  {{#eachEntity "entityPattern"}}
+  <div class="entity-list-row">
+    {{#if (param "showIcon")}}<div class="entity-list-icon">{{mdiIcon (iconFor this.domain) size="20"}}</div>{{/if}}
+    {{#if (param "showFriendlyName")}}<div class="entity-list-name">{{this.attributes.friendly_name}}</div>{{/if}}
+    <div class="entity-list-spacer"></div>
+    {{#if (param "showState")}}<div class="entity-list-state">{{this.state}}{{#if (param "showUnit")}} {{this.attributes.unit_of_measurement}}{{/if}}</div>{{/if}}
+    {{#if (param "showLastChanged")}}<div class="entity-list-time">{{relativeTime this.last_changed}}</div>{{/if}}
+  </div>
+  {{/eachEntity}}
+</div>`,
+    styles: `.entity-list { padding: 8px 0; }
+.entity-list-title { font-size: 1.1em; font-weight: 500; color: var(--db-font-color, #fff); padding: 4px 12px 12px; }
+.entity-list-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.entity-list-row:last-child { border-bottom: none; }
+.entity-list-icon { color: var(--db-accent-color, #4fc3f7); display: flex; align-items: center; }
+.entity-list-name { font-size: 0.9em; color: var(--db-font-color, #fff); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entity-list-spacer { flex: 1; }
+.entity-list-state { font-size: 0.9em; color: var(--db-font-color, #fff); font-weight: 500; white-space: nowrap; }
+.entity-list-time { font-size: 0.75em; color: var(--db-font-color-secondary, #aaa); white-space: nowrap; }`,
+    parameterDefs: [
+      { name: "title", label: "Title", type: "string", default: "" },
+      { name: "showIcon", label: "Show Icon", type: "boolean", default: true },
+      { name: "showFriendlyName", label: "Show Name", type: "boolean", default: true },
+      { name: "showState", label: "Show State", type: "boolean", default: true },
+      { name: "showUnit", label: "Show Unit", type: "boolean", default: true },
+      { name: "showLastChanged", label: "Show Last Changed", type: "boolean", default: false },
+    ],
+    entitySelectorDefs: [
+      { name: "entities", label: "Entities", mode: "multiple" },
+      { name: "entityPattern", label: "Entity Pattern", mode: "glob" },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
+    name: "Light Switch",
+    template: `<div class="light-switch">
+  {{#stateEquals (param "entity") "on"}}
+    <div class="light-switch-icon on">{{mdiIcon "mdi:lightbulb" size="36" color="var(--db-accent-color, #4fc3f7)"}}</div>
+  {{else}}
+    <div class="light-switch-icon off">{{mdiIcon "mdi:lightbulb-outline" size="36" color="var(--db-font-color-secondary, #666)"}}</div>
+  {{/stateEquals}}
+  <div class="light-switch-label">{{param "label"}}</div>
+  {{#if (param "showState")}}
+    <div class="light-switch-state">{{state (param "entity")}}</div>
+  {{/if}}
+</div>
+<script>
+var entityId = '{{param "entity"}}';
+var domain = entityId.split('.')[0];
+comp.style.cursor = 'pointer';
+comp.addEventListener('click', function() {
+  if (window.__ha) window.__ha.callService(domain, 'toggle', { entity_id: entityId });
+});
+</script>`,
+    styles: `.light-switch { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 16px; gap: 8px; user-select: none; -webkit-tap-highlight-color: transparent; }
+.light-switch:active { opacity: 0.7; }
+.light-switch-icon { transition: all 0.2s; }
+.light-switch-icon.on { filter: drop-shadow(0 0 8px var(--db-accent-color, #4fc3f7)); }
+.light-switch-label { font-size: 0.9em; color: var(--db-font-color, #fff); text-align: center; }
+.light-switch-state { font-size: 0.8em; color: var(--db-font-color-secondary, #aaa); text-transform: capitalize; }`,
+    parameterDefs: [
+      { name: "label", label: "Label", type: "string", default: "Light" },
+      { name: "showState", label: "Show State", type: "boolean", default: true },
+    ],
+    entitySelectorDefs: [
+      { name: "entity", label: "Entity", mode: "single", allowedDomains: ["light", "switch"] },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
+    name: "Light Card",
+    template: `<div class="light-card">
+  <div class="light-card-main">
+    {{#stateEquals (param "entity") "on"}}
+      <div class="light-card-icon on">{{mdiIcon "mdi:lightbulb" size="40" color="var(--db-accent-color, #4fc3f7)"}}</div>
+    {{else}}
+      <div class="light-card-icon off">{{mdiIcon "mdi:lightbulb-outline" size="40" color="var(--db-font-color-secondary, #666)"}}</div>
+    {{/stateEquals}}
+    <div class="light-card-info">
+      <div class="light-card-name">{{#if (param "label")}}{{param "label"}}{{else}}{{attr (param "entity") "friendly_name"}}{{/if}}</div>
+      <div class="light-card-state">
+        {{state (param "entity")}}{{#stateEquals (param "entity") "on"}}{{#if (param "showBrightness")}} &middot; {{attr (param "entity") "brightness"}}{{/if}}{{/stateEquals}}
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+var entityId = '{{param "entity"}}';
+comp.style.cursor = 'pointer';
+comp.addEventListener('click', function() {
+  if (window.__ha) window.__ha.openDialog('light-control', { entityId: entityId });
+});
+</script>`,
+    styles: `.light-card { padding: 16px; user-select: none; -webkit-tap-highlight-color: transparent; }
+.light-card:active { opacity: 0.7; }
+.light-card-main { display: flex; align-items: center; gap: 14px; }
+.light-card-icon { display: flex; align-items: center; transition: all 0.2s; }
+.light-card-icon.on { filter: drop-shadow(0 0 10px var(--db-accent-color, #4fc3f7)); }
+.light-card-name { font-size: 1em; font-weight: 500; color: var(--db-font-color, #fff); }
+.light-card-state { font-size: 0.85em; color: var(--db-font-color-secondary, #aaa); margin-top: 2px; text-transform: capitalize; }`,
+    parameterDefs: [
+      { name: "label", label: "Label Override", type: "string", default: "" },
+      { name: "showBrightness", label: "Show Brightness", type: "boolean", default: true },
+    ],
+    entitySelectorDefs: [
+      { name: "entity", label: "Light Entity", mode: "single", allowedDomains: ["light"] },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
     name: "Tabs Container",
     template: `<div class="tabs-container"><!-- children rendered by display runtime --></div>`,
     styles: `.tabs-container { width: 100%; height: 100%; }`,

@@ -1,4 +1,5 @@
 import Handlebars from "handlebars";
+import * as mdiIcons from "@mdi/js";
 
 export interface EntityState {
   entity_id: string;
@@ -13,6 +14,34 @@ export interface TemplateContext {
   params: Record<string, string | number | boolean>;
   globalStyles: Record<string, string>;
 }
+
+function mdiNameToPath(name: string): string | undefined {
+  if (!name || typeof name !== "string") return undefined;
+  const stripped = name.replace(/^mdi[:\-]/, "");
+  const camelKey =
+    "mdi" +
+    stripped
+      .split("-")
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join("");
+  return (mdiIcons as Record<string, string>)[camelKey];
+}
+
+Handlebars.registerHelper("mdiIcon", function (...args: unknown[]) {
+  const options = args[args.length - 1] as Handlebars.HelperOptions;
+  const name = args[0] as string;
+  const size = options.hash?.size ?? 24;
+  const color = options.hash?.color ?? "currentColor";
+  const svgClass = options.hash?.class ?? "";
+
+  const path = mdiNameToPath(name);
+  if (!path) return new Handlebars.SafeString(`<!-- unknown icon: ${Handlebars.Utils.escapeExpression(String(name ?? ""))} -->`);
+
+  const classAttr = svgClass ? ` class="${Handlebars.Utils.escapeExpression(svgClass)}"` : "";
+  return new Handlebars.SafeString(
+    `<svg viewBox="0 0 24 24" width="${size}" height="${size}" style="fill: ${Handlebars.Utils.escapeExpression(color)}; vertical-align: middle"${classAttr}><path d="${path}"/></svg>`
+  );
+});
 
 // Register custom helpers
 Handlebars.registerHelper(
@@ -119,6 +148,34 @@ Handlebars.registerHelper("gt", function (a: unknown, b: unknown) {
 
 Handlebars.registerHelper("lt", function (a: unknown, b: unknown) {
   return Number(a) < Number(b);
+});
+
+Handlebars.registerHelper("eachEntity", function (this: unknown, selectorName: string, options: Handlebars.HelperOptions) {
+  const ctx = options.data?.root as TemplateContext;
+  const binding = ctx?.params?.[selectorName];
+  if (!binding) return "";
+
+  const entityIds = Array.isArray(binding) ? binding : [binding];
+  let result = "";
+
+  for (let i = 0; i < entityIds.length; i++) {
+    const entityId = String(entityIds[i]);
+    const entity = ctx?.entities?.[entityId];
+    const domain = entityId.split(".")[0];
+    const data = {
+      entity_id: entityId,
+      state: entity?.state ?? "unavailable",
+      attributes: entity?.attributes ?? {},
+      domain,
+      last_changed: entity?.last_changed ?? "",
+      last_updated: entity?.last_updated ?? "",
+    };
+    result += options.fn(data, {
+      data: { ...options.data, index: i, first: i === 0, last: i === entityIds.length - 1 },
+    });
+  }
+
+  return result;
 });
 
 const templateCache = new Map<string, HandlebarsTemplateDelegate>();

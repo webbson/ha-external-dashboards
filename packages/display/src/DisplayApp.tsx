@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { DashboardRenderer } from "./runtime/DashboardRenderer.js";
 import { PopupOverlay } from "./runtime/PopupOverlay.js";
+import { DialogOverlay } from "./runtime/DialogOverlay.js";
 import { DisplayClient } from "./ws/DisplayClient.js";
 import type { EntityState } from "./template/engine.js";
 
@@ -68,6 +69,18 @@ interface PopupData {
   timeout: number;
 }
 
+interface HAGlobal {
+  callService: (domain: string, service: string, data: Record<string, unknown>) => void;
+  openDialog: (type: string, props: Record<string, unknown>) => void;
+  closeDialog: () => void;
+}
+
+declare global {
+  interface Window {
+    __ha?: HAGlobal;
+  }
+}
+
 function getSlugFromUrl(): string | null {
   const match = window.location.pathname.match(/^\/d\/([^/]+)/);
   return match ? match[1] : null;
@@ -80,6 +93,7 @@ export function DisplayApp() {
   const [error, setError] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
   const [password, setPassword] = useState("");
+  const [dialogState, setDialogState] = useState<{ type: string; props: Record<string, unknown> } | null>(null);
   const clientRef = useRef<DisplayClient | null>(null);
 
   const slug = getSlugFromUrl();
@@ -205,7 +219,22 @@ export function DisplayApp() {
     client.connect();
     clientRef.current = client;
 
+    if (config.dashboard.interactiveMode) {
+      window.__ha = {
+        callService: (domain: string, service: string, data: Record<string, unknown>) => {
+          client.callService(domain, service, data);
+        },
+        openDialog: (type: string, props: Record<string, unknown>) => {
+          setDialogState({ type, props });
+        },
+        closeDialog: () => {
+          setDialogState(null);
+        },
+      };
+    }
+
     return () => {
+      window.__ha = undefined;
       client.close();
       clientRef.current = null;
     };
@@ -336,6 +365,12 @@ export function DisplayApp() {
         layoutRotateInterval={config.dashboard.layoutRotateInterval}
       />
       <PopupOverlay popup={popup} onDismiss={() => setPopup(null)} />
+      <DialogOverlay
+        dialogState={dialogState}
+        onClose={() => setDialogState(null)}
+        entities={entities}
+        callService={(domain, service, data) => clientRef.current?.callService(domain, service, data)}
+      />
     </div>
   );
 }
