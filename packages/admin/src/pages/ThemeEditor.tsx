@@ -187,6 +187,22 @@ export function ThemeEditor() {
               Layout
             </div>
             {textField("Component Gap", "componentGap", "0px")}
+
+            <div
+              style={{
+                fontWeight: 500,
+                fontSize: 13,
+                marginBottom: 8,
+                marginTop: 16,
+              }}
+            >
+              Tab Bar
+            </div>
+            {colorField("Background", "tabBarBg")}
+            {colorField("Inactive Color", "tabBarColor")}
+            {colorField("Active Color", "tabBarActiveColor")}
+            {colorField("Active Background", "tabBarActiveBg")}
+            {textField("Font Size", "tabBarFontSize", "14px")}
           </Col>
 
           {/* Column 3: Background + Custom Variables */}
