@@ -28,6 +28,7 @@ interface DashboardLayout {
   layoutId: number;
   sortOrder: number;
   label: string | null;
+  icon: string | null;
   layout: {
     structure: {
       gridTemplate: string;
