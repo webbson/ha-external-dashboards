@@ -12,6 +12,8 @@ interface DashboardConfig {
     accessKey: string;
     accessMode: string;
     interactiveMode: boolean;
+    maxWidth?: string | null;
+    padding?: string | null;
     globalStyles: Record<string, string>;
     standardVariables?: Record<string, string>;
     layoutSwitchMode: "tabs" | "auto-rotate";
@@ -126,6 +128,11 @@ export function DisplayApp() {
       componentPadding: "0px",
       componentGap: "0px",
       backgroundColor: "#000000",
+      tabBarBg: "transparent",
+      tabBarColor: "rgba(255,255,255,0.6)",
+      tabBarActiveColor: "#ffffff",
+      tabBarActiveBg: "rgba(255,255,255,0.15)",
+      tabBarFontSize: "14px",
     };
     const cssMap: Record<string, string> = {
       componentBg: "--db-component-bg",
@@ -139,6 +146,11 @@ export function DisplayApp() {
       componentPadding: "--db-component-padding",
       componentGap: "--db-component-gap",
       backgroundColor: "--db-background-color",
+      tabBarBg: "--db-tab-bar-bg",
+      tabBarColor: "--db-tab-bar-color",
+      tabBarActiveColor: "--db-tab-bar-active-color",
+      tabBarActiveBg: "--db-tab-bar-active-bg",
+      tabBarFontSize: "--db-tab-bar-font-size",
     };
 
     const merged = { ...defaults, ...vars };
@@ -317,6 +329,8 @@ export function DisplayApp() {
           ...config.dashboard.standardVariables,
           ...config.dashboard.globalStyles,
         }}
+        maxWidth={config.dashboard.maxWidth}
+        padding={config.dashboard.padding}
         layoutSwitchMode={config.dashboard.layoutSwitchMode}
         layoutRotateInterval={config.dashboard.layoutRotateInterval}
       />
