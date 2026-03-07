@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Tabs, Collapse, message } from "antd";
+import { Tabs, Collapse, message, Alert } from "antd";
 import { CodeEditor } from "./CodeEditor.js";
 import { VisualEditor } from "./VisualEditor.js";
 import { TemplateHelperReference } from "./TemplateHelperReference.js";
@@ -15,7 +15,7 @@ interface ParameterDef {
 interface EntitySelectorDef {
   name: string;
   label: string;
-  mode: "single" | "multiple" | "glob" | "area" | "tag";
+  mode: "single" | "multiple" | "glob";
   allowedDomains?: string[];
 }
 
@@ -77,11 +77,19 @@ export function HybridEditor({
           key: "styles",
           label: "Styles",
           children: (
-            <CodeEditor
-              value={styles}
-              onChange={onStylesChange}
-              language="css"
-            />
+            <div>
+              <CodeEditor
+                value={styles}
+                onChange={onStylesChange}
+                language="css"
+              />
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginTop: 12 }}
+                title="Chrome styles (background, border, border-radius, padding) are applied automatically by the theme. To override them for this component, use :host { background: none !important; }"
+              />
+            </div>
           ),
         },
       ]}

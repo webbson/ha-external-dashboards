@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Form, Input, InputNumber, Button, Card, Space, Select, Switch, Collapse, message } from "antd";
+import { Form, Input, InputNumber, Button, Card, Space, Select, Switch, Collapse, Typography, message } from "antd";
+import { PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
 import { HybridEditor } from "../components/editors/HybridEditor.js";
 import { LivePreview } from "../components/preview/LivePreview.js";
 import { EntityDataViewer } from "../components/preview/EntityDataViewer.js";
@@ -12,17 +13,7 @@ const DEFAULT_TEMPLATE = `<div class="component">
   {{!-- your content here --}}
 </div>`;
 
-const DEFAULT_STYLES = `:host {
-  background: var(--db-component-bg, transparent);
-  border: var(--db-border-style, none);
-  border-radius: var(--db-border-radius, 0px);
-  padding: var(--db-component-padding, 0px);
-  font-family: var(--db-font-family, inherit);
-  font-size: var(--db-font-size, 16px);
-  color: var(--db-font-color, #fff);
-}
-
-.component {
+const DEFAULT_STYLES = `.component {
   padding: 16px;
 }`;
 
@@ -37,8 +28,24 @@ interface ParameterDef {
 interface EntitySelectorDef {
   name: string;
   label: string;
-  mode: "single" | "multiple" | "glob" | "area" | "tag";
+  mode: "single" | "multiple" | "glob";
   allowedDomains?: string[];
+}
+
+interface GlobAttributeFilter {
+  attribute: string;
+  operator: "eq" | "neq" | "contains" | "startsWith";
+  value: string;
+}
+
+interface GlobStateFilter {
+  operator: "eq" | "neq" | "contains" | "startsWith";
+  value: string;
+}
+
+interface EntityFilterEntry {
+  attributeFilters?: GlobAttributeFilter[];
+  stateFilters?: GlobStateFilter[];
 }
 
 interface ComponentData {
@@ -71,6 +78,7 @@ export function ComponentEditor() {
   const [entitySelectorDefs, setEntitySelectorDefs] = useState<EntitySelectorDef[]>([]);
   const [testEntityBindings, setTestEntityBindings] = useState<Record<string, string | string[]>>({});
   const [testParameterValues, setTestParameterValues] = useState<Record<string, string | number | boolean>>({});
+  const [testEntityFilters, setTestEntityFilters] = useState<Record<string, EntityFilterEntry>>({});
   const [themes, setThemes] = useState<ThemeSummary[]>([]);
   const [selectedThemeId, setSelectedThemeId] = useState<number | null>(null);
 
@@ -132,24 +140,226 @@ export function ComponentEditor() {
       label: "Test Entities & Data",
       children: (
         <div>
-          {entitySelectorDefs.map((def) => (
-            <div key={def.name} style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>
-                {def.label || def.name}
+          {entitySelectorDefs.map((def) => {
+            const bindingValue = testEntityBindings[def.name];
+            const isGlob =
+              def.mode === "glob" &&
+              typeof bindingValue === "string" &&
+              (bindingValue.includes("*") || bindingValue.includes("?"));
+            const attrFilters = testEntityFilters[def.name]?.attributeFilters ?? [];
+            const stateFilters = testEntityFilters[def.name]?.stateFilters ?? [];
+
+            return (
+              <div key={def.name} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>
+                  {def.label || def.name}
+                </div>
+                <EntitySelector
+                  mode={def.mode}
+                  value={bindingValue}
+                  onChange={(v) =>
+                    setTestEntityBindings((prev) => ({
+                      ...prev,
+                      [def.name]: v,
+                    }))
+                  }
+                  allowedDomains={def.allowedDomains}
+                />
+                {isGlob && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      background: "rgba(255,255,255,0.03)",
+                      borderRadius: 4,
+                      padding: "8px 12px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: attrFilters.length > 0 ? 8 : 0,
+                      }}
+                    >
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        Attribute Filters
+                      </Typography.Text>
+                      <Button
+                        size="small"
+                        type="link"
+                        icon={<PlusOutlined />}
+                        onClick={() =>
+                          setTestEntityFilters((prev) => ({
+                            ...prev,
+                            [def.name]: {
+                              ...prev[def.name],
+                              attributeFilters: [
+                                ...attrFilters,
+                                { attribute: "", operator: "eq" as const, value: "" },
+                              ],
+                            },
+                          }))
+                        }
+                      >
+                        Add
+                      </Button>
+                    </div>
+                    {attrFilters.map((f, i) => (
+                      <Space key={i} style={{ display: "flex", marginBottom: 4 }} size={4}>
+                        <Input
+                          size="small"
+                          value={f.attribute}
+                          onChange={(e) => {
+                            const next = [...attrFilters];
+                            next[i] = { ...next[i], attribute: e.target.value };
+                            setTestEntityFilters((prev) => ({
+                              ...prev,
+                              [def.name]: { ...prev[def.name], attributeFilters: next },
+                            }));
+                          }}
+                          placeholder="attribute"
+                          style={{ width: 120 }}
+                        />
+                        <Select
+                          size="small"
+                          value={f.operator}
+                          onChange={(operator) => {
+                            const next = [...attrFilters];
+                            next[i] = { ...next[i], operator };
+                            setTestEntityFilters((prev) => ({
+                              ...prev,
+                              [def.name]: { ...prev[def.name], attributeFilters: next },
+                            }));
+                          }}
+                          style={{ width: 100 }}
+                          options={[
+                            { value: "eq", label: "equals" },
+                            { value: "neq", label: "not equals" },
+                            { value: "contains", label: "contains" },
+                            { value: "startsWith", label: "starts with" },
+                          ]}
+                        />
+                        <Input
+                          size="small"
+                          value={f.value}
+                          onChange={(e) => {
+                            const next = [...attrFilters];
+                            next[i] = { ...next[i], value: e.target.value };
+                            setTestEntityFilters((prev) => ({
+                              ...prev,
+                              [def.name]: { ...prev[def.name], attributeFilters: next },
+                            }));
+                          }}
+                          placeholder="value"
+                          style={{ width: 140 }}
+                        />
+                        <MinusCircleOutlined
+                          style={{ cursor: "pointer", color: "#999" }}
+                          onClick={() => {
+                            const next = attrFilters.filter((_, j) => j !== i);
+                            setTestEntityFilters((prev) => ({
+                              ...prev,
+                              [def.name]: {
+                                ...prev[def.name],
+                                attributeFilters: next.length > 0 ? next : undefined,
+                              },
+                            }));
+                          }}
+                        />
+                      </Space>
+                    ))}
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: attrFilters.length > 0 ? 12 : 0,
+                        marginBottom: stateFilters.length > 0 ? 8 : 0,
+                      }}
+                    >
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        State Filters
+                      </Typography.Text>
+                      <Button
+                        size="small"
+                        type="link"
+                        icon={<PlusOutlined />}
+                        onClick={() =>
+                          setTestEntityFilters((prev) => ({
+                            ...prev,
+                            [def.name]: {
+                              ...prev[def.name],
+                              stateFilters: [
+                                ...stateFilters,
+                                { operator: "eq" as const, value: "" },
+                              ],
+                            },
+                          }))
+                        }
+                      >
+                        Add
+                      </Button>
+                    </div>
+                    {stateFilters.map((f, i) => (
+                      <Space key={i} style={{ display: "flex", marginBottom: 4 }} size={4}>
+                        <Typography.Text type="secondary" style={{ fontSize: 12, width: 40 }}>
+                          state
+                        </Typography.Text>
+                        <Select
+                          size="small"
+                          value={f.operator}
+                          onChange={(operator) => {
+                            const next = [...stateFilters];
+                            next[i] = { ...next[i], operator };
+                            setTestEntityFilters((prev) => ({
+                              ...prev,
+                              [def.name]: { ...prev[def.name], stateFilters: next },
+                            }));
+                          }}
+                          style={{ width: 100 }}
+                          options={[
+                            { value: "eq", label: "equals" },
+                            { value: "neq", label: "not equals" },
+                            { value: "contains", label: "contains" },
+                            { value: "startsWith", label: "starts with" },
+                          ]}
+                        />
+                        <Input
+                          size="small"
+                          value={f.value}
+                          onChange={(e) => {
+                            const next = [...stateFilters];
+                            next[i] = { ...next[i], value: e.target.value };
+                            setTestEntityFilters((prev) => ({
+                              ...prev,
+                              [def.name]: { ...prev[def.name], stateFilters: next },
+                            }));
+                          }}
+                          placeholder="value"
+                          style={{ width: 140 }}
+                        />
+                        <MinusCircleOutlined
+                          style={{ cursor: "pointer", color: "#999" }}
+                          onClick={() => {
+                            const next = stateFilters.filter((_, j) => j !== i);
+                            setTestEntityFilters((prev) => ({
+                              ...prev,
+                              [def.name]: {
+                                ...prev[def.name],
+                                stateFilters: next.length > 0 ? next : undefined,
+                              },
+                            }));
+                          }}
+                        />
+                      </Space>
+                    ))}
+                  </div>
+                )}
               </div>
-              <EntitySelector
-                mode={def.mode}
-                value={testEntityBindings[def.name]}
-                onChange={(v) =>
-                  setTestEntityBindings((prev) => ({
-                    ...prev,
-                    [def.name]: v,
-                  }))
-                }
-                allowedDomains={def.allowedDomains}
-              />
-            </div>
-          ))}
+            );
+          })}
           <EntityDataViewer entityBindings={testEntityBindings} compact />
         </div>
       ),
@@ -299,6 +509,10 @@ export function ComponentEditor() {
               parameterValues={testParameterValues}
               globalStyles={activeTheme?.globalStyles ?? {}}
               standardVariables={activeTheme?.standardVariables ?? {}}
+              entityFilters={testEntityFilters}
+              manualRefresh={Object.values(testEntityBindings).some(
+                (v) => typeof v === "string" && (v.includes("*") || v.includes("?"))
+              )}
             />
           </div>
         </div>

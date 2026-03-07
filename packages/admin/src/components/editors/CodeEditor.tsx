@@ -83,6 +83,12 @@ export function CodeEditor({
           registerHandlebarsCompletion(monaco);
         }
       }}
+      onMount={(editor) => {
+        // Auto-format on load so minified code is readable
+        setTimeout(() => {
+          editor.getAction("editor.action.formatDocument")?.run();
+        }, 100);
+      }}
       options={{
         minimap: { enabled: false },
         fontSize: 13,
