@@ -95,6 +95,13 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 - Returns array of state arrays from HA's `/api/history/period/` endpoint
 - Responses cached for 30s; used by the Graph Card prebuilt component
 
+## Component Import/Export
+
+- `GET /api/components/:id/export` — downloads .json file with component definition
+- `POST /api/components/import` — accepts exported JSON, creates new component
+- Export format version 1: name, template, styles, parameterDefs, entitySelectorDefs, isContainer, containerConfig
+- Name collisions resolved by appending " (Imported)" suffix
+
 ## Security
 
 - Admin: HA Ingress auth (X-Ingress-Path header check)

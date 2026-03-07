@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Table, Button, Space, Popconfirm, Tag, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
 interface Component {
@@ -16,6 +16,7 @@ interface Component {
 export function ComponentList() {
   const [data, setData] = useState<Component[]>([]);
   const [loading, setLoading] = useState(true);
+  const [devMode, setDevMode] = useState(false);
   const navigate = useNavigate();
 
   const load = () => {
@@ -26,12 +27,60 @@ export function ComponentList() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    api
+      .get<{ devMode: boolean }>("/api/settings")
+      .then((s) => setDevMode(s.devMode));
+  }, []);
 
   const handleCopy = async (id: number) => {
     const copied = await api.post<Component>(`/api/components/${id}/copy`, {});
     message.success("Component copied");
     navigate(`/components/${copied.id}`);
+  };
+
+  const handleExport = async (id: number, name: string) => {
+    try {
+      const res = await fetch(`/api/components/${id}/export`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      message.success("Component exported");
+    } catch (err) {
+      message.error((err as Error).message);
+    }
+  };
+
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          message.error("Invalid file: not valid JSON");
+          return;
+        }
+        const created = await api.post<Component>("/api/components/import", parsed);
+        message.success(`Component imported: ${created.name}`);
+        load();
+      } catch (err) {
+        message.error((err as Error).message);
+      }
+    };
+    input.click();
   };
 
   const handleDelete = async (id: number) => {
@@ -53,6 +102,9 @@ export function ComponentList() {
           onClick={() => navigate("/components/new")}
         >
           New Component
+        </Button>
+        <Button icon={<UploadOutlined />} onClick={handleImport}>
+          Import Component
         </Button>
       </Space>
       <Table
@@ -90,21 +142,30 @@ export function ComponentList() {
             title: "Actions",
             render: (_, record) => (
               <Space>
-                <Button size="small" onClick={() => navigate(`/components/${record.id}`)}>
-                  Edit
-                </Button>
+                {(!record.isPrebuilt || devMode) && (
+                  <Button size="small" onClick={() => navigate(`/components/${record.id}`)}>
+                    Edit
+                  </Button>
+                )}
                 <Button size="small" onClick={() => handleCopy(record.id)}>
                   Copy
                 </Button>
-                <Popconfirm
-                  title="Delete this component?"
-                  onConfirm={() => handleDelete(record.id)}
-                  disabled={record.usageCount > 0}
-                >
-                  <Button size="small" danger disabled={record.usageCount > 0}>
-                    Delete
+                {!record.isPrebuilt && (
+                  <Button size="small" icon={<DownloadOutlined />} onClick={() => handleExport(record.id, record.name)}>
+                    Export
                   </Button>
-                </Popconfirm>
+                )}
+                {!record.isPrebuilt && (
+                  <Popconfirm
+                    title="Delete this component?"
+                    onConfirm={() => handleDelete(record.id)}
+                    disabled={record.usageCount > 0}
+                  >
+                    <Button size="small" danger disabled={record.usageCount > 0}>
+                      Delete
+                    </Button>
+                  </Popconfirm>
+                )}
               </Space>
             ),
           },
