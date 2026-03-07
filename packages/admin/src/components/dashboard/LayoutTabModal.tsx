@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Modal, Form, Select, Input, Button, Space } from "antd";
+import { Modal, Form, Select, Input, Button, Space, theme } from "antd";
 import { MdiIconSelector } from "../selectors/MdiIconSelector.js";
 
 interface Layout {
@@ -39,6 +39,7 @@ export function LayoutTabModal({
   const [form] = Form.useForm<{ layoutId: number; label: string }>();
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const { token } = theme.useToken();
 
   useEffect(() => {
     if (open) {
@@ -100,7 +101,7 @@ export function LayoutTabModal({
           <Input />
         </Form.Item>
         <div style={{ marginBottom: 24 }}>
-          <div style={{ marginBottom: 8, color: "rgba(0, 0, 0, 0.88)" }}>
+          <div style={{ marginBottom: 8, color: token.colorText }}>
             Tab Icon
           </div>
           <MdiIconSelector value={selectedIcon} onChange={setSelectedIcon} />
@@ -119,8 +120,8 @@ export function LayoutTabModal({
             gridTemplate: selectedLayout.structure.gridTemplate,
             gap: 4,
             minHeight: 120,
-            background: "#f5f5f5",
-            border: "1px solid #e8e8e8",
+            background: token.colorBgLayout,
+            border: `1px solid ${token.colorBorderSecondary}`,
             padding: 8,
             borderRadius: 8,
           }}
@@ -130,14 +131,14 @@ export function LayoutTabModal({
               key={r.id}
               style={{
                 gridArea: r.id,
-                background: "#fff",
-                border: "1px dashed #d9d9d9",
+                background: token.colorBgContainer,
+                border: `1px dashed ${token.colorBorder}`,
                 borderRadius: 4,
                 padding: 6,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#8c8c8c",
+                color: token.colorTextSecondary,
                 fontSize: 11,
                 textTransform: "uppercase",
                 letterSpacing: 0.5,

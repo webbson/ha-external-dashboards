@@ -1,5 +1,5 @@
 import { Routes, Route, useNavigate, useLocation } from "react-router";
-import { Layout, Menu } from "antd";
+import { Layout, Menu, ConfigProvider, theme, Button } from "antd";
 import {
   DashboardOutlined,
   LayoutOutlined,
@@ -7,7 +7,10 @@ import {
   FileImageOutlined,
   NotificationOutlined,
   FormatPainterOutlined,
+  SunOutlined,
+  MoonOutlined,
 } from "@ant-design/icons";
+import { useDarkMode } from "./hooks/useDarkMode.js";
 import { DashboardList } from "./pages/DashboardList.js";
 import { DashboardEditor } from "./pages/DashboardEditor.js";
 import { LayoutList } from "./pages/LayoutList.js";
@@ -30,23 +33,25 @@ const menuItems = [
   { key: "/popups", icon: <NotificationOutlined />, label: "Popups" },
 ];
 
-export function App() {
+function AppLayout({ isDark, toggle }: { isDark: boolean; toggle: () => void }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { token } = theme.useToken();
 
   const selectedKey =
     menuItems.find((item) => location.pathname.startsWith(item.key))?.key ??
     "/dashboards";
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
-      <Sider width={200} theme="light">
+    <Layout style={{ minHeight: "100vh", background: token.colorBgLayout }}>
+      <Sider width={200} theme={isDark ? "dark" : "light"} style={{ position: "relative" }}>
         <div
           style={{
             padding: "16px",
             fontWeight: 600,
             fontSize: 16,
             textAlign: "center",
+            color: isDark ? "rgba(255, 255, 255, 0.85)" : "rgba(0, 0, 0, 0.88)",
           }}
         >
           External Dashboards
@@ -57,8 +62,15 @@ export function App() {
           items={menuItems}
           onClick={({ key }) => navigate(key)}
         />
+        <div style={{ position: "absolute", bottom: 16, width: "100%", textAlign: "center" }}>
+          <Button
+            type="text"
+            icon={isDark ? <SunOutlined /> : <MoonOutlined />}
+            onClick={toggle}
+          />
+        </div>
       </Sider>
-      <Layout>
+      <Layout style={{ background: token.colorBgLayout }}>
         <Content style={{ padding: 24 }}>
           <Routes>
             <Route path="/" element={<DashboardList />} />
@@ -80,5 +92,17 @@ export function App() {
         </Content>
       </Layout>
     </Layout>
+  );
+}
+
+export function App() {
+  const { isDark, toggle } = useDarkMode();
+
+  return (
+    <ConfigProvider
+      theme={{ algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm }}
+    >
+      <AppLayout isDark={isDark} toggle={toggle} />
+    </ConfigProvider>
   );
 }

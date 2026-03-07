@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Button, Typography } from "antd";
+import { Button, Typography, theme } from "antd";
 import { PlusOutlined, HolderOutlined } from "@ant-design/icons";
 import {
   DndContext,
@@ -75,6 +75,7 @@ function SortableCard({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: instance.id });
+  const { token } = theme.useToken();
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -86,9 +87,9 @@ function SortableCard({
       <div ref={setNodeRef} style={{ ...style, marginBottom: 6 }}>
         <div
           style={{
-            border: "2px solid #d3adf7",
+            border: `2px solid ${token.purple4}`,
             borderRadius: 8,
-            background: "#f9f0ff",
+            background: token.purple1,
             padding: 8,
           }}
         >
@@ -103,7 +104,7 @@ function SortableCard({
             <span
               {...attributes}
               {...listeners}
-              style={{ cursor: "grab", color: "#b37feb" }}
+              style={{ cursor: "grab", color: token.purple5 }}
               onClick={(e) => e.stopPropagation()}
             >
               <HolderOutlined />
@@ -112,7 +113,7 @@ function SortableCard({
               style={{
                 fontWeight: 500,
                 fontSize: 13,
-                color: "#722ed1",
+                color: token.purple6,
                 cursor: "pointer",
               }}
               onClick={onClick}
@@ -120,7 +121,7 @@ function SortableCard({
               {componentName}
             </span>
             <span
-              style={{ fontSize: 11, color: "#9254de", marginLeft: "auto" }}
+              style={{ fontSize: 11, color: token.purple5, marginLeft: "auto" }}
             >
               {component.containerConfig?.type ?? "container"}
             </span>
@@ -132,8 +133,8 @@ function SortableCard({
               onClick={() => onChildClick(child)}
               style={{
                 padding: "6px 10px",
-                background: "#fff",
-                border: "1px solid #efdbff",
+                background: token.colorBgContainer,
+                border: `1px solid ${token.purple3}`,
                 borderRadius: 4,
                 marginBottom: 4,
                 cursor: "pointer",
@@ -181,8 +182,8 @@ function SortableCard({
       style={{
         ...style,
         padding: "8px 12px",
-        background: "#fff",
-        border: "1px solid #e8e8e8",
+        background: token.colorBgContainer,
+        border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 6,
         marginBottom: 6,
         cursor: "pointer",
@@ -195,18 +196,18 @@ function SortableCard({
       <span
         {...attributes}
         {...listeners}
-        style={{ cursor: "grab", color: "#bfbfbf" }}
+        style={{ cursor: "grab", color: token.colorTextQuaternary }}
         onClick={(e) => e.stopPropagation()}
       >
         <HolderOutlined />
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 500, fontSize: 13, color: "#262626" }}>{componentName}</div>
+        <div style={{ fontWeight: 500, fontSize: 13, color: token.colorText }}>{componentName}</div>
         {bindingSummary && (
           <div
             style={{
               fontSize: 11,
-              color: "#8c8c8c",
+              color: token.colorTextSecondary,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -290,6 +291,8 @@ export function VisualLayoutGrid({
     }
   };
 
+  const { token } = theme.useToken();
+
   return (
     <DndContext
       sensors={sensors}
@@ -303,9 +306,9 @@ export function VisualLayoutGrid({
           gap: 8,
           minHeight: 400,
           padding: 8,
-          background: "#f5f5f5",
+          background: token.colorBgLayout,
           borderRadius: 8,
-          border: "1px solid #e8e8e8",
+          border: `1px solid ${token.colorBorderSecondary}`,
         }}
       >
         {regions.map((region) => {
@@ -315,10 +318,10 @@ export function VisualLayoutGrid({
               key={region.id}
               style={{
                 gridArea: region.id,
-                border: "2px dashed #d9d9d9",
+                border: `2px dashed ${token.colorBorder}`,
                 borderRadius: 8,
                 padding: 8,
-                background: "#fafafa",
+                background: token.colorBgContainer,
                 display: "flex",
                 flexDirection: "column",
                 minHeight: 80,
@@ -327,7 +330,7 @@ export function VisualLayoutGrid({
               <Typography.Text
                 style={{
                   fontSize: 11,
-                  color: "#8c8c8c",
+                  color: token.colorTextSecondary,
                   marginBottom: 6,
                   textTransform: "uppercase",
                   letterSpacing: 0.5,
