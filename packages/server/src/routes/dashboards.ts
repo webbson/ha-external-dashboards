@@ -20,9 +20,44 @@ const createSchema = z.object({
   themeId: z.number().int().nullable().optional(),
   layoutSwitchMode: z.enum(["tabs", "auto-rotate"]).default("tabs"),
   layoutRotateInterval: z.number().int().positive().default(30),
-});
+  blackoutEntity: z.string().nullable().optional(),
+  blackoutStartTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  blackoutEndTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+}).refine(
+  (data) => {
+    const hasStart = !!data.blackoutStartTime;
+    const hasEnd = !!data.blackoutEndTime;
+    return hasStart === hasEnd;
+  },
+  { message: "Both blackout start and end times are required if either is set" }
+);
 
-const updateSchema = createSchema.partial();
+const updateSchema = z.object({
+  name: z.string().min(1),
+  slug: z.string().min(1).regex(/^[a-z0-9-]+$/),
+  accessMode: z.enum(["public", "password", "header"]).default("public"),
+  password: z.string().optional(),
+  headerName: z.string().optional(),
+  headerValue: z.string().optional(),
+  interactiveMode: z.boolean().default(false),
+  maxWidth: z.string().nullable().optional(),
+  padding: z.string().nullable().optional(),
+  themeId: z.number().int().nullable().optional(),
+  layoutSwitchMode: z.enum(["tabs", "auto-rotate"]).default("tabs"),
+  layoutRotateInterval: z.number().int().positive().default(30),
+  blackoutEntity: z.string().nullable().optional(),
+  blackoutStartTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  blackoutEndTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+}).partial().refine(
+  (data) => {
+    const hasStart = data.blackoutStartTime !== undefined ? !!data.blackoutStartTime : undefined;
+    const hasEnd = data.blackoutEndTime !== undefined ? !!data.blackoutEndTime : undefined;
+    if (hasStart === undefined && hasEnd === undefined) return true;
+    if (hasStart !== undefined && hasEnd !== undefined) return hasStart === hasEnd;
+    return true;
+  },
+  { message: "Both blackout start and end times are required if either is set" }
+);
 
 export async function dashboardRoutes(app: FastifyInstance) {
   app.get("/api/dashboards", async () => {
@@ -70,6 +105,9 @@ export async function dashboardRoutes(app: FastifyInstance) {
         themeId: body.themeId ?? null,
         layoutSwitchMode: body.layoutSwitchMode,
         layoutRotateInterval: body.layoutRotateInterval,
+        blackoutEntity: body.blackoutEntity ?? null,
+        blackoutStartTime: body.blackoutStartTime ?? null,
+        blackoutEndTime: body.blackoutEndTime ?? null,
       })
       .returning();
     return reply.code(201).send(row);

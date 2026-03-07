@@ -26,6 +26,9 @@ export const dashboards = sqliteTable("dashboards", {
     .notNull()
     .default("tabs"),
   layoutRotateInterval: integer("layout_rotate_interval").default(30),
+  blackoutEntity: text("blackout_entity"),
+  blackoutStartTime: text("blackout_start_time"),
+  blackoutEndTime: text("blackout_end_time"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

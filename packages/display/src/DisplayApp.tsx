@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { DashboardRenderer } from "./runtime/DashboardRenderer.js";
 import { PopupOverlay } from "./runtime/PopupOverlay.js";
 import { DialogOverlay } from "./runtime/DialogOverlay.js";
+import { BlackoutOverlay } from "./runtime/BlackoutOverlay.js";
 import { DisplayClient } from "./ws/DisplayClient.js";
 import type { EntityState } from "./template/engine.js";
 import { setDerivedEntityHandler } from "./template/engine.js";
@@ -20,6 +21,9 @@ interface DashboardConfig {
     standardVariables?: Record<string, string>;
     layoutSwitchMode: "tabs" | "auto-rotate";
     layoutRotateInterval: number;
+    blackoutEntity?: string | null;
+    blackoutStartTime?: string | null;
+    blackoutEndTime?: string | null;
   };
   layouts: DashboardLayout[];
   components: Record<number, ComponentDef>;
@@ -385,6 +389,12 @@ export function DisplayApp() {
         padding={config.dashboard.padding}
         layoutSwitchMode={config.dashboard.layoutSwitchMode}
         layoutRotateInterval={config.dashboard.layoutRotateInterval}
+      />
+      <BlackoutOverlay
+        blackoutEntity={config.dashboard.blackoutEntity}
+        blackoutStartTime={config.dashboard.blackoutStartTime}
+        blackoutEndTime={config.dashboard.blackoutEndTime}
+        entities={entities}
       />
       <PopupOverlay popup={popup} onDismiss={() => setPopup(null)} />
       <DialogOverlay

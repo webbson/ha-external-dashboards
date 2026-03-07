@@ -163,6 +163,15 @@ async function getSubscribedEntities(
     }
   }
 
+  // Add blackout entity if configured
+  const [dashboardRow] = await db
+    .select()
+    .from(dashboards)
+    .where(eq(dashboards.id, dashboardId));
+  if (dashboardRow?.blackoutEntity) {
+    entityIds.add(dashboardRow.blackoutEntity);
+  }
+
   return {
     entityIds: Array.from(entityIds),
     globExpansions,

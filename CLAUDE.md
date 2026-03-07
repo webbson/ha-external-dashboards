@@ -39,7 +39,7 @@ Build order matters: shared → admin/display → server
 ## Data Model
 
 - `themes` — name, standardVariables (JSON: colors/typography/borders/gaps/background), globalStyles (JSON: custom CSS variables)
-- `dashboards` — slug, accessKey, accessMode, themeId (FK → themes), layoutSwitchMode
+- `dashboards` — slug, accessKey, accessMode, themeId (FK → themes), layoutSwitchMode, blackoutEntity, blackoutStartTime, blackoutEndTime
 - `layouts` — name, structure (JSON: gridTemplate + regions with applyChromeTo)
 - `dashboard_layouts` — join table with sortOrder, label
 - `components` — template (Handlebars), styles (CSS), parameterDefs, entitySelectorDefs (modes: single/multiple/glob, optional allowedDomains, optional glob filters), testEntityBindings
@@ -52,6 +52,14 @@ Build order matters: shared → admin/display → server
 - Add `data-script-once` attribute to any element in the template to opt into run-once mode
 - In run-once mode, innerHTML is set and scripts execute only on mount — subsequent entity updates do not touch the DOM
 - Use for components that manage their own DOM (charts, maps, etc.) where re-execution would destroy state
+
+## Dashboard Blackout
+
+- Dashboards can be blacked out via a binary_sensor entity and/or a daily time schedule (HH:MM start/end)
+- Both triggers use OR logic: either condition activates the blackout
+- Evaluation is client-side: display subscribes to the blackout entity via existing WS connection; time schedule checked every 30s
+- Renders a pure black `position: fixed` overlay at z-index 99999 (above all content)
+- Overnight time ranges supported (e.g., 23:00-07:00)
 
 ## Styling Architecture
 

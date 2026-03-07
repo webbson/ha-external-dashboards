@@ -18,6 +18,7 @@ import {
 import { PlusOutlined, EditOutlined } from "@ant-design/icons";
 import Icon from "@mdi/react";
 import { getIconPath } from "../components/selectors/MdiIconSelector.js";
+import { EntitySelector } from "../components/selectors/EntitySelector.js";
 import { ComponentPickerModal } from "../components/dashboard/ComponentPickerModal.js";
 import { ComponentConfigModal } from "../components/dashboard/ComponentConfigModal.js";
 import { VisualLayoutGrid } from "../components/dashboard/VisualLayoutGrid.js";
@@ -39,6 +40,9 @@ interface Dashboard {
   themeId?: number | null;
   layoutSwitchMode: string;
   layoutRotateInterval: number;
+  blackoutEntity?: string | null;
+  blackoutStartTime?: string | null;
+  blackoutEndTime?: string | null;
   layouts?: DashboardLayout[];
 }
 
@@ -430,6 +434,41 @@ export function DashboardEditor() {
                         </Form.Item>
                       </Col>
                     )}
+                  </Row>
+
+                  <Row gutter={16}>
+                    <Col span={8}>
+                      <Form.Item
+                        name="blackoutEntity"
+                        label="Blackout Entity"
+                        tooltip="Binary sensor that triggers blackout when 'on'"
+                      >
+                        <EntitySelector
+                          mode="single"
+                          allowedDomains={["binary_sensor"]}
+                          value={form.getFieldValue("blackoutEntity") ?? undefined}
+                          onChange={(v) => form.setFieldValue("blackoutEntity", v || null)}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="blackoutStartTime"
+                        label="Blackout Start Time"
+                        tooltip="HH:MM — blackout activates at this time daily"
+                      >
+                        <Input placeholder="e.g. 23:00" allowClear />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item
+                        name="blackoutEndTime"
+                        label="Blackout End Time"
+                        tooltip="HH:MM — blackout deactivates at this time daily"
+                      >
+                        <Input placeholder="e.g. 07:00" allowClear />
+                      </Form.Item>
+                    </Col>
                   </Row>
                 </div>
               ),
