@@ -19,6 +19,7 @@ import { previewRoutes } from "./routes/preview.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { popupTriggerRoutes } from "./routes/popup-trigger.js";
 import { displayDataRoutes } from "./routes/display-data.js";
+import { iconRoutes } from "./routes/icons.js";
 import { ingressAuth } from "./middleware/auth.js";
 import { dashboardLogin } from "./middleware/dashboard-auth.js";
 import { seedPrebuiltComponents } from "./prebuilt/index.js";
@@ -66,6 +67,7 @@ async function start() {
   await admin.register(previewRoutes);
   await admin.register(popupTriggerRoutes);
   await admin.register(settingsRoutes);
+  await admin.register(iconRoutes);
 
   // Shared assets path
   const assetsDir = path.resolve(__dirname, "../../..", process.env.ASSETS_DIR ?? "/config/assets");
@@ -123,6 +125,9 @@ async function start() {
 
   // Display data API (serves dashboard config to display app)
   await external.register(displayDataRoutes);
+
+  // Icon resolution API (so display doesn't need to bundle @mdi/js)
+  await external.register(iconRoutes);
 
   // Popup trigger endpoint (for HA rest_command)
   await external.register(popupTriggerRoutes);

@@ -1,19 +1,7 @@
 import { useState, useEffect } from "react";
-import Icon from "@mdi/react";
-import * as mdiIcons from "@mdi/js";
 import { LayoutRenderer } from "./LayoutRenderer.js";
 import type { EntityState } from "../template/engine.js";
-
-function getIconPath(mdiName: string): string | undefined {
-  const camelKey =
-    "mdi" +
-    mdiName
-      .slice(4)
-      .split("-")
-      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-      .join("");
-  return (mdiIcons as Record<string, string>)[camelKey];
-}
+import { getIconPath } from "../icons/icon-resolver.js";
 
 interface DashboardLayout {
   id: number;
@@ -153,11 +141,9 @@ export function DashboardRenderer({
                 }}
               >
                 {iconPath && (
-                  <Icon
-                    path={iconPath}
-                    size="1em"
-                    color="currentColor"
-                  />
+                  <svg viewBox="0 0 24 24" width="1em" height="1em" style={{ fill: "currentColor", verticalAlign: "middle" }}>
+                    <path d={iconPath} />
+                  </svg>
                 )}
                 {dl.label}
               </button>

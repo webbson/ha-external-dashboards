@@ -1,5 +1,5 @@
 import Handlebars from "handlebars";
-import * as mdiIcons from "@mdi/js";
+import { getIconPath } from "../icons/icon-resolver.js";
 
 function isGlobPattern(value: string): boolean {
   return value.includes("*") || value.includes("?");
@@ -22,14 +22,12 @@ export interface TemplateContext {
 
 function mdiNameToPath(name: string): string | undefined {
   if (!name || typeof name !== "string") return undefined;
-  const stripped = name.replace(/^mdi[:\-]/, "");
-  const camelKey =
-    "mdi" +
-    stripped
-      .split("-")
-      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-      .join("");
-  return (mdiIcons as Record<string, string>)[camelKey];
+  const normalized = name.replace(/^mdi[:\-]/, "").replace(/^/, "mdi-");
+  // Avoid double prefix: mdi-mdi-xxx
+  const iconName = normalized.startsWith("mdi-mdi-")
+    ? normalized.slice(4)
+    : normalized;
+  return getIconPath(iconName);
 }
 
 Handlebars.registerHelper("mdiIcon", function (...args: unknown[]) {

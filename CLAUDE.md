@@ -11,7 +11,7 @@ Single Node.js monolith with two HTTP listeners:
 - Server: Fastify + @fastify/websocket
 - Database: SQLite + Drizzle ORM (`/config/external_dashboards.db`)
 - Admin UI: React 19 + React Router + Ant Design + Monaco Editor
-- Display UI: React 19 + Handlebars (client-side template rendering) + uPlot (charts)
+- Display UI: React 19 + Handlebars (client-side template rendering) + uPlot (lazy-loaded charts)
 - HA Communication: WebSocket API via `SUPERVISOR_TOKEN`
 
 ## Project Structure
@@ -102,6 +102,21 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 - Entity IDs are comma-separated (max 10), validated with Zod
 - Returns array of state arrays from HA's `/api/history/period/` endpoint
 - Responses cached for 30s; used by the Graph Card prebuilt component
+
+### Icon Resolution
+
+- MDI icons (`{{mdiIcon "mdi-lightbulb"}}`) are resolved server-side via `GET /api/icons/:names` (comma-separated, max 50)
+- Server uses `@mdi/js` to look up SVG paths; display bundle does NOT include `@mdi/js`
+- Display caches icon paths in memory; pre-resolves icons from dashboard config before first render
+- Client-side fallback set (~12 common HA icons) for offline resilience
+- `DashboardRenderer` and `TabsContainer` use inline `<svg>` instead of `@mdi/react`
+
+### Display Bundle Optimization
+
+- Display main chunk is ~229KB (72KB gzipped); Handlebars and uPlot are separate chunks
+- uPlot is lazy-loaded via dynamic `import()` only when a dashboard uses graph components
+- Handlebars is split into its own chunk for independent caching
+- `manualChunks` config in `packages/display/vite.config.ts`
 
 ## Component Import/Export
 

@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
-import Icon from "@mdi/react";
-import * as mdiIcons from "@mdi/js";
 import { ComponentRenderer } from "./ComponentRenderer.js";
 import { VisibilityGate } from "./VisibilityGate.js";
 import { useEntitySubsetWithDerived, getInstanceEntityIds } from "./useEntitySubset.js";
 import type { EntityState } from "../template/engine.js";
+import { getIconPath } from "../icons/icon-resolver.js";
 
 interface ChildInstance {
   id: number;
@@ -34,17 +33,6 @@ interface TabsContainerProps {
   entities: Record<string, EntityState>;
   globalStyles: Record<string, string>;
   globExpansions: Record<string, string[]>;
-}
-
-function getIconPath(mdiName: string): string | undefined {
-  const camelKey =
-    "mdi" +
-    mdiName
-      .slice(4)
-      .split("-")
-      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-      .join("");
-  return (mdiIcons as Record<string, string>)[camelKey];
 }
 
 export function TabsContainer({
@@ -117,11 +105,9 @@ export function TabsContainer({
               }}
             >
               {iconPath && (
-                <Icon
-                  path={iconPath}
-                  size={0.7}
-                  color={isActive ? accentColor : fontColorSecondary}
-                />
+                <svg viewBox="0 0 24 24" width="0.7em" height="0.7em" style={{ fill: isActive ? accentColor : fontColorSecondary, verticalAlign: "middle" }}>
+                  <path d={iconPath} />
+                </svg>
               )}
               {label}
             </button>

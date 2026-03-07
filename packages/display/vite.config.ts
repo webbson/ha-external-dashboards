@@ -6,6 +6,14 @@ export default defineConfig({
   base: "/",
   build: {
     outDir: "dist",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          uplot: ["uplot"],
+          handlebars: ["handlebars"],
+        },
+      },
+    },
   },
   server: {
     proxy: {

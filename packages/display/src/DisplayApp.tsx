@@ -6,6 +6,8 @@ import { BlackoutOverlay } from "./runtime/BlackoutOverlay.js";
 import { DisplayClient } from "./ws/DisplayClient.js";
 import type { EntityState } from "./template/engine.js";
 import { setDerivedEntityHandler } from "./template/engine.js";
+import { resolveIcons, extractIconNames } from "./icons/icon-resolver.js";
+import { ensureUPlot } from "./uplot-loader.js";
 
 interface DashboardConfig {
   dashboard: {
@@ -121,6 +123,26 @@ export function DisplayApp() {
         return;
       }
       const data = (await res.json()) as DashboardConfig;
+
+      // Pre-resolve icons before first render
+      const iconNames: string[] = [];
+      // Layout tab icons
+      for (const layout of data.layouts) {
+        if (layout.icon) iconNames.push(layout.icon);
+      }
+      // Icons used in component templates
+      const templates = Object.values(data.components).map((c) => c.template);
+      iconNames.push(...extractIconNames(templates));
+      if (iconNames.length > 0) {
+        await resolveIcons(iconNames);
+      }
+
+      // Lazy-load uPlot if any component template uses it
+      const needsUPlot = templates.some((t) => t.includes("uPlot"));
+      if (needsUPlot) {
+        await ensureUPlot();
+      }
+
       setConfig(data);
       setNeedsAuth(false);
     } catch (err) {
