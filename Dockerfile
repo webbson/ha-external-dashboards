@@ -34,7 +34,12 @@ COPY --from=builder /app/packages/server/package.json ./
 COPY --from=builder /app/packages/admin/dist ./admin
 COPY --from=builder /app/packages/display/dist ./display
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/server/node_modules ./server_modules
 COPY --from=builder /app/packages/shared/dist ./shared
+
+COPY drizzle/ ./drizzle/
+COPY drizzle.config.ts ./
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+  CMD node -e "fetch('http://localhost:8080/api/ha/status').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 CMD ["node", "dist/index.js"]

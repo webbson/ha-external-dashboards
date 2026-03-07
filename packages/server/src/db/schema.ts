@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 export const dashboards = sqliteTable("dashboards", {
@@ -17,7 +17,7 @@ export const dashboards = sqliteTable("dashboards", {
   interactiveMode: integer("interactive_mode", { mode: "boolean" })
     .notNull()
     .default(false),
-  themeId: integer("theme_id").references(() => themes.id),
+  themeId: integer("theme_id").references(() => themes.id, { onDelete: "set null" }),
   maxWidth: text("max_width"),
   padding: text("padding"),
   layoutSwitchMode: text("layout_switch_mode", {
@@ -84,7 +84,10 @@ export const dashboardLayouts = sqliteTable("dashboard_layouts", {
   sortOrder: integer("sort_order").notNull().default(0),
   label: text("label"),
   icon: text("icon"),
-});
+}, (table) => [
+  index("idx_dashboard_layouts_dashboard_id").on(table.dashboardId),
+  index("idx_dashboard_layouts_layout_id").on(table.layoutId),
+]);
 
 export const components = sqliteTable("components", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -186,7 +189,10 @@ export const componentInstances = sqliteTable("component_instances", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
-});
+}, (table) => [
+  index("idx_component_instances_dashboard_layout_id").on(table.dashboardLayoutId),
+  index("idx_component_instances_component_id").on(table.componentId),
+]);
 
 export const assets = sqliteTable("assets", {
   id: integer("id").primaryKey({ autoIncrement: true }),

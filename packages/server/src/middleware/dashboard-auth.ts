@@ -2,10 +2,15 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../db/connection.js";
 import { dashboards } from "../db/schema.js";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "node:crypto";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? "external-dashboards-secret";
+const JWT_SECRET = process.env.JWT_SECRET ?? (() => {
+  console.warn("[WARN] JWT_SECRET not set — using random secret. Dashboard tokens will not survive restarts.");
+  return crypto.randomBytes(32).toString("hex");
+})();
 
 export async function dashboardAuth(
   req: FastifyRequest<{ Params: { slug: string } }>,
@@ -66,7 +71,7 @@ export async function dashboardLogin(
   reply: FastifyReply
 ) {
   const { slug } = req.params;
-  const { password } = req.body as { password: string };
+  const { password } = z.object({ password: z.string().min(1) }).parse(req.body);
 
   const [dashboard] = await db
     .select()

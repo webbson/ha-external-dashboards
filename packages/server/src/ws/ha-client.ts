@@ -19,6 +19,7 @@ export class HAClient {
   private supervisorToken: string;
   private haUrl: string;
   private connected = false;
+  private reconnectAttempts = 0;
 
   constructor() {
     this.supervisorToken = process.env.SUPERVISOR_TOKEN ?? "";
@@ -92,6 +93,7 @@ export class HAClient {
 
       case "auth_ok":
         this.connected = true;
+        this.reconnectAttempts = 0;
         this.fetchStates();
         this.subscribeEvents();
         resolve();
@@ -178,12 +180,15 @@ export class HAClient {
 
   private scheduleReconnect() {
     if (this.reconnectTimer) return;
+    const delay = Math.min(5000 * Math.pow(2, this.reconnectAttempts), 60000);
+    this.reconnectAttempts++;
+    console.log(`HA reconnect in ${delay / 1000}s (attempt ${this.reconnectAttempts})`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connect().catch((err) => {
         console.error("HA reconnect failed:", err.message);
       });
-    }, 5000);
+    }, delay);
   }
 
   close() {

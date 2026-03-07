@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, Component } from "react";
+import type { ReactNode, ErrorInfo } from "react";
 import { DashboardRenderer } from "./runtime/DashboardRenderer.js";
 import { PopupOverlay } from "./runtime/PopupOverlay.js";
 import { DialogOverlay } from "./runtime/DialogOverlay.js";
@@ -85,6 +86,27 @@ interface HAGlobal {
 declare global {
   interface Window {
     __ha?: HAGlobal;
+  }
+}
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
+  state = { error: null as string | null };
+  static getDerivedStateFromError(err: Error) {
+    return { error: err.message };
+  }
+  componentDidCatch(err: Error, info: ErrorInfo) {
+    console.error("[Display] Render error:", err, info.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 24, color: "#f55", background: "#0a0a1a", fontFamily: "system-ui" }}>
+          <div style={{ fontSize: 18, marginBottom: 8 }}>Dashboard render error</div>
+          <pre style={{ opacity: 0.7, whiteSpace: "pre-wrap" }}>{this.state.error}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
   }
 }
 
@@ -409,17 +431,19 @@ export function DisplayApp() {
         overflow: "hidden",
       }}
     >
-      <DashboardRenderer
-        dashboardLayouts={config.layouts}
-        components={config.components}
-        entities={entities}
-        globalStyles={globalStyles}
-        globExpansions={globExpansions}
-        maxWidth={config.dashboard.maxWidth}
-        padding={config.dashboard.padding}
-        layoutSwitchMode={config.dashboard.layoutSwitchMode}
-        layoutRotateInterval={config.dashboard.layoutRotateInterval}
-      />
+      <ErrorBoundary>
+        <DashboardRenderer
+          dashboardLayouts={config.layouts}
+          components={config.components}
+          entities={entities}
+          globalStyles={globalStyles}
+          globExpansions={globExpansions}
+          maxWidth={config.dashboard.maxWidth}
+          padding={config.dashboard.padding}
+          layoutSwitchMode={config.dashboard.layoutSwitchMode}
+          layoutRotateInterval={config.dashboard.layoutRotateInterval}
+        />
+      </ErrorBoundary>
       <BlackoutOverlay
         blackoutEntity={config.dashboard.blackoutEntity}
         blackoutStartTime={config.dashboard.blackoutStartTime}

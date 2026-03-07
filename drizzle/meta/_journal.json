@@ -64,6 +64,13 @@
       "when": 1772910868054,
       "tag": "0008_fat_reptil",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1772920135921,
+      "tag": "0009_right_swordsman",
+      "breakpoints": true
     }
   ]
 }

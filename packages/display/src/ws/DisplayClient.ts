@@ -8,6 +8,8 @@ export class DisplayClient {
   private accessKey: string;
   private slug: string;
   private _globExpansions: Record<string, string[]> = {};
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private closed = false;
 
   constructor(slug: string, accessKey: string) {
     this.slug = slug;
@@ -36,8 +38,8 @@ export class DisplayClient {
     };
 
     this.ws.onclose = () => {
-      // Reconnect after 3 seconds
-      setTimeout(() => this.connect(), 3000);
+      if (this.closed) return;
+      this.reconnectTimer = setTimeout(() => this.connect(), 3000);
     };
 
     this.ws.onerror = () => {
@@ -117,6 +119,11 @@ export class DisplayClient {
   }
 
   close() {
+    this.closed = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.ws?.close();
     this.ws = null;
   }

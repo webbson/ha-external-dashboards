@@ -50,7 +50,10 @@ export async function assetRoutes(app: FastifyInstance) {
         .where(eq(assets.id, id));
       if (!row) return reply.code(404).send({ error: "Not found" });
 
-      const filePath = path.join(ASSETS_DIR, row.fileName);
+      const filePath = path.resolve(ASSETS_DIR, row.fileName);
+      if (!filePath.startsWith(path.resolve(ASSETS_DIR) + path.sep)) {
+        return reply.code(403).send({ error: "Forbidden" });
+      }
       if (!fs.existsSync(filePath)) {
         return reply.code(404).send({ error: "File not found" });
       }
@@ -75,7 +78,8 @@ export async function assetRoutes(app: FastifyInstance) {
     if (!data) return reply.code(400).send({ error: "No file uploaded" });
 
     const buffer = await data.toBuffer();
-    const fileName = `${Date.now()}-${data.filename}`;
+    const safeName = path.basename(data.filename).replace(/[^a-zA-Z0-9._-]/g, "_");
+    const fileName = `${Date.now()}-${safeName}`;
     const folder = data.fields?.folder
       ? (data.fields.folder as { value: string }).value || null
       : null;
@@ -121,8 +125,8 @@ export async function assetRoutes(app: FastifyInstance) {
         .returning();
       if (!row) return reply.code(404).send({ error: "Not found" });
 
-      const filePath = path.join(ASSETS_DIR, row.fileName);
-      if (fs.existsSync(filePath)) {
+      const filePath = path.resolve(ASSETS_DIR, row.fileName);
+      if (filePath.startsWith(path.resolve(ASSETS_DIR) + path.sep) && fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
       return { success: true };

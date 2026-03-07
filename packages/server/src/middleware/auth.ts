@@ -11,7 +11,7 @@ export async function ingressAuth(app: FastifyInstance) {
 
       const ingressPath = req.headers["x-ingress-path"];
       if (!ingressPath) {
-        reply.code(401).send({ error: "Unauthorized: not via ingress" });
+        return reply.code(401).send({ error: "Unauthorized: not via ingress" });
       }
     }
   );

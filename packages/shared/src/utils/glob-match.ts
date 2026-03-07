@@ -4,9 +4,12 @@
  */
 
 export function globToRegex(pattern: string): RegExp {
+  if (pattern.length > 200) {
+    throw new Error("Glob pattern too long");
+  }
   const escaped = pattern
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-    .replace(/\*/g, ".*")
+    .replace(/\*+/g, ".*")
     .replace(/\?/g, ".");
   return new RegExp(`^${escaped}$`);
 }

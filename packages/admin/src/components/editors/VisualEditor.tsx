@@ -57,7 +57,7 @@ export function VisualEditor({
         }
         setAvailableDomains(Array.from(domains).sort());
       })
-      .catch(() => {});
+      .catch((err) => console.warn("Failed to load entity domains:", err));
   }, []);
 
   const addParam = () => {

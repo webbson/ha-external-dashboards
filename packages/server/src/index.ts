@@ -3,6 +3,7 @@ import fastifyStatic from "@fastify/static";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyCors from "@fastify/cors";
 import fastifyWebsocket from "@fastify/websocket";
+import fastifyRateLimit from "@fastify/rate-limit";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runMigrations } from "./db/migrate.js";
@@ -29,6 +30,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INGRESS_PORT = parseInt(process.env.INGRESS_PORT ?? "8080");
 const EXTERNAL_PORT = parseInt(process.env.EXTERNAL_PORT ?? "8099");
 const isDev = process.env.NODE_ENV === "development";
+
+// Validate critical env vars at startup
+if (!isDev && !process.env.SUPERVISOR_TOKEN) {
+  console.warn("[WARN] SUPERVISOR_TOKEN not set — HA integration will be unavailable");
+}
+if (!process.env.JWT_SECRET) {
+  console.warn("[WARN] JWT_SECRET not set — dashboard auth tokens will not survive restarts");
+}
 
 async function start() {
   // Run database migrations
@@ -106,14 +115,23 @@ async function start() {
   const external = Fastify({ logger: true });
   await external.register(errorHandler);
   await external.register(fastifyCors);
+  await external.register(fastifyRateLimit, { global: false });
   await external.register(fastifyWebsocket);
 
   // WebSocket proxy for display clients
   await setupWebSocketProxy(external);
 
-  // Dashboard login endpoint
+  // Dashboard login endpoint (rate-limited to prevent brute force)
   external.post<{ Params: { slug: string } }>(
     "/d/:slug/login",
+    {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: "1 minute",
+        },
+      },
+    },
     dashboardLogin
   );
 
