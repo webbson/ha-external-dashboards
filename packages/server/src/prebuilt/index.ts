@@ -437,18 +437,14 @@ comp.addEventListener('click', function() {
     var start = new Date(now.getTime() - hours * 3600000).toISOString();
     var end = now.toISOString();
     var url = '/api/history/' + entityIds.join(',') + '?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end);
-    console.log('[Graph Card] fetching:', url);
 
     fetch(url)
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        console.log('[Graph Card] data received, arrays:', Array.isArray(data) ? data.length : 'not array', 'first entry length:', Array.isArray(data) && data[0] ? data[0].length : 0);
         if (!Array.isArray(data)) return;
         renderCharts(data);
       })
-      .catch(function(err) {
-        console.warn('[Graph Card] fetch error', err);
-      });
+      .catch(function() {});
   }
 
   function aggregateToBuckets(timestamps, values, bucketSize) {
@@ -491,8 +487,6 @@ comp.addEventListener('click', function() {
       if (ts.length > 0) seriesData.push({ id: eid, ts: ts, vals: vals });
     }
 
-    console.log('[Graph Card] parsed series:', seriesData.length, 'comp size:', comp.clientWidth + 'x' + comp.clientHeight, 'container size:', container.clientWidth + 'x' + container.clientHeight);
-
     if (seriesData.length === 0) {
       container.innerHTML = '<div style="color:var(--db-font-color-secondary,#aaa);padding:20px;text-align:center;">No numeric data available</div>';
       return;
@@ -515,10 +509,7 @@ comp.addEventListener('click', function() {
       } else {
         container.classList.remove('graph-card-stacked');
         var colors = seriesData.map(function(_, idx) { return getColor(idx); });
-        console.log('[Graph Card] building chart, width:', comp.clientWidth, 'height:', chartHeight, 'series:', seriesData.length);
         var chart = buildChart(container, seriesData, colors, isSparkline, isBar, null);
-        console.log('[Graph Card] chart created, root:', chart.root, 'root parent:', chart.root.parentElement);
-        console.log('[Graph Card] container in doc:', document.contains(container), 'comp in doc:', document.contains(comp));
         charts.push(chart);
       }
     } catch(e) {
