@@ -14,7 +14,7 @@ import { layoutRoutes } from "./routes/layouts.js";
 import { componentRoutes } from "./routes/components.js";
 import { themeRoutes } from "./routes/themes.js";
 import { assetRoutes } from "./routes/assets.js";
-import { haProxyRoutes, haImageProxyRoutes } from "./routes/ha-proxy.js";
+import { haProxyRoutes, haImageProxyRoutes, haHistoryProxyRoutes } from "./routes/ha-proxy.js";
 import { previewRoutes } from "./routes/preview.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { popupTriggerRoutes } from "./routes/popup-trigger.js";
@@ -62,6 +62,7 @@ async function start() {
   await admin.register(assetRoutes);
   await admin.register(haProxyRoutes);
   await admin.register(haImageProxyRoutes);
+  await admin.register(haHistoryProxyRoutes);
   await admin.register(previewRoutes);
   await admin.register(popupTriggerRoutes);
   await admin.register(settingsRoutes);
@@ -116,6 +117,9 @@ async function start() {
 
   // HA image proxy for display (entity_picture URLs)
   await external.register(haImageProxyRoutes);
+
+  // HA history proxy for graph components
+  await external.register(haHistoryProxyRoutes);
 
   // Display data API (serves dashboard config to display app)
   await external.register(displayDataRoutes);

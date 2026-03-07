@@ -11,7 +11,7 @@ Single Node.js monolith with two HTTP listeners:
 - Server: Fastify + @fastify/websocket
 - Database: SQLite + Drizzle ORM (`/config/external_dashboards.db`)
 - Admin UI: React 19 + React Router + Ant Design + Monaco Editor
-- Display UI: React 19 + Handlebars (client-side template rendering)
+- Display UI: React 19 + Handlebars (client-side template rendering) + uPlot (charts)
 - HA Communication: WebSocket API via `SUPERVISOR_TOKEN`
 
 ## Project Structure
@@ -45,6 +45,13 @@ Build order matters: shared → admin/display → server
 - `components` — template (Handlebars), styles (CSS), parameterDefs, entitySelectorDefs (modes: single/multiple/glob, optional allowedDomains, optional glob filters), testEntityBindings
 - `component_instances` — placed in dashboard_layout regions with parameterValues, entityBindings, visibilityRules
 - `assets` — uploaded files in /config/assets/, virtual folder field for organization
+
+## Template Script Modes
+
+- By default, component `<script>` tags re-execute on every entity state change (innerHTML + scripts re-run)
+- Add `data-script-once` attribute to any element in the template to opt into run-once mode
+- In run-once mode, innerHTML is set and scripts execute only on mount — subsequent entity updates do not touch the DOM
+- Use for components that manage their own DOM (charts, maps, etc.) where re-execution would destroy state
 
 ## Styling Architecture
 
@@ -80,6 +87,13 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 - Both admin (8080) and external (8099) servers proxy `/api/image_proxy/*` and `/api/camera_proxy/*` to HA Core
 - HA entity `entity_picture` attributes (relative paths) resolve correctly in templates and previews
 - Responses are cached for 60s
+
+### HA History Proxy
+
+- Both servers proxy `GET /api/history/:entityIds?start=<ISO>&end=<ISO>` to HA Core's recorder API
+- Entity IDs are comma-separated (max 10), validated with Zod
+- Returns array of state arrays from HA's `/api/history/period/` endpoint
+- Responses cached for 30s; used by the Graph Card prebuilt component
 
 ## Security
 

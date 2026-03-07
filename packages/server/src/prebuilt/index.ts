@@ -369,6 +369,310 @@ comp.addEventListener('click', function() {
     containerConfig: null,
   },
   {
+    name: "Graph Card",
+    template: `<div class="graph-card" data-script-once>
+  {{#if (param "title")}}<div class="graph-card-title">{{param "title"}}</div>{{/if}}
+  <div class="graph-card-charts"
+    data-entities="{{param "entities"}}"
+    data-hours="{{param "hours"}}"
+    data-refresh="{{param "refreshInterval"}}"
+    data-chart-mode="{{param "chartMode"}}"
+    data-display-mode="{{param "displayMode"}}"
+    data-show-legend="{{param "showLegend"}}"
+    data-show-grid="{{param "showGrid"}}"
+    data-line-width="{{param "lineWidth"}}"
+    data-fill-opacity="{{param "fillOpacity"}}"
+    data-colors="{{param "colors"}}"
+    data-bar-bucket="{{param "barBucketMinutes"}}"
+    data-chart-height="{{param "chartHeight"}}">
+  </div>
+</div>
+<script>
+(function() {
+  var container = comp.querySelector('.graph-card-charts');
+  if (!container) return;
+  var attrs = container.dataset;
+
+  if (!window.uPlot) {
+    container.innerHTML = '<div style="color:#f44;padding:20px;text-align:center;">uPlot not loaded</div>';
+    return;
+  }
+
+  var entityIds = (attrs.entities || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  if (entityIds.length === 0) {
+    container.innerHTML = '<div style="color:var(--db-font-color-secondary,#aaa);padding:20px;text-align:center;">Select entities to display</div>';
+    return;
+  }
+
+  var hours = parseFloat(attrs.hours) || 24;
+  var refreshSec = parseInt(attrs.refresh) || 300;
+  var chartMode = attrs.chartMode || 'line';
+  var displayMode = attrs.displayMode || 'overlay';
+  var showLegend = attrs.showLegend !== 'false';
+  var showGrid = attrs.showGrid !== 'false';
+  var lineWidth = parseFloat(attrs.lineWidth) || 2;
+  var fillOpacity = parseFloat(attrs.fillOpacity) || 0.1;
+  var barBucket = (parseInt(attrs.barBucket) || 60) * 60;
+  var chartHeight = parseInt(attrs.chartHeight) || 200;
+  container.style.height = chartHeight + 'px';
+
+  var userColors = (attrs.colors || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  var defaultPalette = ['#4fc3f7','#ff6384','#36a2eb','#ffce56','#4bc0c0','#9966ff','#ff9f40','#c9cbcf'];
+
+  function getColor(i) {
+    return userColors[i] || defaultPalette[i % defaultPalette.length];
+  }
+
+  function hexToRgba(hex, alpha) {
+    var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+
+  var charts = [];
+  var observer = null;
+  var intervalId = null;
+
+  function fetchAndRender() {
+    var now = new Date();
+    var start = new Date(now.getTime() - hours * 3600000).toISOString();
+    var end = now.toISOString();
+    var url = '/api/history/' + entityIds.join(',') + '?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end);
+    console.log('[Graph Card] fetching:', url);
+
+    fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        console.log('[Graph Card] data received, arrays:', Array.isArray(data) ? data.length : 'not array', 'first entry length:', Array.isArray(data) && data[0] ? data[0].length : 0);
+        if (!Array.isArray(data)) return;
+        renderCharts(data);
+      })
+      .catch(function(err) {
+        console.warn('[Graph Card] fetch error', err);
+      });
+  }
+
+  function aggregateToBuckets(timestamps, values, bucketSize) {
+    if (timestamps.length === 0) return { ts: [], vals: [] };
+    var minT = timestamps[0], maxT = timestamps[timestamps.length - 1];
+    var bucketStart = Math.floor(minT / bucketSize) * bucketSize;
+    var buckets = [], bucketVals = [];
+    for (var t = bucketStart; t <= maxT; t += bucketSize) {
+      buckets.push(t + bucketSize / 2);
+      var sum = 0, count = 0;
+      for (var j = 0; j < timestamps.length; j++) {
+        if (timestamps[j] >= t && timestamps[j] < t + bucketSize) {
+          sum += values[j]; count++;
+        }
+      }
+      bucketVals.push(count > 0 ? sum / count : null);
+    }
+    return { ts: buckets, vals: bucketVals };
+  }
+
+  function renderCharts(data) {
+    // Destroy old charts
+    charts.forEach(function(c) { try { c.destroy(); } catch(e) {} });
+    charts = [];
+    container.innerHTML = '';
+
+    // Parse HA history response into per-entity time series
+    var seriesData = [];
+    for (var i = 0; i < data.length; i++) {
+      var states = data[i];
+      if (!states || states.length === 0) continue;
+      var eid = states[0].entity_id || entityIds[i] || ('entity_' + i);
+      var ts = [], vals = [];
+      for (var j = 0; j < states.length; j++) {
+        var v = parseFloat(states[j].state);
+        if (isNaN(v)) continue;
+        ts.push(new Date(states[j].last_changed).getTime() / 1000);
+        vals.push(v);
+      }
+      if (ts.length > 0) seriesData.push({ id: eid, ts: ts, vals: vals });
+    }
+
+    console.log('[Graph Card] parsed series:', seriesData.length, 'comp size:', comp.clientWidth + 'x' + comp.clientHeight, 'container size:', container.clientWidth + 'x' + container.clientHeight);
+
+    if (seriesData.length === 0) {
+      container.innerHTML = '<div style="color:var(--db-font-color-secondary,#aaa);padding:20px;text-align:center;">No numeric data available</div>';
+      return;
+    }
+
+    var isSparkline = chartMode === 'sparkline';
+    var isBar = chartMode === 'bar';
+    var isStacked = displayMode === 'stacked';
+
+    try {
+      if (isStacked) {
+        container.classList.add('graph-card-stacked');
+        seriesData.forEach(function(sd, idx) {
+          var wrap = document.createElement('div');
+          wrap.className = 'graph-card-stacked-item';
+          container.appendChild(wrap);
+          var chart = buildChart(wrap, [sd], [getColor(idx)], isSparkline, isBar, sd.id);
+          charts.push(chart);
+        });
+      } else {
+        container.classList.remove('graph-card-stacked');
+        var colors = seriesData.map(function(_, idx) { return getColor(idx); });
+        console.log('[Graph Card] building chart, width:', comp.clientWidth, 'height:', chartHeight, 'series:', seriesData.length);
+        var chart = buildChart(container, seriesData, colors, isSparkline, isBar, null);
+        console.log('[Graph Card] chart created, root:', chart.root, 'root parent:', chart.root.parentElement);
+        console.log('[Graph Card] container in doc:', document.contains(container), 'comp in doc:', document.contains(comp));
+        charts.push(chart);
+      }
+    } catch(e) {
+      console.error('[Graph Card] chart creation error:', e);
+      container.innerHTML = '<div style="color:#f44;padding:20px;">Chart error: ' + e.message + '</div>';
+    }
+  }
+
+  function buildChart(target, seriesArr, colors, sparkline, bar, label) {
+    // Merge all timestamps into a unified x-axis
+    var allTs = {};
+    seriesArr.forEach(function(sd) {
+      sd.ts.forEach(function(t) { allTs[t] = true; });
+    });
+    var xVals = Object.keys(allTs).map(Number).sort(function(a, b) { return a - b; });
+
+    var uplotData, uplotSeries;
+
+    if (bar) {
+      // Aggregate into time buckets
+      var bucketTs = null;
+      var barData = [null];
+      uplotSeries = [{}];
+      seriesArr.forEach(function(sd, idx) {
+        var agg = aggregateToBuckets(sd.ts, sd.vals, barBucket);
+        if (!bucketTs) bucketTs = agg.ts;
+        barData.push(agg.vals);
+        uplotSeries.push({
+          label: label || sd.id.split('.').pop(),
+          stroke: colors[idx],
+          fill: hexToRgba(colors[idx], 0.7),
+          paths: window.uPlot.paths.bars({ size: [0.6, 100], gap: 2 }),
+        });
+      });
+      barData[0] = bucketTs || [];
+      uplotData = barData;
+    } else {
+      // Line / sparkline: align series to unified timestamps
+      var alignedData = [xVals];
+      uplotSeries = [{}];
+      seriesArr.forEach(function(sd, idx) {
+        var valMap = {};
+        sd.ts.forEach(function(t, i) { valMap[t] = sd.vals[i]; });
+        var aligned = xVals.map(function(t) { return valMap[t] !== undefined ? valMap[t] : null; });
+        alignedData.push(aligned);
+        uplotSeries.push({
+          label: label || sd.id.split('.').pop(),
+          stroke: colors[idx],
+          fill: hexToRgba(colors[idx], fillOpacity),
+          width: lineWidth,
+        });
+      });
+      uplotData = alignedData;
+    }
+
+    var fontColor = getComputedStyle(comp).getPropertyValue('--db-font-color-secondary').trim() || '#aaa';
+    var width = comp.clientWidth || target.clientWidth || 300;
+    var height = sparkline ? 60 : chartHeight;
+
+    var opts = {
+      width: width,
+      height: height,
+      cursor: sparkline ? { show: false } : { show: true },
+      legend: { show: !sparkline && showLegend },
+      series: uplotSeries,
+      axes: [
+        {
+          show: !sparkline,
+          stroke: fontColor,
+          grid: { show: !sparkline && showGrid, stroke: fontColor, width: 0.5 },
+          ticks: { show: !sparkline, stroke: fontColor },
+          font: '11px sans-serif',
+        },
+        {
+          show: !sparkline,
+          stroke: fontColor,
+          grid: { show: !sparkline && showGrid, stroke: fontColor, width: 0.5 },
+          ticks: { show: !sparkline, stroke: fontColor },
+          font: '11px sans-serif',
+        },
+      ],
+    };
+
+    return new window.uPlot(opts, uplotData, target);
+  }
+
+  // Initial fetch (defer to next frame so container has layout dimensions)
+  requestAnimationFrame(function() { fetchAndRender(); });
+
+  // Periodic refresh
+  intervalId = setInterval(fetchAndRender, refreshSec * 1000);
+
+  // Resize observer
+  observer = new ResizeObserver(function() {
+    var w = comp.clientWidth;
+    if (w > 0) {
+      charts.forEach(function(c) { c.setSize({ width: w, height: chartHeight }); });
+    }
+  });
+  observer.observe(comp);
+
+  // Store cleanup
+  comp.__graphCleanup = function() {
+    if (intervalId) clearInterval(intervalId);
+    if (observer) observer.disconnect();
+    charts.forEach(function(c) { c.destroy(); });
+    charts = [];
+  };
+})();
+</script>`,
+    styles: `:host { display: flex; flex-direction: column; }
+.graph-card { flex-shrink: 0; }
+.graph-card-title { font-size: 1.1em; font-weight: 500; color: var(--db-font-color, #fff); padding: 4px 8px 8px; }
+.graph-card-charts { flex: 1; min-height: 120px; overflow: hidden; position: relative; }
+.graph-card-stacked { display: flex; flex-direction: column; gap: 8px; }
+.graph-card-stacked-item { flex: 1; min-height: 60px; }
+:host .uplot { font-family: inherit; }
+.graph-card .u-legend { font-size: 0.8em; color: var(--db-font-color-secondary, #aaa); padding: 4px 0 0; }
+.graph-card .u-legend .u-series th { padding: 1px 6px; }
+.graph-card .u-legend .u-marker { width: 8px; height: 8px; border-radius: 50%; }`,
+    parameterDefs: [
+      { name: "title", label: "Title", type: "string", default: "" },
+      { name: "hours", label: "Hours of History", type: "number", default: 24 },
+      { name: "refreshInterval", label: "Refresh Interval (seconds)", type: "number", default: 300 },
+      {
+        name: "chartMode", label: "Chart Mode", type: "select", default: "line",
+        options: [
+          { label: "Line Chart", value: "line" },
+          { label: "Bar Chart", value: "bar" },
+          { label: "Sparkline", value: "sparkline" },
+        ],
+      },
+      {
+        name: "displayMode", label: "Display Mode", type: "select", default: "overlay",
+        options: [
+          { label: "Overlay", value: "overlay" },
+          { label: "Stacked", value: "stacked" },
+        ],
+      },
+      { name: "showLegend", label: "Show Legend", type: "boolean", default: true },
+      { name: "showGrid", label: "Show Grid", type: "boolean", default: true },
+      { name: "lineWidth", label: "Line Width", type: "number", default: 2 },
+      { name: "fillOpacity", label: "Fill Opacity (0-1)", type: "number", default: 0.1 },
+      { name: "colors", label: "Colors (comma-separated hex)", type: "string", default: "" },
+      { name: "barBucketMinutes", label: "Bar Bucket Size (minutes)", type: "number", default: 60 },
+      { name: "chartHeight", label: "Chart Height (px)", type: "number", default: 200 },
+    ],
+    entitySelectorDefs: [
+      { name: "entities", label: "Entities", mode: "multiple", allowedDomains: ["sensor"] },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
     name: "Tabs Container",
     template: `<div class="tabs-container"><!-- children rendered by display runtime --></div>`,
     styles: `.tabs-container { width: 100%; height: 100%; }`,

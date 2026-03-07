@@ -27,6 +27,7 @@ export const ComponentRenderer = memo(function ComponentRenderer({
   onDerivedEntities,
 }: ComponentRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mountedRef = useRef(false);
 
   // Remap instance-scoped expansion keys (instanceId:selectorName) back to pattern strings
   // so the Handlebars eachEntity helper can look up by pattern
@@ -45,6 +46,9 @@ export const ComponentRenderer = memo(function ComponentRenderer({
     }
     return result;
   }, [globExpansions, instanceId, parameterValues]);
+
+  // Detect if template uses data-script-once (run script only on first mount)
+  const scriptOnce = template.includes("data-script-once");
 
   const html = useMemo(() => {
     if (!template) return "";
@@ -67,17 +71,29 @@ export const ComponentRenderer = memo(function ComponentRenderer({
     requestMissingDerivedEntities(entities);
   }, [html, entities, onDerivedEntities]);
 
-  // Execute <script> tags after innerHTML is set (innerHTML doesn't run scripts)
+  // Set innerHTML and execute scripts
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // For script-once components, only run on first mount
+    if (scriptOnce && mountedRef.current) return;
+
+    // For script-once, set innerHTML manually (React won't via dangerouslySetInnerHTML)
+    if (scriptOnce) {
+      container.innerHTML = html;
+    }
+
+    // Execute <script> tags (innerHTML doesn't run scripts)
     const scripts = container.querySelectorAll("script");
     scripts.forEach((oldScript) => {
       const newScript = document.createElement("script");
       newScript.textContent = `(function(comp){${oldScript.textContent}})(document.querySelector('[data-instance="${instanceId}"]'));`;
       oldScript.replaceWith(newScript);
     });
-  }, [html]);
+
+    if (scriptOnce) mountedRef.current = true;
+  }, [html, scriptOnce, instanceId]);
 
   return (
     <>
@@ -102,7 +118,7 @@ export const ComponentRenderer = memo(function ComponentRenderer({
             fontSize: "var(--db-font-size, 16px)",
           } : {}),
         }}
-        dangerouslySetInnerHTML={{ __html: html }}
+        {...(scriptOnce ? {} : { dangerouslySetInnerHTML: { __html: html } })}
       />
     </>
   );

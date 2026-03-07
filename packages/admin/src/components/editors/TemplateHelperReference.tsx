@@ -192,6 +192,20 @@ comp.addEventListener('click', function() {
 })();
 </script>`,
   },
+  {
+    name: "Script run-once mode",
+    description:
+      'Add data-script-once to any element in the template to run scripts only on mount. The DOM will not be re-rendered on entity state changes. Use for components that manage their own DOM (charts, maps, canvases).',
+    code: `<div class="my-chart" data-script-once>
+  <canvas class="chart-canvas"></canvas>
+</div>
+<script>
+// This runs once — entity updates won't re-trigger it.
+// Use fetch() or setInterval() to update data independently.
+var canvas = comp.querySelector('.chart-canvas');
+// ... initialize chart library ...
+</script>`,
+  },
 ];
 
 export function TemplateHelperReference() {

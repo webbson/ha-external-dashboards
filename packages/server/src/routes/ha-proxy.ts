@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import { z } from "zod";
 import { haClient } from "../ws/ha-client.js";
 import { matchGlob } from "@ha-external-dashboards/shared";
 
@@ -31,6 +32,50 @@ export async function haImageProxyRoutes(app: FastifyInstance) {
 
   app.get("/api/image_proxy/*", proxyToHA);
   app.get("/api/camera_proxy/*", proxyToHA);
+}
+
+const historyQuerySchema = z.object({
+  start: z.string().datetime().optional(),
+  end: z.string().datetime().optional(),
+});
+
+export async function haHistoryProxyRoutes(app: FastifyInstance) {
+  app.get<{ Params: { entityIds: string }; Querystring: { start?: string; end?: string } }>(
+    "/api/history/:entityIds",
+    async (req, reply) => {
+      const token = process.env.SUPERVISOR_TOKEN;
+      if (!token) return reply.code(503).send({ error: "HA not configured" });
+
+      const entityIds = req.params.entityIds.split(",").map((id) => id.trim()).filter(Boolean);
+      if (entityIds.length === 0 || entityIds.length > 10) {
+        return reply.code(400).send({ error: "Provide 1-10 comma-separated entity IDs" });
+      }
+      if (!entityIds.every((id) => /^[a-z_]+\.[a-z0-9_]+$/.test(id))) {
+        return reply.code(400).send({ error: "Invalid entity ID format" });
+      }
+
+      const query = historyQuerySchema.safeParse(req.query);
+      if (!query.success) return reply.code(400).send({ error: "Invalid query parameters" });
+
+      const now = new Date();
+      const start = query.data.start ?? new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      const end = query.data.end ?? now.toISOString();
+
+      const url = `${HA_HTTP_BASE}/api/history/period/${start}?filter_entity_id=${entityIds.join(",")}&end_time=${end}`;
+      try {
+        const resp = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) return reply.code(resp.status).send({ error: "HA history error" });
+
+        reply.header("content-type", "application/json");
+        reply.header("cache-control", "public, max-age=30");
+        return reply.send(Buffer.from(await resp.arrayBuffer()));
+      } catch {
+        return reply.code(502).send({ error: "Failed to fetch history from HA" });
+      }
+    }
+  );
 }
 
 export async function haProxyRoutes(app: FastifyInstance) {
