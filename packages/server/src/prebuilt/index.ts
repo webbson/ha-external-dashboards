@@ -72,29 +72,153 @@ const prebuiltComponents: PrebuiltComponent[] = [
     name: "Weather Card",
     template: `<div class="weather-card">
   <div class="weather-main">
-    <div class="weather-temp">{{state (param "entity")}}°</div>
-    <div class="weather-condition">{{attr (param "entity") "friendly_name"}}</div>
+    <div class="weather-icon">
+      {{#if (eq (state (param "entity")) "sunny")}}
+        <svg class="wi wi-sunny" viewBox="0 0 80 80"><circle class="sun-core" cx="40" cy="40" r="14" /><g class="sun-rays"><line x1="40" y1="8" x2="40" y2="18" /><line x1="40" y1="62" x2="40" y2="72" /><line x1="8" y1="40" x2="18" y2="40" /><line x1="62" y1="40" x2="72" y2="40" /><line x1="17.3" y1="17.3" x2="24.4" y2="24.4" /><line x1="55.6" y1="55.6" x2="62.7" y2="62.7" /><line x1="17.3" y1="62.7" x2="24.4" y2="55.6" /><line x1="55.6" y1="24.4" x2="62.7" y2="17.3" /></g></svg>
+      {{else}}{{#if (eq (state (param "entity")) "clear-night")}}
+        <svg class="wi wi-night" viewBox="0 0 80 80"><path class="moon" d="M44 18a22 22 0 1 0 18 34A18 18 0 0 1 44 18z" /><circle class="star" cx="58" cy="20" r="1.5" /><circle class="star s2" cx="66" cy="30" r="1" /><circle class="star s3" cx="54" cy="12" r="1.2" /></svg>
+      {{else}}{{#if (eq (state (param "entity")) "partlycloudy")}}
+        <svg class="wi wi-partlycloudy" viewBox="0 0 80 80"><circle class="sun-core pc-sun" cx="55" cy="24" r="10" /><g class="sun-rays pc-rays"><line x1="55" y1="6" x2="55" y2="12" /><line x1="55" y1="36" x2="55" y2="42" /><line x1="37" y1="24" x2="43" y2="24" /><line x1="67" y1="24" x2="73" y2="24" /><line x1="42.3" y1="11.3" x2="46.3" y2="15.3" /><line x1="63.7" y1="32.7" x2="67.7" y2="36.7" /><line x1="42.3" y1="36.7" x2="46.3" y2="32.7" /><line x1="63.7" y1="15.3" x2="67.7" y2="11.3" /></g><path class="cloud pc-cloud" d="M22 58a12 12 0 0 1 0-24h2a16 16 0 0 1 30 4h2a10 10 0 0 1 0 20z" /></svg>
+      {{else}}{{#if (eq (state (param "entity")) "cloudy")}}
+        <svg class="wi wi-cloudy" viewBox="0 0 80 80"><path class="cloud" d="M18 58a14 14 0 0 1 0-28h2a18 18 0 0 1 34 5h2a12 12 0 0 1 0 23z" /></svg>
+      {{else}}{{#if (eq (state (param "entity")) "rainy")}}
+        <svg class="wi wi-rainy" viewBox="0 0 80 80"><path class="cloud" d="M16 44a12 12 0 0 1 0-24h2a16 16 0 0 1 30 4h2a10 10 0 0 1 0 20z" /><line class="drop d1" x1="26" y1="50" x2="22" y2="62" /><line class="drop d2" x1="40" y1="50" x2="36" y2="62" /><line class="drop d3" x1="54" y1="50" x2="50" y2="62" /></svg>
+      {{else}}{{#if (eq (state (param "entity")) "pouring")}}
+        <svg class="wi wi-pouring" viewBox="0 0 80 80"><path class="cloud" d="M16 40a12 12 0 0 1 0-24h2a16 16 0 0 1 30 4h2a10 10 0 0 1 0 20z" /><line class="drop d1" x1="20" y1="46" x2="14" y2="62" /><line class="drop d2" x1="32" y1="46" x2="26" y2="62" /><line class="drop d3" x1="44" y1="46" x2="38" y2="62" /><line class="drop d4" x1="56" y1="46" x2="50" y2="62" /><line class="drop d5" x1="68" y1="46" x2="62" y2="62" /></svg>
+      {{else}}{{#if (eq (state (param "entity")) "snowy")}}
+        <svg class="wi wi-snowy" viewBox="0 0 80 80"><path class="cloud" d="M16 44a12 12 0 0 1 0-24h2a16 16 0 0 1 30 4h2a10 10 0 0 1 0 20z" /><circle class="flake f1" cx="26" cy="56" r="2.5" /><circle class="flake f2" cx="40" cy="60" r="2.5" /><circle class="flake f3" cx="54" cy="54" r="2.5" /></svg>
+      {{else}}{{#if (eq (state (param "entity")) "fog")}}
+        <svg class="wi wi-fog" viewBox="0 0 80 80"><line class="fog-line fg1" x1="12" y1="28" x2="68" y2="28" /><line class="fog-line fg2" x1="18" y1="38" x2="62" y2="38" /><line class="fog-line fg3" x1="12" y1="48" x2="68" y2="48" /><line class="fog-line fg4" x1="20" y1="58" x2="60" y2="58" /></svg>
+      {{else}}{{#if (eq (state (param "entity")) "lightning")}}
+        <svg class="wi wi-lightning" viewBox="0 0 80 80"><path class="cloud" d="M16 44a12 12 0 0 1 0-24h2a16 16 0 0 1 30 4h2a10 10 0 0 1 0 20z" /><polygon class="bolt" points="38,44 32,58 40,58 36,72 52,52 44,52 48,44" /></svg>
+      {{else}}{{#if (eq (state (param "entity")) "lightning-rainy")}}
+        <svg class="wi wi-lightning-rainy" viewBox="0 0 80 80"><path class="cloud" d="M16 40a12 12 0 0 1 0-24h2a16 16 0 0 1 30 4h2a10 10 0 0 1 0 20z" /><polygon class="bolt" points="38,40 32,54 40,54 36,68 52,48 44,48 48,40" /><line class="drop d1" x1="22" y1="46" x2="18" y2="58" /><line class="drop d2" x1="58" y1="46" x2="54" y2="58" /></svg>
+      {{else}}{{#if (eq (state (param "entity")) "windy")}}
+        <svg class="wi wi-windy" viewBox="0 0 80 80"><path class="wind-line w1" d="M10 30 Q30 30 40 24 Q50 18 60 24" /><path class="wind-line w2" d="M8 42 Q28 42 42 42 Q56 42 66 36" /><path class="wind-line w3" d="M14 54 Q34 54 44 48 Q54 42 64 48" /></svg>
+      {{else}}{{#if (eq (state (param "entity")) "hail")}}
+        <svg class="wi wi-hail" viewBox="0 0 80 80"><path class="cloud" d="M16 44a12 12 0 0 1 0-24h2a16 16 0 0 1 30 4h2a10 10 0 0 1 0 20z" /><circle class="hail-dot h1" cx="26" cy="54" r="3" /><circle class="hail-dot h2" cx="40" cy="58" r="3" /><circle class="hail-dot h3" cx="54" cy="52" r="3" /></svg>
+      {{else}}
+        <svg class="wi wi-default" viewBox="0 0 80 80"><path class="cloud" d="M18 58a14 14 0 0 1 0-28h2a18 18 0 0 1 34 5h2a12 12 0 0 1 0 23z" /><line class="q1" x1="36" y1="36" x2="36" y2="46" /><circle class="q2" cx="36" cy="50" r="1.5" /></svg>
+      {{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}
+    </div>
+    <div class="weather-temp">{{attr (param "entity") "temperature"}}{{attr (param "entity") "temperature_unit"}}</div>
+    <div class="weather-condition">{{state (param "entity")}}</div>
   </div>
   <div class="weather-details">
     <div class="weather-detail">
       <span class="detail-label">Humidity</span>
       <span class="detail-value">{{attr (param "entity") "humidity"}}%</span>
     </div>
+    {{#if (param "showWind")}}
     <div class="weather-detail">
       <span class="detail-label">Wind</span>
-      <span class="detail-value">{{attr (param "entity") "wind_speed"}} km/h</span>
+      <span class="detail-value"><svg class="wind-arrow" viewBox="0 0 20 20" data-bearing="{{attr (param "entity") "wind_bearing"}}"><path d="M10 2 L14 14 L10 11 L6 14 Z" /></svg>{{attr (param "entity") "wind_speed"}} {{attr (param "entity") "wind_speed_unit"}}</span>
     </div>
+    {{/if}}
+    {{#if (param "showPressure")}}
+    <div class="weather-detail">
+      <span class="detail-label">Pressure</span>
+      <span class="detail-value">{{attr (param "entity") "pressure"}} {{attr (param "entity") "pressure_unit"}}</span>
+    </div>
+    {{/if}}
   </div>
-</div>`,
+</div>
+<script>
+(function() {
+  var arrow = comp.querySelector('.wind-arrow');
+  if (arrow) {
+    var deg = parseFloat(arrow.getAttribute('data-bearing')) || 0;
+    arrow.style.transform = 'rotate(' + deg + 'deg)';
+  }
+})();
+</script>`,
     styles: `.weather-card { padding: 20px; }
 .weather-main { text-align: center; margin-bottom: 16px; }
+.weather-icon { display: flex; justify-content: center; margin-bottom: 8px; }
+.weather-icon svg { width: 80px; height: 80px; }
 .weather-temp { font-size: 3.5em; font-weight: 200; color: var(--db-font-color, #fff); }
-.weather-condition { color: var(--db-font-color-secondary, #aaa); }
+.weather-condition { color: var(--db-font-color-secondary, #aaa); text-transform: capitalize; margin-top: 2px; }
 .weather-details { display: flex; justify-content: space-around; }
 .weather-detail { text-align: center; }
 .detail-label { display: block; font-size: 0.8em; color: var(--db-font-color-secondary, #aaa); }
-.detail-value { font-size: 1.2em; color: var(--db-font-color, #fff); }`,
-    parameterDefs: [],
+.detail-value { font-size: 1.2em; color: var(--db-font-color, #fff); display: flex; align-items: center; justify-content: center; gap: 4px; }
+.wind-arrow { width: 18px; height: 18px; fill: var(--db-font-color-secondary, #aaa); transition: transform 0.5s ease; flex-shrink: 0; }
+
+/* Sun */
+.sun-core { fill: #fdd835; }
+.sun-rays line { stroke: #fdd835; stroke-width: 2.5; stroke-linecap: round; }
+.wi-sunny .sun-rays { animation: wi-spin 20s linear infinite; transform-origin: 40px 40px; }
+
+/* Night */
+.moon { fill: #cfd8dc; }
+.star { fill: #fff; animation: wi-twinkle 3s ease-in-out infinite; }
+.star.s2 { animation-delay: 1s; }
+.star.s3 { animation-delay: 2s; }
+
+/* Partly cloudy */
+.pc-sun { fill: #fdd835; }
+.pc-rays line { stroke: #fdd835; stroke-width: 2; stroke-linecap: round; }
+.pc-rays { animation: wi-spin 20s linear infinite; transform-origin: 55px 24px; }
+.pc-cloud { animation: wi-drift 6s ease-in-out infinite; }
+
+/* Cloud */
+.cloud { fill: var(--db-font-color-secondary, #b0bec5); }
+.wi-cloudy .cloud { animation: wi-drift 6s ease-in-out infinite; }
+
+/* Rain */
+.drop { stroke: #4fc3f7; stroke-width: 2; stroke-linecap: round; }
+.d1 { animation: wi-rain 1s linear infinite; }
+.d2 { animation: wi-rain 1s linear infinite 0.33s; }
+.d3 { animation: wi-rain 1s linear infinite 0.66s; }
+.d4 { animation: wi-rain 1s linear infinite 0.15s; }
+.d5 { animation: wi-rain 1s linear infinite 0.5s; }
+
+/* Snow */
+.flake { fill: #e0e0e0; }
+.f1 { animation: wi-snow 2s ease-in-out infinite; }
+.f2 { animation: wi-snow 2s ease-in-out infinite 0.6s; }
+.f3 { animation: wi-snow 2s ease-in-out infinite 1.2s; }
+
+/* Fog */
+.fog-line { stroke: var(--db-font-color-secondary, #b0bec5); stroke-width: 3; stroke-linecap: round; }
+.fg1 { animation: wi-pulse 3s ease-in-out infinite; }
+.fg2 { animation: wi-pulse 3s ease-in-out infinite 0.75s; }
+.fg3 { animation: wi-pulse 3s ease-in-out infinite 1.5s; }
+.fg4 { animation: wi-pulse 3s ease-in-out infinite 2.25s; }
+
+/* Lightning */
+.bolt { fill: #fdd835; animation: wi-flash 2s ease-in-out infinite; }
+
+/* Wind */
+.wind-line { fill: none; stroke: var(--db-font-color-secondary, #b0bec5); stroke-width: 2.5; stroke-linecap: round; }
+.w1 { animation: wi-blow 3s ease-in-out infinite; }
+.w2 { animation: wi-blow 3s ease-in-out infinite 0.5s; }
+.w3 { animation: wi-blow 3s ease-in-out infinite 1s; }
+
+/* Hail */
+.hail-dot { fill: #b0bec5; stroke: #90a4ae; stroke-width: 1; }
+.h1 { animation: wi-bounce 1s ease-in-out infinite; }
+.h2 { animation: wi-bounce 1s ease-in-out infinite 0.3s; }
+.h3 { animation: wi-bounce 1s ease-in-out infinite 0.6s; }
+
+/* Default */
+.q1 { stroke: var(--db-font-color-secondary, #b0bec5); stroke-width: 2.5; stroke-linecap: round; }
+.q2 { fill: var(--db-font-color-secondary, #b0bec5); }
+
+/* Keyframes */
+@keyframes wi-spin { to { transform: rotate(360deg); } }
+@keyframes wi-drift { 0%,100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
+@keyframes wi-rain { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(10px); } }
+@keyframes wi-snow { 0% { opacity: 1; transform: translate(0, 0); } 50% { transform: translate(3px, 6px); } 100% { opacity: 0; transform: translate(-1px, 12px); } }
+@keyframes wi-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+@keyframes wi-flash { 0%,100% { opacity: 1; } 50% { opacity: 0.1; } 70% { opacity: 1; } 80% { opacity: 0.2; } }
+@keyframes wi-blow { 0% { transform: translateX(-6px); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateX(6px); opacity: 0; } }
+@keyframes wi-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+@keyframes wi-twinkle { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }`,
+    parameterDefs: [
+      { name: "showWind", label: "Show Wind", type: "boolean", default: true },
+      { name: "showPressure", label: "Show Pressure", type: "boolean", default: false },
+    ],
     entitySelectorDefs: [
       { name: "entity", label: "Weather Entity", mode: "single", allowedDomains: ["weather"] },
     ],
