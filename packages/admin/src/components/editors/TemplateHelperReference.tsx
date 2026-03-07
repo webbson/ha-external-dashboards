@@ -86,15 +86,24 @@ const helpers: HelperEntry[] = [
     snippets: ['{{iconFor "light"}}'],
   },
   {
+    name: "deriveEntity",
+    description: "Derive a related entity ID by replacing the domain and optionally appending a suffix. Useful in eachEntity loops to access related entities.",
+    snippets: [
+      '{{deriveEntity this.entity_id "sensor" "_activity"}}',
+      '{{attr (deriveEntity this.entity_id "image" "_image") "entity_picture"}}',
+    ],
+  },
+  {
     name: "eq / gt / lt",
     description: "Generic comparison helpers for use in {{#if}}",
     snippets: ['{{#if (eq (param "mode") "compact")}}...{{/if}}'],
   },
   {
     name: "eachEntity",
-    description: "Iterate over entities from a multiple/glob entity selector. Provides this.entity_id, this.state, this.attributes, this.domain.",
+    description: "Iterate over entities from a multiple/glob entity selector. Provides this.entity_id, this.state, this.attributes, this.domain. Supports hash filters: domain, state, stateNot, attr, attrValue, sortBy, sortDir.",
     snippets: [
       '{{#eachEntity "entities"}}{{this.attributes.friendly_name}}: {{this.state}}{{/eachEntity}}',
+      '{{#eachEntity "pattern" domain="sensor" state="on" sortBy="friendly_name"}}...{{/eachEntity}}',
     ],
   },
 ];

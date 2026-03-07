@@ -3,7 +3,7 @@ import Icon from "@mdi/react";
 import * as mdiIcons from "@mdi/js";
 import { ComponentRenderer } from "./ComponentRenderer.js";
 import { VisibilityGate } from "./VisibilityGate.js";
-import { useEntitySubset, getInstanceEntityIds } from "./useEntitySubset.js";
+import { useEntitySubsetWithDerived, getInstanceEntityIds } from "./useEntitySubset.js";
 import type { EntityState } from "../template/engine.js";
 
 interface ChildInstance {
@@ -33,6 +33,7 @@ interface TabsContainerProps {
   components: Record<number, ComponentDef>;
   entities: Record<string, EntityState>;
   globalStyles: Record<string, string>;
+  globExpansions: Record<string, string[]>;
 }
 
 function getIconPath(mdiName: string): string | undefined {
@@ -51,6 +52,7 @@ export function TabsContainer({
   components,
   entities,
   globalStyles,
+  globExpansions,
 }: TabsContainerProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const sorted = [...children].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -134,6 +136,7 @@ export function TabsContainer({
             components={components}
             entities={entities}
             globalStyles={globalStyles}
+            globExpansions={globExpansions}
           />
         )}
       </div>
@@ -146,18 +149,20 @@ function TabChildRenderer({
   components,
   entities,
   globalStyles,
+  globExpansions,
 }: {
   child: ChildInstance;
   components: Record<number, ComponentDef>;
   entities: Record<string, EntityState>;
   globalStyles: Record<string, string>;
+  globExpansions: Record<string, string[]>;
 }) {
   const comp = components[child.componentId];
   const entityIds = useMemo(
-    () => getInstanceEntityIds(child.entityBindings, child.visibilityRules),
-    [child.entityBindings, child.visibilityRules]
+    () => getInstanceEntityIds(child.entityBindings, child.visibilityRules, globExpansions, child.id),
+    [child.entityBindings, child.visibilityRules, globExpansions, child.id]
   );
-  const entitySubset = useEntitySubset(entities, entityIds);
+  const [entitySubset, addDerivedIds] = useEntitySubsetWithDerived(entities, entityIds);
   const parameterValues = useMemo(
     () => ({ ...child.entityBindings, ...child.parameterValues }),
     [child.entityBindings, child.parameterValues]
@@ -173,7 +178,9 @@ function TabChildRenderer({
         entities={entitySubset}
         parameterValues={parameterValues}
         globalStyles={globalStyles}
+        globExpansions={globExpansions}
         instanceId={child.id}
+        onDerivedEntities={addDerivedIds}
       />
     </VisibilityGate>
   );

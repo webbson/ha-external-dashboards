@@ -158,6 +158,25 @@ export const componentInstances = sqliteTable("component_instances", {
     >()
     .notNull()
     .default(sql`'[]'`),
+  entityFilters: text("entity_filters", { mode: "json" })
+    .$type<
+      Record<
+        string,
+        {
+          attributeFilters?: {
+            attribute: string;
+            operator: string;
+            value: string;
+          }[];
+          stateFilters?: {
+            operator: string;
+            value: string;
+          }[];
+        }
+      >
+    >()
+    .notNull()
+    .default(sql`'{}'`),
   parentInstanceId: integer("parent_instance_id"),
   tabLabel: text("tab_label"),
   tabIcon: text("tab_icon"),

@@ -14,7 +14,7 @@ import { layoutRoutes } from "./routes/layouts.js";
 import { componentRoutes } from "./routes/components.js";
 import { themeRoutes } from "./routes/themes.js";
 import { assetRoutes } from "./routes/assets.js";
-import { haProxyRoutes } from "./routes/ha-proxy.js";
+import { haProxyRoutes, haImageProxyRoutes } from "./routes/ha-proxy.js";
 import { previewRoutes } from "./routes/preview.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { popupTriggerRoutes } from "./routes/popup-trigger.js";
@@ -38,7 +38,7 @@ async function start() {
 
   // Connect to HA WebSocket + forward state changes to display clients
   haClient.setOnStateChanged((entityId, newState) => {
-    connectionManager.sendStateUpdate(entityId, newState);
+    connectionManager.sendStateUpdate(entityId, newState, newState.attributes);
   });
   haClient.connect().catch((err) => {
     console.warn("HA WebSocket initial connection failed:", err.message);
@@ -61,6 +61,7 @@ async function start() {
   await admin.register(themeRoutes);
   await admin.register(assetRoutes);
   await admin.register(haProxyRoutes);
+  await admin.register(haImageProxyRoutes);
   await admin.register(previewRoutes);
   await admin.register(popupTriggerRoutes);
   await admin.register(settingsRoutes);
@@ -112,6 +113,9 @@ async function start() {
     "/d/:slug/login",
     dashboardLogin
   );
+
+  // HA image proxy for display (entity_picture URLs)
+  await external.register(haImageProxyRoutes);
 
   // Display data API (serves dashboard config to display app)
   await external.register(displayDataRoutes);

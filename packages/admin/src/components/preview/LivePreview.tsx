@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Card, Spin } from "antd";
+import { Button, Card, Spin } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import { api } from "../../api.js";
+
+interface EntityFilterEntry {
+  attributeFilters?: { attribute: string; operator: string; value: string }[];
+  stateFilters?: { operator: string; value: string }[];
+}
 
 interface LivePreviewProps {
   template: string;
@@ -9,6 +15,9 @@ interface LivePreviewProps {
   parameterValues: Record<string, string | number | boolean>;
   globalStyles?: Record<string, string>;
   standardVariables?: Record<string, string>;
+  entityFilters?: Record<string, EntityFilterEntry>;
+  /** When true, only re-renders on explicit refresh (for expensive glob queries) */
+  manualRefresh?: boolean;
 }
 
 export function LivePreview({
@@ -18,9 +27,12 @@ export function LivePreview({
   parameterValues,
   globalStyles = {},
   standardVariables = {},
+  entityFilters = {},
+  manualRefresh = false,
 }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loading, setLoading] = useState(false);
+  const [stale, setStale] = useState(false);
 
   const bgColor = standardVariables.backgroundColor || "#000000";
   const bgType = standardVariables.backgroundType || "color";
@@ -28,6 +40,7 @@ export function LivePreview({
 
   const render = useCallback(() => {
     if (!template) return;
+    setStale(false);
     setLoading(true);
     api
       .post<{ html: string; styles: string }>("/api/preview/render", {
@@ -37,6 +50,7 @@ export function LivePreview({
         parameterValues,
         globalStyles,
         standardVariables,
+        entityFilters,
       })
       .then(({ html, styles: css }) => {
         const iframe = iframeRef.current;
@@ -86,19 +100,38 @@ document.querySelectorAll('script[type="text/x-component"]').forEach(function(s)
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [template, styles, entityBindings, parameterValues, globalStyles, standardVariables, bgColor, bgType, bgImage]);
+  }, [template, styles, entityBindings, parameterValues, globalStyles, standardVariables, entityFilters, bgColor, bgType, bgImage]);
 
-  // Auto-render on any dependency change, debounced
+  // Auto-render on any dependency change (debounced), unless manual mode
   useEffect(() => {
+    if (manualRefresh) {
+      setStale(true);
+      return;
+    }
     const timer = setTimeout(render, 300);
     return () => clearTimeout(timer);
-  }, [render]);
+  }, [render, manualRefresh]);
 
   return (
     <Card
       title="Live Preview"
       size="small"
-      extra={loading ? <Spin size="small" /> : null}
+      extra={
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {loading && <Spin size="small" />}
+          {manualRefresh && (
+            <Button
+              size="small"
+              type={stale ? "primary" : "default"}
+              icon={<ReloadOutlined />}
+              onClick={render}
+              loading={loading}
+            >
+              Refresh Preview
+            </Button>
+          )}
+        </span>
+      }
       styles={{ body: { padding: 0, height: "100%" } }}
       style={{ display: "flex", flexDirection: "column", height: "100%" }}
     >

@@ -3,7 +3,7 @@ import { ComponentRenderer } from "./ComponentRenderer.js";
 import { TabsContainer } from "./TabsContainer.js";
 import { AutoRotateContainer } from "./AutoRotateContainer.js";
 import { VisibilityGate } from "./VisibilityGate.js";
-import { useEntitySubset, getInstanceEntityIds } from "./useEntitySubset.js";
+import { useEntitySubsetWithDerived, getInstanceEntityIds } from "./useEntitySubset.js";
 import type { EntityState } from "../template/engine.js";
 
 interface ComponentInstance {
@@ -38,6 +38,7 @@ interface RegionRendererProps {
   components: Record<number, ComponentDef>;
   entities: Record<string, EntityState>;
   globalStyles: Record<string, string>;
+  globExpansions: Record<string, string[]>;
   flexGrow?: boolean;
   applyChrome?: boolean;
 }
@@ -48,6 +49,7 @@ export function RegionRenderer({
   components,
   entities,
   globalStyles,
+  globExpansions,
   flexGrow,
   applyChrome,
 }: RegionRendererProps) {
@@ -70,6 +72,7 @@ export function RegionRenderer({
             components={components}
             entities={entities}
             globalStyles={globalStyles}
+            globExpansions={globExpansions}
             flexGrow={flexGrow}
             applyChrome={applyChrome}
           />
@@ -86,6 +89,7 @@ interface InstanceRendererProps {
   components: Record<number, ComponentDef>;
   entities: Record<string, EntityState>;
   globalStyles: Record<string, string>;
+  globExpansions: Record<string, string[]>;
   flexGrow?: boolean;
   applyChrome?: boolean;
 }
@@ -97,14 +101,15 @@ function InstanceRenderer({
   components,
   entities,
   globalStyles,
+  globExpansions,
   flexGrow,
   applyChrome,
 }: InstanceRendererProps) {
   const entityIds = useMemo(
-    () => getInstanceEntityIds(inst.entityBindings, inst.visibilityRules),
-    [inst.entityBindings, inst.visibilityRules]
+    () => getInstanceEntityIds(inst.entityBindings, inst.visibilityRules, globExpansions, inst.id),
+    [inst.entityBindings, inst.visibilityRules, globExpansions, inst.id]
   );
-  const entitySubset = useEntitySubset(entities, entityIds);
+  const [entitySubset, addDerivedIds] = useEntitySubsetWithDerived(entities, entityIds);
   const parameterValues = useMemo(
     () => ({ ...inst.entityBindings, ...inst.parameterValues }),
     [inst.entityBindings, inst.parameterValues]
@@ -122,6 +127,7 @@ function InstanceRenderer({
           components={components}
           entities={entities}
           globalStyles={globalStyles}
+          globExpansions={globExpansions}
         />
       ) : comp.containerConfig.type === "auto-rotate" ? (
         <AutoRotateContainer
@@ -129,6 +135,7 @@ function InstanceRenderer({
           components={components}
           entities={entities}
           globalStyles={globalStyles}
+          globExpansions={globExpansions}
           rotateInterval={comp.containerConfig.rotateInterval ?? 10}
         />
       ) : null;
@@ -159,9 +166,11 @@ function InstanceRenderer({
         entities={entitySubset}
         parameterValues={parameterValues}
         globalStyles={globalStyles}
+        globExpansions={globExpansions}
         instanceId={inst.id}
         fillRegion={flexGrow}
         applyChrome={applyChrome}
+        onDerivedEntities={addDerivedIds}
       />
     </VisibilityGate>
   );

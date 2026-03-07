@@ -18,7 +18,7 @@ const parameterDefSchema = z.object({
 const entitySelectorDefSchema = z.object({
   name: z.string(),
   label: z.string(),
-  mode: z.enum(["single", "multiple", "glob", "area", "tag"]),
+  mode: z.enum(["single", "multiple", "glob"]),
   allowedDomains: z.array(z.string()).optional(),
 });
 

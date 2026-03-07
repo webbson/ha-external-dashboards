@@ -42,7 +42,7 @@ Build order matters: shared → admin/display → server
 - `dashboards` — slug, accessKey, accessMode, themeId (FK → themes), layoutSwitchMode
 - `layouts` — name, structure (JSON: gridTemplate + regions with applyChromeTo)
 - `dashboard_layouts` — join table with sortOrder, label
-- `components` — template (Handlebars), styles (CSS), parameterDefs, entitySelectorDefs (with optional allowedDomains), testEntityBindings
+- `components` — template (Handlebars), styles (CSS), parameterDefs, entitySelectorDefs (modes: single/multiple/glob, optional allowedDomains, optional glob filters), testEntityBindings
 - `component_instances` — placed in dashboard_layout regions with parameterValues, entityBindings, visibilityRules
 - `assets` — uploaded files in /config/assets/, virtual folder field for organization
 
@@ -64,6 +64,22 @@ Build order matters: shared → admin/display → server
 ```
 HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by subscribed entities)
 ```
+
+### Glob Entity Selectors
+
+- Glob patterns (e.g., `*.cpd_*`) are expanded server-side against all HA entities at WS connection time
+- Expanded entity IDs are subscribed for state updates and sent to display as `glob_expansions` message
+- New entities matching glob patterns are dynamically added to subscriptions (no refresh needed)
+- Server-side attribute + state filters on component instances reduce WS subscriptions
+- Filters are re-evaluated on every state change: entities that no longer match are removed (`glob_expansion_remove`) and re-added when they match again
+- Template `{{#eachEntity}}` supports render-time hash filters: `domain`, `state`, `stateNot`, `attr`, `attrValue`, `sortBy`, `sortDir`
+- `{{deriveEntity entity_id "newDomain" "_suffix"}}` derives related entity IDs in template loops
+
+### HA Image Proxy
+
+- Both admin (8080) and external (8099) servers proxy `/api/image_proxy/*` and `/api/camera_proxy/*` to HA Core
+- HA entity `entity_picture` attributes (relative paths) resolve correctly in templates and previews
+- Responses are cached for 60s
 
 ## Security
 

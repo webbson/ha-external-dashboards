@@ -1,6 +1,10 @@
 import Handlebars from "handlebars";
 import * as mdiIcons from "@mdi/js";
 
+function isGlobPattern(value: string): boolean {
+  return value.includes("*") || value.includes("?");
+}
+
 export interface EntityState {
   entity_id: string;
   state: string;
@@ -13,6 +17,7 @@ export interface TemplateContext {
   entities: Record<string, EntityState>;
   params: Record<string, string | number | boolean>;
   globalStyles: Record<string, string>;
+  globExpansions?: Record<string, string[]>;
 }
 
 function mdiNameToPath(name: string): string | undefined {
@@ -138,6 +143,38 @@ Handlebars.registerHelper("style", function (styleName: string, options: Handleb
   return ctx?.globalStyles?.[styleName] ?? "";
 });
 
+/** Entity IDs produced by deriveEntity during the most recent render pass */
+let _derivedEntityIds: Set<string> = new Set();
+
+export function getDerivedEntityIds(): Set<string> {
+  return _derivedEntityIds;
+}
+
+/** Global callback for requesting missing derived entities via WS */
+let _onRequestEntities: ((entityIds: string[]) => void) | null = null;
+
+export function setDerivedEntityHandler(handler: ((entityIds: string[]) => void) | null) {
+  _onRequestEntities = handler;
+}
+
+export function requestMissingDerivedEntities(entities: Record<string, unknown>) {
+  if (!_onRequestEntities) return;
+  const missing = Array.from(_derivedEntityIds).filter((id) => !(id in entities));
+  if (missing.length > 0) {
+    _onRequestEntities(missing);
+  }
+}
+
+Handlebars.registerHelper("deriveEntity", function (entityId: string, newDomain: string, suffix?: string) {
+  if (typeof entityId !== "string") return "";
+  const dotIdx = entityId.indexOf(".");
+  if (dotIdx < 0) return entityId;
+  const baseName = entityId.substring(dotIdx + 1);
+  const derived = `${newDomain}.${baseName}${typeof suffix === "string" ? suffix : ""}`;
+  _derivedEntityIds.add(derived);
+  return derived;
+});
+
 Handlebars.registerHelper("eq", function (a: unknown, b: unknown) {
   return a === b;
 });
@@ -155,13 +192,62 @@ Handlebars.registerHelper("eachEntity", function (this: unknown, selectorName: s
   const binding = ctx?.params?.[selectorName];
   if (!binding) return "";
 
-  const entityIds = Array.isArray(binding) ? binding : [binding];
-  let result = "";
+  // Resolve entity IDs — expand glob patterns via server-provided expansions
+  let entityIds: string[];
+  if (typeof binding === "string" && isGlobPattern(binding)) {
+    entityIds = ctx?.globExpansions?.[binding] ?? [];
+  } else {
+    entityIds = Array.isArray(binding) ? binding.map(String) : [String(binding)];
+  }
 
-  for (let i = 0; i < entityIds.length; i++) {
-    const entityId = String(entityIds[i]);
+  // Hash param filters for render-time filtering
+  const filterDomain = options.hash?.domain as string | undefined;
+  const filterState = options.hash?.state as string | undefined;
+  const filterStateNot = options.hash?.stateNot as string | undefined;
+  const filterAttr = options.hash?.attr as string | undefined;
+  const filterAttrValue = options.hash?.attrValue as string | undefined;
+  const sortBy = options.hash?.sortBy as string | undefined;
+  const sortDir = (options.hash?.sortDir as string) ?? "asc";
+
+  // Build filtered list
+  const items: { entityId: string; entity: EntityState | undefined; domain: string }[] = [];
+  for (const entityId of entityIds) {
     const entity = ctx?.entities?.[entityId];
     const domain = entityId.split(".")[0];
+
+    if (filterDomain && domain !== filterDomain) continue;
+    if (filterState && entity?.state !== filterState) continue;
+    if (filterStateNot && entity?.state === filterStateNot) continue;
+    if (filterAttr && filterAttrValue !== undefined) {
+      if (String(entity?.attributes?.[filterAttr] ?? "") !== filterAttrValue) continue;
+    }
+
+    items.push({ entityId, entity, domain });
+  }
+
+  // Sort if requested
+  if (sortBy) {
+    items.sort((a, b) => {
+      let aVal: string;
+      let bVal: string;
+      if (sortBy === "state") {
+        aVal = a.entity?.state ?? "";
+        bVal = b.entity?.state ?? "";
+      } else if (sortBy === "entity_id") {
+        aVal = a.entityId;
+        bVal = b.entityId;
+      } else {
+        aVal = String(a.entity?.attributes?.[sortBy] ?? "");
+        bVal = String(b.entity?.attributes?.[sortBy] ?? "");
+      }
+      const cmp = aVal.localeCompare(bVal);
+      return sortDir === "desc" ? -cmp : cmp;
+    });
+  }
+
+  let result = "";
+  for (let i = 0; i < items.length; i++) {
+    const { entityId, entity, domain } = items[i];
     const data = {
       entity_id: entityId,
       state: entity?.state ?? "unavailable",
@@ -171,7 +257,7 @@ Handlebars.registerHelper("eachEntity", function (this: unknown, selectorName: s
       last_updated: entity?.last_updated ?? "",
     };
     result += options.fn(data, {
-      data: { ...options.data, index: i, first: i === 0, last: i === entityIds.length - 1 },
+      data: { ...options.data, index: i, first: i === 0, last: i === items.length - 1 },
     });
   }
 
@@ -184,6 +270,7 @@ export function renderTemplate(
   templateStr: string,
   context: TemplateContext
 ): string {
+  _derivedEntityIds = new Set();
   let compiled = templateCache.get(templateStr);
   if (!compiled) {
     compiled = Handlebars.compile(templateStr);

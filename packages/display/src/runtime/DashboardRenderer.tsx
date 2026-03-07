@@ -59,6 +59,7 @@ interface DashboardRendererProps {
   components: Record<number, ComponentDef>;
   entities: Record<string, EntityState>;
   globalStyles: Record<string, string>;
+  globExpansions: Record<string, string[]>;
   maxWidth?: string | null;
   padding?: string | null;
   layoutSwitchMode: "tabs" | "auto-rotate";
@@ -70,6 +71,7 @@ export function DashboardRenderer({
   components,
   entities,
   globalStyles,
+  globExpansions,
   maxWidth,
   padding,
   layoutSwitchMode,
@@ -178,6 +180,7 @@ export function DashboardRenderer({
           components={components}
           entities={entities}
           globalStyles={globalStyles}
+          globExpansions={globExpansions}
         />
       </div>
     </div>

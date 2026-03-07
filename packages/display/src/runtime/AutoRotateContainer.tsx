@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { ComponentRenderer } from "./ComponentRenderer.js";
 import { VisibilityGate } from "./VisibilityGate.js";
-import { useEntitySubset, getInstanceEntityIds } from "./useEntitySubset.js";
+import { useEntitySubsetWithDerived, getInstanceEntityIds } from "./useEntitySubset.js";
 import type { EntityState } from "../template/engine.js";
 
 interface ChildInstance {
@@ -29,6 +29,7 @@ interface AutoRotateContainerProps {
   components: Record<number, ComponentDef>;
   entities: Record<string, EntityState>;
   globalStyles: Record<string, string>;
+  globExpansions: Record<string, string[]>;
   rotateInterval: number;
 }
 
@@ -37,6 +38,7 @@ export function AutoRotateContainer({
   components,
   entities,
   globalStyles,
+  globExpansions,
   rotateInterval,
 }: AutoRotateContainerProps) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -63,6 +65,7 @@ export function AutoRotateContainer({
         comp={comp}
         entities={entities}
         globalStyles={globalStyles}
+        globExpansions={globExpansions}
       />
     </div>
   );
@@ -73,17 +76,19 @@ function AutoRotateChildRenderer({
   comp,
   entities,
   globalStyles,
+  globExpansions,
 }: {
   child: ChildInstance;
   comp: ComponentDef;
   entities: Record<string, EntityState>;
   globalStyles: Record<string, string>;
+  globExpansions: Record<string, string[]>;
 }) {
   const entityIds = useMemo(
-    () => getInstanceEntityIds(child.entityBindings, child.visibilityRules),
-    [child.entityBindings, child.visibilityRules]
+    () => getInstanceEntityIds(child.entityBindings, child.visibilityRules, globExpansions, child.id),
+    [child.entityBindings, child.visibilityRules, globExpansions, child.id]
   );
-  const entitySubset = useEntitySubset(entities, entityIds);
+  const [entitySubset, addDerivedIds] = useEntitySubsetWithDerived(entities, entityIds);
   const parameterValues = useMemo(
     () => ({ ...child.entityBindings, ...child.parameterValues }),
     [child.entityBindings, child.parameterValues]
@@ -97,7 +102,9 @@ function AutoRotateChildRenderer({
         entities={entitySubset}
         parameterValues={parameterValues}
         globalStyles={globalStyles}
+        globExpansions={globExpansions}
         instanceId={child.id}
+        onDerivedEntities={addDerivedIds}
       />
     </VisibilityGate>
   );

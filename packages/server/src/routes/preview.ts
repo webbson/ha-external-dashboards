@@ -2,7 +2,12 @@ import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { haClient } from "../ws/ha-client.js";
 import Handlebars from "handlebars";
-import { STANDARD_VARIABLE_DEFAULTS, STANDARD_VARIABLE_CSS_MAP } from "@ha-external-dashboards/shared";
+import {
+  STANDARD_VARIABLE_DEFAULTS,
+  STANDARD_VARIABLE_CSS_MAP,
+  isGlobPattern,
+  matchGlob,
+} from "@ha-external-dashboards/shared";
 import type { StandardVariables } from "@ha-external-dashboards/shared";
 
 // Register the same helpers server-side for preview rendering
@@ -15,6 +20,18 @@ const renderSchema = z.object({
   parameterValues: z.record(z.union([z.string(), z.number(), z.boolean()])).default({}),
   globalStyles: z.record(z.string()).default({}),
   standardVariables: z.record(z.string()).default({}),
+  entityFilters: z
+    .record(
+      z.object({
+        attributeFilters: z
+          .array(z.object({ attribute: z.string(), operator: z.string(), value: z.string() }))
+          .optional(),
+        stateFilters: z
+          .array(z.object({ operator: z.string(), value: z.string() }))
+          .optional(),
+      })
+    )
+    .default({}),
 });
 
 function buildStandardVarsCss(vars: Partial<StandardVariables>): string {
@@ -31,21 +48,65 @@ export async function previewRoutes(app: FastifyInstance) {
   app.post("/api/preview/render", async (req) => {
     const body = renderSchema.parse(req.body);
 
-    // Resolve entity bindings to actual states
+    // Make ALL HA entity states available to the template context.
+    // Preview renders server-side so this has no serialization cost.
+    // This ensures deriveEntity + attr/state lookups always resolve,
+    // even for entities outside the direct binding/glob expansion.
     const entities: Record<string, unknown> = {};
+    for (const [id, st] of haClient.getAllStates()) {
+      entities[id] = st;
+    }
+
+    // Resolve glob expansions (filters control what eachEntity iterates over)
+    const globExpansions: Record<string, string[]> = {};
     for (const [key, binding] of Object.entries(body.entityBindings)) {
       if (Array.isArray(binding)) {
-        for (const entityId of binding) {
-          const state = haClient.getState(entityId);
-          if (state) entities[entityId] = state;
+        // nothing extra needed — entities already in context
+      } else if (isGlobPattern(binding)) {
+        const allIds = Array.from(haClient.getAllStates().keys());
+        let expanded = matchGlob(binding, allIds);
+
+        // Apply server-side filters to reduce the eachEntity iteration set
+        const selectorFilters = body.entityFilters[key];
+        const attrFilters = selectorFilters?.attributeFilters;
+        const stFilters = selectorFilters?.stateFilters;
+        if (
+          (attrFilters && attrFilters.length > 0) ||
+          (stFilters && stFilters.length > 0)
+        ) {
+          expanded = expanded.filter((id) => {
+            const st = haClient.getState(id);
+            if (!st) return false;
+            if (attrFilters && attrFilters.length > 0) {
+              const passes = attrFilters.every((f) => {
+                const val = String(st.attributes?.[f.attribute] ?? "");
+                switch (f.operator) {
+                  case "eq": return val === f.value;
+                  case "neq": return val !== f.value;
+                  case "contains": return val.includes(f.value);
+                  case "startsWith": return val.startsWith(f.value);
+                  default: return true;
+                }
+              });
+              if (!passes) return false;
+            }
+            if (stFilters && stFilters.length > 0) {
+              const passes = stFilters.every((f) => {
+                switch (f.operator) {
+                  case "eq": return st.state === f.value;
+                  case "neq": return st.state !== f.value;
+                  case "contains": return st.state?.includes(f.value);
+                  case "startsWith": return st.state?.startsWith(f.value);
+                  default: return true;
+                }
+              });
+              if (!passes) return false;
+            }
+            return true;
+          });
         }
-        entities[key] = binding.map((id) => haClient.getState(id)).filter(Boolean);
-      } else {
-        const state = haClient.getState(binding);
-        if (state) {
-          entities[binding] = state;
-          entities[key] = state;
-        }
+
+        globExpansions[binding] = expanded;
       }
     }
 
@@ -63,6 +124,7 @@ export async function previewRoutes(app: FastifyInstance) {
         entities,
         params,
         globalStyles: body.globalStyles,
+        globExpansions,
       });
 
       const standardCss = buildStandardVarsCss(body.standardVariables as Partial<StandardVariables>);

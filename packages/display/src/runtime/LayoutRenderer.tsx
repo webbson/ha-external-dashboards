@@ -44,6 +44,7 @@ interface LayoutRendererProps {
   components: Record<number, ComponentDef>;
   entities: Record<string, EntityState>;
   globalStyles: Record<string, string>;
+  globExpansions: Record<string, string[]>;
 }
 
 export function LayoutRenderer({
@@ -52,6 +53,7 @@ export function LayoutRenderer({
   components,
   entities,
   globalStyles,
+  globExpansions,
 }: LayoutRendererProps) {
   return (
     <div
@@ -90,6 +92,7 @@ export function LayoutRenderer({
             components={components}
             entities={entities}
             globalStyles={globalStyles}
+            globExpansions={globExpansions}
             flexGrow={region.flexGrow}
             applyChrome={!chromeOnRegion}
           />

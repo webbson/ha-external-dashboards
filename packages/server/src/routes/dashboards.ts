@@ -212,6 +212,29 @@ export async function dashboardRoutes(app: FastifyInstance) {
               })
             )
             .default([]),
+          entityFilters: z
+            .record(
+              z.object({
+                attributeFilters: z
+                  .array(
+                    z.object({
+                      attribute: z.string(),
+                      operator: z.string(),
+                      value: z.string(),
+                    })
+                  )
+                  .optional(),
+                stateFilters: z
+                  .array(
+                    z.object({
+                      operator: z.string(),
+                      value: z.string(),
+                    })
+                  )
+                  .optional(),
+              })
+            )
+            .default({}),
           parentInstanceId: z.number().int().nullable().default(null),
           tabLabel: z.string().nullable().default(null),
           tabIcon: z.string().nullable().default(null),
@@ -243,6 +266,27 @@ export async function dashboardRoutes(app: FastifyInstance) {
               attribute: z.string().optional(),
               operator: z.string(),
               value: z.string(),
+            })
+          ),
+          entityFilters: z.record(
+            z.object({
+              attributeFilters: z
+                .array(
+                  z.object({
+                    attribute: z.string(),
+                    operator: z.string(),
+                    value: z.string(),
+                  })
+                )
+                .optional(),
+              stateFilters: z
+                .array(
+                  z.object({
+                    operator: z.string(),
+                    value: z.string(),
+                  })
+                )
+                .optional(),
             })
           ),
           parentInstanceId: z.number().int().nullable(),

@@ -17,10 +17,22 @@ export interface ParameterDef {
   options?: { label: string; value: string }[];
 }
 
+export interface GlobAttributeFilter {
+  attribute: string;
+  operator: "eq" | "neq" | "contains" | "startsWith";
+  value: string;
+}
+
+export interface GlobStateFilter {
+  operator: "eq" | "neq" | "contains" | "startsWith";
+  value: string;
+}
+
+
 export interface EntitySelectorDef {
   name: string;
   label: string;
-  mode: "single" | "multiple" | "glob" | "area" | "tag";
+  mode: "single" | "multiple" | "glob";
   allowedDomains?: string[];
 }
 

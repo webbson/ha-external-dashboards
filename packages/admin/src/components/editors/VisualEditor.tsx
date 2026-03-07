@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Input, Select, Button, Card } from "antd";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { api } from "../../api.js";
@@ -14,7 +14,7 @@ interface ParameterDef {
 interface EntitySelectorDef {
   name: string;
   label: string;
-  mode: "single" | "multiple" | "glob" | "area" | "tag";
+  mode: "single" | "multiple" | "glob";
   allowedDomains?: string[];
 }
 
@@ -187,7 +187,8 @@ export function VisualEditor({
           </thead>
           <tbody>
             {entitySelectorDefs.map((sel, i) => (
-              <tr key={i}>
+              <React.Fragment key={i}>
+              <tr>
                 <td style={tdStyle}>
                   <Input
                     size="small"
@@ -216,8 +217,6 @@ export function VisualEditor({
                       { value: "single", label: "Single" },
                       { value: "multiple", label: "Multiple" },
                       { value: "glob", label: "Glob/Wildcard" },
-                      { value: "area", label: "Area" },
-                      { value: "tag", label: "Tag" },
                     ]}
                   />
                 </td>
@@ -244,6 +243,7 @@ export function VisualEditor({
                   <MinusCircleOutlined onClick={() => removeEntitySelector(i)} />
                 </td>
               </tr>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

@@ -7,10 +7,15 @@ export class DisplayClient {
   private handlers = new Map<string, MessageHandler[]>();
   private accessKey: string;
   private slug: string;
+  private _globExpansions: Record<string, string[]> = {};
 
   constructor(slug: string, accessKey: string) {
     this.slug = slug;
     this.accessKey = accessKey;
+  }
+
+  get globExpansions(): Record<string, string[]> {
+    return this._globExpansions;
   }
 
   connect() {
@@ -66,6 +71,43 @@ export class DisplayClient {
 
   onPopup(callback: (popup: Record<string, unknown>) => void) {
     this.on("popup", (msg) => callback(msg));
+  }
+
+  onGlobExpansions(callback: (expansions: Record<string, string[]>) => void) {
+    this.on("glob_expansions", (msg) => {
+      this._globExpansions = msg.expansions as Record<string, string[]>;
+      callback(this._globExpansions);
+    });
+    this.on("glob_expansion_update", (msg) => {
+      const pattern = msg.pattern as string;
+      const entityId = msg.entityId as string;
+      const existing = this._globExpansions[pattern] ?? [];
+      if (!existing.includes(entityId)) {
+        this._globExpansions = {
+          ...this._globExpansions,
+          [pattern]: [...existing, entityId],
+        };
+        callback(this._globExpansions);
+      }
+    });
+    this.on("glob_expansion_remove", (msg) => {
+      const pattern = msg.pattern as string;
+      const entityId = msg.entityId as string;
+      const existing = this._globExpansions[pattern] ?? [];
+      if (existing.includes(entityId)) {
+        this._globExpansions = {
+          ...this._globExpansions,
+          [pattern]: existing.filter((id) => id !== entityId),
+        };
+        callback(this._globExpansions);
+      }
+    });
+  }
+
+  subscribeEntities(entityIds: string[]) {
+    this.ws?.send(
+      JSON.stringify({ type: "subscribe_entities", entityIds })
+    );
   }
 
   callService(domain: string, service: string, data: Record<string, unknown>) {

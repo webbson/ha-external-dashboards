@@ -1,0 +1,1 @@
+ALTER TABLE `component_instances` ADD `entity_filters` text DEFAULT '{}' NOT NULL;

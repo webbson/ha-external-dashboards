@@ -70,7 +70,7 @@ interface ParameterDef {
 interface EntitySelectorDef {
   name: string;
   label: string;
-  mode: "single" | "multiple" | "glob" | "area" | "tag";
+  mode: "single" | "multiple" | "glob";
   allowedDomains?: string[];
 }
 
@@ -94,6 +94,7 @@ interface ComponentInstance {
   parameterValues: Record<string, string | number | boolean>;
   entityBindings: Record<string, string | string[]>;
   visibilityRules: VisibilityRule[];
+  entityFilters: Record<string, { attributeFilters?: { attribute: string; operator: string; value: string }[] }>;
   parentInstanceId: number | null;
   tabLabel: string | null;
   tabIcon: string | null;

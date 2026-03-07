@@ -4,6 +4,7 @@ import { PopupOverlay } from "./runtime/PopupOverlay.js";
 import { DialogOverlay } from "./runtime/DialogOverlay.js";
 import { DisplayClient } from "./ws/DisplayClient.js";
 import type { EntityState } from "./template/engine.js";
+import { setDerivedEntityHandler } from "./template/engine.js";
 
 interface DashboardConfig {
   dashboard: {
@@ -89,6 +90,7 @@ function getSlugFromUrl(): string | null {
 export function DisplayApp() {
   const [config, setConfig] = useState<DashboardConfig | null>(null);
   const [entities, setEntities] = useState<Record<string, EntityState>>({});
+  const [globExpansions, setGlobExpansions] = useState<Record<string, string[]>>({});
   const [popup, setPopup] = useState<PopupData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
@@ -216,6 +218,19 @@ export function DisplayApp() {
       setPopup(msg as unknown as PopupData);
     });
 
+    client.onGlobExpansions((expansions) => {
+      setGlobExpansions(expansions);
+    });
+
+    // Subscribe to derived entities (from deriveEntity helper) on demand
+    const requestedEntities = new Set<string>();
+    setDerivedEntityHandler((entityIds) => {
+      const newIds = entityIds.filter((id) => !requestedEntities.has(id));
+      if (newIds.length === 0) return;
+      newIds.forEach((id) => requestedEntities.add(id));
+      client.subscribeEntities(newIds);
+    });
+
     client.connect();
     clientRef.current = client;
 
@@ -235,6 +250,7 @@ export function DisplayApp() {
 
     return () => {
       window.__ha = undefined;
+      setDerivedEntityHandler(null);
       client.close();
       clientRef.current = null;
     };
@@ -364,6 +380,7 @@ export function DisplayApp() {
         components={config.components}
         entities={entities}
         globalStyles={globalStyles}
+        globExpansions={globExpansions}
         maxWidth={config.dashboard.maxWidth}
         padding={config.dashboard.padding}
         layoutSwitchMode={config.dashboard.layoutSwitchMode}
