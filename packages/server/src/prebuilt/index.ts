@@ -26,24 +26,49 @@ interface PrebuiltComponent {
 const prebuiltComponents: PrebuiltComponent[] = [
   {
     name: "Clock",
-    template: `<div class="clock">
+    template: `<div class="clock" data-time-format="{{param "timeFormat"}}" data-date-format="{{param "dateFormat"}}">
   <div class="clock-time" id="clock-time"></div>
-  <div class="clock-date" id="clock-date"></div>
+  {{#if (param "showDate")}}<div class="clock-date" id="clock-date"></div>{{/if}}
 </div>
 <script>
 (function tick() {
-  const now = new Date();
-  const el = document.getElementById('clock-time');
-  const dl = document.getElementById('clock-date');
-  if (el) el.textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  if (dl) dl.textContent = now.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+  var now = new Date();
+  var el = document.getElementById('clock-time');
+  var dl = document.getElementById('clock-date');
+  var root = el && el.closest('.clock');
+  var tf = (root && root.getAttribute('data-time-format')) || '12h';
+  var df = (root && root.getAttribute('data-date-format')) || 'long';
+  if (el) el.textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12: tf !== '24h'});
+  if (dl) {
+    var dateOpts = df === 'short' ? {weekday:'short', month:'short', day:'numeric'}
+      : df === 'numeric' ? {month:'numeric', day:'numeric', year:'numeric'}
+      : {weekday:'long', month:'long', day:'numeric'};
+    dl.textContent = now.toLocaleDateString([], dateOpts);
+  }
   setTimeout(tick, 1000);
 })();
 </script>`,
     styles: `.clock { text-align: center; padding: 20px; }
 .clock-time { font-size: 4em; font-weight: 200; color: var(--db-font-color, #fff); }
 .clock-date { font-size: 1.2em; color: var(--db-font-color-secondary, #aaa); margin-top: 8px; }`,
-    parameterDefs: [],
+    parameterDefs: [
+      { name: "showDate", label: "Show Date", type: "boolean", default: true },
+      {
+        name: "timeFormat", label: "Time Format", type: "select", default: "12h",
+        options: [
+          { label: "12-hour", value: "12h" },
+          { label: "24-hour", value: "24h" },
+        ],
+      },
+      {
+        name: "dateFormat", label: "Date Format", type: "select", default: "long",
+        options: [
+          { label: "Long (Monday, March 7)", value: "long" },
+          { label: "Short (Mon, Mar 7)", value: "short" },
+          { label: "Numeric (3/7/2026)", value: "numeric" },
+        ],
+      },
+    ],
     entitySelectorDefs: [],
     isContainer: false,
     containerConfig: null,
@@ -51,16 +76,19 @@ const prebuiltComponents: PrebuiltComponent[] = [
   {
     name: "Entity Value",
     template: `<div class="entity-value">
-  <div class="entity-label">{{param "label"}}</div>
-  <div class="entity-state">{{state (param "entity")}}{{#if (param "unit")}} <span class="unit">{{param "unit"}}</span>{{/if}}</div>
+  {{#if (param "showIcon")}}<div class="entity-icon">{{mdiIcon (iconForEntity (param "entity")) size="28"}}</div>{{/if}}
+  <div class="entity-label">{{#if (param "label")}}{{param "label"}}{{else}}{{attr (param "entity") "friendly_name"}}{{/if}}</div>
+  <div class="entity-state">{{state (param "entity")}}{{#if (param "unit")}} <span class="unit">{{param "unit"}}</span>{{else}}{{#if (attr (param "entity") "unit_of_measurement")}} <span class="unit">{{attr (param "entity") "unit_of_measurement"}}</span>{{/if}}{{/if}}</div>
 </div>`,
     styles: `.entity-value { padding: 16px; text-align: center; }
+.entity-icon { margin-bottom: 4px; color: var(--db-accent-color, #4fc3f7); }
 .entity-label { font-size: 0.9em; color: var(--db-font-color-secondary, #aaa); margin-bottom: 4px; }
 .entity-state { font-size: 2.5em; font-weight: 300; color: var(--db-font-color, #fff); }
 .unit { font-size: 0.4em; color: var(--db-font-color-secondary, #aaa); }`,
     parameterDefs: [
-      { name: "label", label: "Label", type: "string", default: "Sensor" },
+      { name: "label", label: "Label", type: "string", default: "" },
       { name: "unit", label: "Unit", type: "string", default: "" },
+      { name: "showIcon", label: "Show Icon", type: "boolean", default: true },
     ],
     entitySelectorDefs: [
       { name: "entity", label: "Entity", mode: "single" },
@@ -249,7 +277,7 @@ const prebuiltComponents: PrebuiltComponent[] = [
   {{#if (param "title")}}<div class="entity-list-title">{{param "title"}}</div>{{/if}}
   {{#eachEntity "entities"}}
   <div class="entity-list-row">
-    {{#if (param "showIcon")}}<div class="entity-list-icon">{{mdiIcon (iconFor this.domain) size="20"}}</div>{{/if}}
+    {{#if (param "showIcon")}}<div class="entity-list-icon">{{#if this.attributes.icon}}{{mdiIcon this.attributes.icon size="20"}}{{else}}{{mdiIcon (iconFor this.domain) size="20"}}{{/if}}</div>{{/if}}
     {{#if (param "showFriendlyName")}}<div class="entity-list-name">{{this.attributes.friendly_name}}</div>{{/if}}
     <div class="entity-list-spacer"></div>
     {{#if (param "showState")}}<div class="entity-list-state">{{this.state}}{{#if (param "showUnit")}} {{this.attributes.unit_of_measurement}}{{/if}}</div>{{/if}}
@@ -258,7 +286,7 @@ const prebuiltComponents: PrebuiltComponent[] = [
   {{/eachEntity}}
   {{#eachEntity "entityPattern"}}
   <div class="entity-list-row">
-    {{#if (param "showIcon")}}<div class="entity-list-icon">{{mdiIcon (iconFor this.domain) size="20"}}</div>{{/if}}
+    {{#if (param "showIcon")}}<div class="entity-list-icon">{{#if this.attributes.icon}}{{mdiIcon this.attributes.icon size="20"}}{{else}}{{mdiIcon (iconFor this.domain) size="20"}}{{/if}}</div>{{/if}}
     {{#if (param "showFriendlyName")}}<div class="entity-list-name">{{this.attributes.friendly_name}}</div>{{/if}}
     <div class="entity-list-spacer"></div>
     {{#if (param "showState")}}<div class="entity-list-state">{{this.state}}{{#if (param "showUnit")}} {{this.attributes.unit_of_measurement}}{{/if}}</div>{{/if}}
@@ -298,7 +326,7 @@ const prebuiltComponents: PrebuiltComponent[] = [
   {{else}}
     <div class="light-switch-icon off">{{mdiIcon "mdi:lightbulb-outline" size="36" color="var(--db-font-color-secondary, #666)"}}</div>
   {{/stateEquals}}
-  <div class="light-switch-label">{{param "label"}}</div>
+  <div class="light-switch-label">{{#if (param "label")}}{{param "label"}}{{else}}{{attr (param "entity") "friendly_name"}}{{/if}}</div>
   {{#if (param "showState")}}
     <div class="light-switch-state">{{state (param "entity")}}</div>
   {{/if}}
@@ -318,7 +346,7 @@ comp.addEventListener('click', function() {
 .light-switch-label { font-size: 0.9em; color: var(--db-font-color, #fff); text-align: center; }
 .light-switch-state { font-size: 0.8em; color: var(--db-font-color-secondary, #aaa); text-transform: capitalize; }`,
     parameterDefs: [
-      { name: "label", label: "Label", type: "string", default: "Light" },
+      { name: "label", label: "Label", type: "string", default: "" },
       { name: "showState", label: "Show State", type: "boolean", default: true },
     ],
     entitySelectorDefs: [

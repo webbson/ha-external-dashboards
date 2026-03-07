@@ -103,21 +103,31 @@ Handlebars.registerHelper("relativeTime", function (isoString: string) {
 });
 
 Handlebars.registerHelper("iconFor", function (domain: string) {
-  const icons: Record<string, string> = {
-    light: "mdi-lightbulb",
-    switch: "mdi-toggle-switch",
-    sensor: "mdi-eye",
-    binary_sensor: "mdi-checkbox-blank-circle",
-    climate: "mdi-thermostat",
-    media_player: "mdi-play-circle",
-    camera: "mdi-video",
-    cover: "mdi-window-shutter",
-    fan: "mdi-fan",
-    lock: "mdi-lock",
-    vacuum: "mdi-robot-vacuum",
-    weather: "mdi-weather-partly-cloudy",
-  };
-  return icons[domain] ?? "mdi-help-circle";
+  return DOMAIN_ICONS[domain] ?? "mdi-help-circle";
+});
+
+const DOMAIN_ICONS: Record<string, string> = {
+  light: "mdi-lightbulb",
+  switch: "mdi-toggle-switch",
+  sensor: "mdi-eye",
+  binary_sensor: "mdi-checkbox-blank-circle",
+  climate: "mdi-thermostat",
+  media_player: "mdi-play-circle",
+  camera: "mdi-video",
+  cover: "mdi-window-shutter",
+  fan: "mdi-fan",
+  lock: "mdi-lock",
+  vacuum: "mdi-robot-vacuum",
+  weather: "mdi-weather-partly-cloudy",
+};
+
+Handlebars.registerHelper("iconForEntity", function (entityId: string, options: Handlebars.HelperOptions) {
+  const ctx = options.data?.root as TemplateContext;
+  const entity = ctx?.entities?.[entityId];
+  const entityIcon = entity?.attributes?.icon as string | undefined;
+  if (entityIcon) return entityIcon;
+  const domain = entityId.split(".")[0];
+  return DOMAIN_ICONS[domain] ?? "mdi-help-circle";
 });
 
 Handlebars.registerHelper("attr", function (entityId: string, attrName: string, options: Handlebars.HelperOptions) {
