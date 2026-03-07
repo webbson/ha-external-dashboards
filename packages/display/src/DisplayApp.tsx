@@ -6,7 +6,7 @@ import { BlackoutOverlay } from "./runtime/BlackoutOverlay.js";
 import { DisplayClient } from "./ws/DisplayClient.js";
 import type { EntityState } from "./template/engine.js";
 import { setDerivedEntityHandler } from "./template/engine.js";
-import { resolveIcons, extractIconNames } from "./icons/icon-resolver.js";
+import { resolveIcons, extractIconNames, getIconPath } from "./icons/icon-resolver.js";
 import { ensureUPlot } from "./uplot-loader.js";
 
 interface DashboardConfig {
@@ -233,6 +233,14 @@ export function DisplayApp() {
     );
 
     client.onStateChanged((entityId, state) => {
+      // Resolve entity icon if not already cached
+      const icon = state.attributes?.icon as string | undefined;
+      if (icon && !getIconPath(icon.replace(":", "-"))) {
+        resolveIcons([icon]).then(() => {
+          // Trigger re-render after icon is resolved
+          setEntities((prev) => ({ ...prev, [entityId]: { ...state } }));
+        });
+      }
       setEntities((prev) => ({ ...prev, [entityId]: state }));
     });
 
