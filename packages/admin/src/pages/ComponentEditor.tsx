@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Form, Input, InputNumber, Button, Card, Space, Select, Switch, Collapse, Typography, message } from "antd";
-import { PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
+import { PlusOutlined, MinusCircleOutlined, DownloadOutlined } from "@ant-design/icons";
 import { HybridEditor } from "../components/editors/HybridEditor.js";
 import { LivePreview } from "../components/preview/LivePreview.js";
 import { EntityDataViewer } from "../components/preview/EntityDataViewer.js";
@@ -473,6 +473,9 @@ export function ComponentEditor() {
             {isNew ? "Create" : "Save"}
           </Button>
           <Button onClick={() => navigate("/components")}>Cancel</Button>
+          <Button icon={<DownloadOutlined />} href="/component-authoring-skill.md" download="component-authoring-skill.md">
+            AI Skill
+          </Button>
         </Space>
       </div>
 
