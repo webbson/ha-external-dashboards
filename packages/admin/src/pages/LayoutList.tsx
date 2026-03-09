@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Table, Button, Space, Popconfirm, Tag, message } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined, UploadOutlined, DownloadOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
 interface Layout {
@@ -27,6 +27,42 @@ export function LayoutList() {
 
   useEffect(load, []);
 
+  const handleExport = async (id: number, name: string) => {
+    try {
+      const res = await fetch(`/api/layouts/${id}/export`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      message.error((err as Error).message);
+    }
+  };
+
+  const handleImport = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const json = JSON.parse(text);
+        await api.post("/api/layouts/import", json);
+        message.success("Layout imported");
+        load();
+      } catch (err) {
+        message.error((err as Error).message || "Invalid layout file");
+      }
+    };
+    input.click();
+  };
+
   const handleDelete = async (id: number) => {
     try {
       await api.delete(`/api/layouts/${id}`);
@@ -46,6 +82,9 @@ export function LayoutList() {
           onClick={() => navigate("/layouts/new")}
         >
           New Layout
+        </Button>
+        <Button icon={<UploadOutlined />} onClick={handleImport}>
+          Import Layout
         </Button>
       </Space>
       <Table
@@ -71,6 +110,13 @@ export function LayoutList() {
               <Space>
                 <Button size="small" onClick={() => navigate(`/layouts/${record.id}`)}>
                   Edit
+                </Button>
+                <Button
+                  size="small"
+                  icon={<DownloadOutlined />}
+                  onClick={() => handleExport(record.id, record.name)}
+                >
+                  Export
                 </Button>
                 <Popconfirm
                   title="Delete this layout?"

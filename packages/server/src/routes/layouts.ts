@@ -26,6 +26,18 @@ const createSchema = z.object({
 
 const updateSchema = createSchema.partial();
 
+const importSchema = z.object({
+  _exportMeta: z
+    .object({
+      version: z.number(),
+      exportedAt: z.string(),
+      source: z.string(),
+    })
+    .optional(),
+  name: z.string().min(1),
+  structure: structureSchema,
+});
+
 export async function layoutRoutes(app: FastifyInstance) {
   app.get("/api/layouts", async () => {
     const rows = await db
@@ -53,6 +65,69 @@ export async function layoutRoutes(app: FastifyInstance) {
       return row;
     }
   );
+
+  app.get<{ Params: { id: string } }>(
+    "/api/layouts/:id/export",
+    async (req, reply) => {
+      const id = parseInt(req.params.id);
+      const [row] = await db
+        .select()
+        .from(layouts)
+        .where(eq(layouts.id, id));
+      if (!row) return reply.code(404).send({ error: "Not found" });
+
+      const slug = row.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      const exportData = {
+        _exportMeta: {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          source: "ha-external-dashboards",
+        },
+        name: row.name,
+        structure: row.structure,
+      };
+
+      return reply
+        .header(
+          "Content-Disposition",
+          `attachment; filename="${slug}.json"`
+        )
+        .type("application/json")
+        .send(JSON.stringify(exportData, null, 2));
+    }
+  );
+
+  app.post("/api/layouts/import", async (req, reply) => {
+    const { _exportMeta, ...data } = importSchema.parse(req.body);
+
+    // Handle name collisions
+    let name = data.name;
+    const existing = await db
+      .select({ name: layouts.name })
+      .from(layouts);
+    const names = new Set(existing.map((r) => r.name));
+
+    if (names.has(name)) {
+      const base = `${name} (Imported)`;
+      if (!names.has(base)) {
+        name = base;
+      } else {
+        let i = 2;
+        while (names.has(`${base} ${i}`)) i++;
+        name = `${base} ${i}`;
+      }
+    }
+
+    const [row] = await db
+      .insert(layouts)
+      .values({ ...data, name })
+      .returning();
+    return reply.code(201).send(row);
+  });
 
   app.post("/api/layouts", async (req, reply) => {
     const body = createSchema.parse(req.body);

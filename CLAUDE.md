@@ -118,12 +118,19 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 - Handlebars is split into its own chunk for independent caching
 - `manualChunks` config in `packages/display/vite.config.ts`
 
-## Component Import/Export
+## Import/Export
 
+### Components
 - `GET /api/components/:id/export` — downloads .json file with component definition
 - `POST /api/components/import` — accepts exported JSON, creates new component
 - Export format version 1: name, template, styles, parameterDefs, entitySelectorDefs, isContainer, containerConfig
 - Name collisions resolved by appending " (Imported)" suffix
+
+### Layouts
+- `GET /api/layouts/:id/export` — downloads .json file with layout definition
+- `POST /api/layouts/import` — accepts exported JSON, creates new layout
+- Export format version 1: name, structure (gridTemplate + regions)
+- Name collisions resolved by appending " (Imported)" suffix (same logic as components)
 
 ## Security
 
