@@ -103,6 +103,7 @@ export function EntitySelector({ mode, value, onChange, allowedDomains }: Entity
     <Select
       value={value as string}
       onChange={(v) => onChange?.(v)}
+      allowClear
       loading={loading}
       placeholder="Select entity"
       showSearch
