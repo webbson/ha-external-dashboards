@@ -369,7 +369,7 @@ export function ComponentEditor() {
               </div>
             );
           })}
-          <EntityDataViewer entityBindings={testEntityBindings} compact />
+          <EntityDataViewer entityBindings={testEntityBindings} entitySelectorDefs={entitySelectorDefs} entityFilters={testEntityFilters} compact />
         </div>
       ),
     });
