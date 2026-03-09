@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Table, Button, Space, Popconfirm, Tag, message } from "antd";
-import { PlusOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
+import { Table, Button, Space, Popconfirm, Tag, Tooltip, message } from "antd";
+import { PlusOutlined, DownloadOutlined, UploadOutlined, EditOutlined, CopyOutlined, DeleteOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
 interface Component {
@@ -143,17 +143,17 @@ export function ComponentList() {
             render: (_, record) => (
               <Space>
                 {(!record.isPrebuilt || devMode) && (
-                  <Button size="small" onClick={() => navigate(`/components/${record.id}`)}>
-                    Edit
-                  </Button>
+                  <Tooltip title="Edit">
+                    <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/components/${record.id}`)} />
+                  </Tooltip>
                 )}
-                <Button size="small" onClick={() => handleCopy(record.id)}>
-                  Copy
-                </Button>
+                <Tooltip title="Copy">
+                  <Button size="small" icon={<CopyOutlined />} onClick={() => handleCopy(record.id)} />
+                </Tooltip>
                 {!record.isPrebuilt && (
-                  <Button size="small" icon={<DownloadOutlined />} onClick={() => handleExport(record.id, record.name)}>
-                    Export
-                  </Button>
+                  <Tooltip title="Export">
+                    <Button size="small" icon={<DownloadOutlined />} onClick={() => handleExport(record.id, record.name)} />
+                  </Tooltip>
                 )}
                 {!record.isPrebuilt && (
                   <Popconfirm
@@ -161,9 +161,9 @@ export function ComponentList() {
                     onConfirm={() => handleDelete(record.id)}
                     disabled={record.usageCount > 0}
                   >
-                    <Button size="small" danger disabled={record.usageCount > 0}>
-                      Delete
-                    </Button>
+                    <Tooltip title="Delete">
+                      <Button size="small" danger icon={<DeleteOutlined />} disabled={record.usageCount > 0} />
+                    </Tooltip>
                   </Popconfirm>
                 )}
               </Space>

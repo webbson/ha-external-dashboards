@@ -313,7 +313,7 @@ export function DashboardEditor() {
         layout="vertical"
         onFinish={onFinish}
         initialValues={{
-          accessMode: "public",
+          accessMode: "disabled",
           interactiveMode: false,
           layoutSwitchMode: "tabs",
           layoutRotateInterval: 30,
@@ -348,6 +348,7 @@ export function DashboardEditor() {
                       <Form.Item name="accessMode" label="Access Mode">
                         <Select
                           options={[
+                            { value: "disabled", label: "Disabled" },
                             { value: "public", label: "Public" },
                             { value: "password", label: "Password" },
                             { value: "header", label: "Header" },

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Table, Button, Space, Popconfirm, Tag, message } from "antd";
-import { PlusOutlined, UploadOutlined, DownloadOutlined } from "@ant-design/icons";
+import { Table, Button, Space, Popconfirm, Tag, Tooltip, message } from "antd";
+import { PlusOutlined, UploadOutlined, DownloadOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
 interface Layout {
@@ -108,24 +108,20 @@ export function LayoutList() {
             title: "Actions",
             render: (_, record) => (
               <Space>
-                <Button size="small" onClick={() => navigate(`/layouts/${record.id}`)}>
-                  Edit
-                </Button>
-                <Button
-                  size="small"
-                  icon={<DownloadOutlined />}
-                  onClick={() => handleExport(record.id, record.name)}
-                >
-                  Export
-                </Button>
+                <Tooltip title="Edit">
+                  <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/layouts/${record.id}`)} />
+                </Tooltip>
+                <Tooltip title="Export">
+                  <Button size="small" icon={<DownloadOutlined />} onClick={() => handleExport(record.id, record.name)} />
+                </Tooltip>
                 <Popconfirm
                   title="Delete this layout?"
                   onConfirm={() => handleDelete(record.id)}
                   disabled={record.usageCount > 0}
                 >
-                  <Button size="small" danger disabled={record.usageCount > 0}>
-                    Delete
-                  </Button>
+                  <Tooltip title="Delete">
+                    <Button size="small" danger icon={<DeleteOutlined />} disabled={record.usageCount > 0} />
+                  </Tooltip>
                 </Popconfirm>
               </Space>
             ),

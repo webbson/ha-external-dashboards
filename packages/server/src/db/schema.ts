@@ -7,7 +7,7 @@ export const dashboards = sqliteTable("dashboards", {
   slug: text("slug").notNull().unique(),
   accessKey: text("access_key").notNull(),
   accessMode: text("access_mode", {
-    enum: ["public", "password", "header"],
+    enum: ["public", "password", "header", "disabled"],
   })
     .notNull()
     .default("public"),

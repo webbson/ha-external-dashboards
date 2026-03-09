@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Table, Button, Space, Popconfirm, Tag, Tooltip, message } from "antd";
-import { PlusOutlined, LinkOutlined } from "@ant-design/icons";
+import { PlusOutlined, LinkOutlined, CopyOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
 interface Dashboard {
@@ -41,6 +41,12 @@ export function DashboardList() {
     load();
   };
 
+  const handleCopy = async (id: number) => {
+    const copied = await api.post<Dashboard>(`/api/dashboards/${id}/copy`, {});
+    message.success("Dashboard copied");
+    navigate(`/dashboards/${copied.id}`);
+  };
+
   return (
     <>
       <Space style={{ marginBottom: 16 }}>
@@ -63,7 +69,7 @@ export function DashboardList() {
             title: "Access",
             dataIndex: "accessMode",
             render: (mode: string) => (
-              <Tag color={mode === "public" ? "green" : "blue"}>{mode}</Tag>
+              <Tag color={mode === "public" ? "green" : mode === "disabled" ? "default" : "blue"}>{mode}</Tag>
             ),
           },
           {
@@ -79,7 +85,7 @@ export function DashboardList() {
                 <Tooltip
                   title={
                     externalBaseUrl
-                      ? undefined
+                      ? "Open"
                       : "Set EXTERNAL_BASE_URL to enable"
                   }
                 >
@@ -93,20 +99,21 @@ export function DashboardList() {
                         "_blank"
                       )
                     }
-                  >
-                    Open
-                  </Button>
+                  />
                 </Tooltip>
-                <Button size="small" onClick={() => navigate(`/dashboards/${record.id}`)}>
-                  Edit
-                </Button>
+                <Tooltip title="Edit">
+                  <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/dashboards/${record.id}`)} />
+                </Tooltip>
+                <Tooltip title="Copy">
+                  <Button size="small" icon={<CopyOutlined />} onClick={() => handleCopy(record.id)} />
+                </Tooltip>
                 <Popconfirm
                   title="Delete this dashboard?"
                   onConfirm={() => handleDelete(record.id)}
                 >
-                  <Button size="small" danger>
-                    Delete
-                  </Button>
+                  <Tooltip title="Delete">
+                    <Button size="small" danger icon={<DeleteOutlined />} />
+                  </Tooltip>
                 </Popconfirm>
               </Space>
             ),

@@ -136,7 +136,7 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 ## Security
 
 - Admin: HA Ingress auth (X-Ingress-Path header check)
-- External dashboards: public / password (bcrypt+JWT) / header auth per dashboard
+- External dashboards: disabled (403) / public / password (bcrypt+JWT) / header auth per dashboard
 - External REST API: `ext_session` cookie (JWT `{dashboardId, slug}`, `Path=/`, `HttpOnly`, `SameSite=Strict`, 24h TTL) set on `/api/display/:slug` auth success. Fallback: `Authorization: Bearer <accessKey>`. All external `/api/ha/*`, `/api/image_proxy/*`, `/api/camera_proxy/*`, `/api/history/*` routes require auth.
 - Entity isolation: `dashboard_entity_access` table pre-computes allowed entities/globs per dashboard. REST routes filter responses; WS proxy uses same table for initial subscriptions. `/api/ha/status` and `/api/icons/:names` stay public.
 - Popup trigger: requires `X-Api-Key` header (against `POPUP_API_KEY` env var) or `Authorization: Bearer <SUPERVISOR_TOKEN>`, rate-limited 10/sec

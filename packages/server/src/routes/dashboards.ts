@@ -11,7 +11,7 @@ import { recomputeEntityAccess, findDashboardByLayoutId } from "../services/enti
 const createSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/),
-  accessMode: z.enum(["public", "password", "header"]).default("public"),
+  accessMode: z.enum(["public", "password", "header", "disabled"]).default("disabled"),
   password: z.string().optional(),
   headerName: z.string().optional(),
   headerValue: z.string().optional(),
@@ -36,7 +36,7 @@ const createSchema = z.object({
 const updateSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/),
-  accessMode: z.enum(["public", "password", "header"]).default("public"),
+  accessMode: z.enum(["public", "password", "header", "disabled"]).default("public"),
   password: z.string().optional(),
   headerName: z.string().optional(),
   headerValue: z.string().optional(),
@@ -160,6 +160,124 @@ export async function dashboardRoutes(app: FastifyInstance) {
         .returning();
       if (!row) return reply.code(404).send({ error: "Not found" });
       return { accessKey: row.accessKey };
+    }
+  );
+
+  // Copy dashboard (deep copy with layouts + instances)
+  app.post<{ Params: { id: string } }>(
+    "/api/dashboards/:id/copy",
+    async (req, reply) => {
+      const id = parseInt(req.params.id);
+      const [source] = await db
+        .select()
+        .from(dashboards)
+        .where(eq(dashboards.id, id));
+      if (!source) return reply.code(404).send({ error: "Not found" });
+
+      // Find unique slug
+      let slug = `${source.slug}-copy`;
+      let suffix = 1;
+      while (true) {
+        const [existing] = await db
+          .select({ id: dashboards.id })
+          .from(dashboards)
+          .where(eq(dashboards.slug, slug));
+        if (!existing) break;
+        suffix++;
+        slug = `${source.slug}-copy-${suffix}`;
+      }
+
+      // Insert new dashboard
+      const [newDash] = await db
+        .insert(dashboards)
+        .values({
+          name: `Copy of ${source.name}`,
+          slug,
+          accessKey: nanoid(32),
+          accessMode: "disabled",
+          themeId: source.themeId,
+          maxWidth: source.maxWidth,
+          padding: source.padding,
+          interactiveMode: source.interactiveMode,
+          layoutSwitchMode: source.layoutSwitchMode,
+          layoutRotateInterval: source.layoutRotateInterval,
+          blackoutEntity: source.blackoutEntity,
+          blackoutStartTime: source.blackoutStartTime,
+          blackoutEndTime: source.blackoutEndTime,
+        })
+        .returning();
+
+      // Copy dashboard_layouts and their component_instances
+      const sourceDls = await db
+        .select()
+        .from(dashboardLayouts)
+        .where(eq(dashboardLayouts.dashboardId, id));
+
+      for (const dl of sourceDls) {
+        const [newDl] = await db
+          .insert(dashboardLayouts)
+          .values({
+            dashboardId: newDash.id,
+            layoutId: dl.layoutId,
+            sortOrder: dl.sortOrder,
+            label: dl.label,
+            icon: dl.icon,
+          })
+          .returning();
+
+        // Copy component instances for this layout
+        const sourceInstances = await db
+          .select()
+          .from(componentInstances)
+          .where(eq(componentInstances.dashboardLayoutId, dl.id));
+
+        // First pass: insert top-level instances (no parent)
+        const idMap = new Map<number, number>();
+        const topLevel = sourceInstances.filter((i) => !i.parentInstanceId);
+        for (const inst of topLevel) {
+          const [newInst] = await db
+            .insert(componentInstances)
+            .values({
+              dashboardLayoutId: newDl.id,
+              componentId: inst.componentId,
+              regionId: inst.regionId,
+              sortOrder: inst.sortOrder,
+              parameterValues: inst.parameterValues,
+              entityBindings: inst.entityBindings,
+              visibilityRules: inst.visibilityRules,
+              entityFilters: inst.entityFilters,
+              tabLabel: inst.tabLabel,
+              tabIcon: inst.tabIcon,
+            })
+            .returning();
+          idMap.set(inst.id, newInst.id);
+        }
+
+        // Second pass: insert children with mapped parentInstanceId
+        const children = sourceInstances.filter((i) => i.parentInstanceId);
+        for (const inst of children) {
+          const [newInst] = await db
+            .insert(componentInstances)
+            .values({
+              dashboardLayoutId: newDl.id,
+              componentId: inst.componentId,
+              regionId: inst.regionId,
+              sortOrder: inst.sortOrder,
+              parameterValues: inst.parameterValues,
+              entityBindings: inst.entityBindings,
+              visibilityRules: inst.visibilityRules,
+              entityFilters: inst.entityFilters,
+              parentInstanceId: idMap.get(inst.parentInstanceId!) ?? null,
+              tabLabel: inst.tabLabel,
+              tabIcon: inst.tabIcon,
+            })
+            .returning();
+          idMap.set(inst.id, newInst.id);
+        }
+      }
+
+      await recomputeEntityAccess(newDash.id);
+      return reply.code(201).send(newDash);
     }
   );
 

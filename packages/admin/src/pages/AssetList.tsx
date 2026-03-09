@@ -11,8 +11,9 @@ import {
   Select,
   Input,
   message,
+  Tooltip,
 } from "antd";
-import { UploadOutlined, FolderOutlined, FolderAddOutlined } from "@ant-design/icons";
+import { UploadOutlined, FolderOutlined, FolderAddOutlined, DeleteOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
 const { Text } = Typography;
@@ -215,9 +216,9 @@ export function AssetList() {
                   title="Delete this asset?"
                   onConfirm={() => handleDelete(record.id)}
                 >
-                  <Button size="small" danger>
-                    Delete
-                  </Button>
+                  <Tooltip title="Delete">
+                    <Button size="small" danger icon={<DeleteOutlined />} />
+                  </Tooltip>
                 </Popconfirm>
               </Space>
             ),

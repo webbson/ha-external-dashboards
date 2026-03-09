@@ -21,6 +21,10 @@ export async function dashboardAuth(
     return reply.code(404).send({ error: "Dashboard not found" });
   }
 
+  if (dashboard.accessMode === "disabled") {
+    return reply.code(403).send({ error: "Dashboard is disabled" });
+  }
+
   if (dashboard.accessMode === "public") {
     (req as unknown as Record<string, unknown>).dashboard = dashboard;
     return;
