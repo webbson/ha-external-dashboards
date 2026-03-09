@@ -256,7 +256,7 @@ export function PopupTrigger() {
                 <pre style={preStyle}>
                   {`rest_command:
   popup_text:
-    url: "http://<your-host>:8099/api/trigger/popup"
+    url: "http://external_dashboards:8080/api/trigger/popup"
     method: POST
     content_type: "application/json"
     payload: '{"content":{"type":"text","body":"{{ message }}"},"timeout":{{ timeout | default(10) }}}'`}
@@ -268,7 +268,7 @@ export function PopupTrigger() {
                 <pre style={preStyle}>
                   {`rest_command:
   popup_image:
-    url: "http://<your-host>:8099/api/trigger/popup"
+    url: "http://external_dashboards:8080/api/trigger/popup"
     method: POST
     content_type: "application/json"
     payload: '{"content":{"type":"image","mediaUrl":"{{ media_url }}"},"timeout":{{ timeout | default(15) }}}'`}
@@ -280,7 +280,7 @@ export function PopupTrigger() {
                 <pre style={preStyle}>
                   {`rest_command:
   popup_video:
-    url: "http://<your-host>:8099/api/trigger/popup"
+    url: "http://external_dashboards:8080/api/trigger/popup"
     method: POST
     content_type: "application/json"
     payload: '{"content":{"type":"video","mediaUrl":"{{ media_url }}"},"timeout":{{ timeout | default(30) }}}'`}
@@ -292,7 +292,7 @@ export function PopupTrigger() {
                 <pre style={preStyle}>
                   {`rest_command:
   popup_targeted:
-    url: "http://<your-host>:8099/api/trigger/popup"
+    url: "http://external_dashboards:8080/api/trigger/popup"
     method: POST
     content_type: "application/json"
     payload: '{"content":{"type":"text","body":"{{ message }}"},"timeout":10,"targetDashboardIds":[{{ dashboard_id }}]}'`}
