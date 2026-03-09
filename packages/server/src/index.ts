@@ -27,6 +27,7 @@ import { dashboardLogin } from "./middleware/dashboard-auth.js";
 import { seedPrebuiltComponents } from "./prebuilt/index.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { recomputeAllEntityAccess } from "./services/entity-access.js";
+import { mcpPlugin } from "./mcp/server.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INGRESS_PORT = parseInt(process.env.INGRESS_PORT ?? "8080");
@@ -39,6 +40,9 @@ if (!isDev && !process.env.SUPERVISOR_TOKEN) {
 }
 if (!process.env.JWT_SECRET) {
   console.warn("[WARN] JWT_SECRET not set — dashboard auth tokens will not survive restarts");
+}
+if (!process.env.MCP_API_KEY) {
+  console.warn("[WARN] MCP_API_KEY not set — MCP endpoint will be unavailable outside dev mode");
 }
 
 async function start() {
@@ -155,8 +159,8 @@ async function start() {
   // Icon resolution API (so display doesn't need to bundle @mdi/js)
   await external.register(iconRoutes);
 
-  // Popup trigger endpoint (for HA rest_command)
-  await external.register(popupTriggerRoutes);
+  // MCP server endpoint (registered on external server, injects into admin for API calls)
+  await external.register((app) => mcpPlugin(app, admin));
 
   // Serve display SPA
   const displayDir = isDev

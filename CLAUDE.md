@@ -4,7 +4,7 @@
 
 Single Node.js monolith with two HTTP listeners:
 - **Ingress (port 8080)** — Admin SPA + Management API (HA sidebar)
-- **External (port 8099)** — Dashboard display + WebSocket + popup trigger
+- **External (port 8099)** — Dashboard display + WebSocket
 
 ### Tech Stack
 - Runtime: Node.js 20, TypeScript, pnpm monorepo
@@ -13,6 +13,10 @@ Single Node.js monolith with two HTTP listeners:
 - Admin UI: React 19 + React Router + Ant Design + Monaco Editor
 - Display UI: React 19 + Handlebars (client-side template rendering) + uPlot (lazy-loaded charts)
 - HA Communication: WebSocket API via `SUPERVISOR_TOKEN`
+
+## Important Constraints
+
+- **Do NOT use git worktrees** — env files, SQLite database, and assets are not checked in, so worktrees will be missing critical runtime state
 
 ## Project Structure
 
@@ -139,11 +143,22 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 - External dashboards: disabled (403) / public / password (bcrypt+JWT) / header auth per dashboard
 - External REST API: `ext_session` cookie (JWT `{dashboardId, slug}`, `Path=/`, `HttpOnly`, `SameSite=Strict`, 24h TTL) set on `/api/display/:slug` auth success. Fallback: `Authorization: Bearer <accessKey>`. All external `/api/ha/*`, `/api/image_proxy/*`, `/api/camera_proxy/*`, `/api/history/*` routes require auth.
 - Entity isolation: `dashboard_entity_access` table pre-computes allowed entities/globs per dashboard. REST routes filter responses; WS proxy uses same table for initial subscriptions. `/api/ha/status` and `/api/icons/:names` stay public.
-- Popup trigger: requires `X-Api-Key` header (against `POPUP_API_KEY` env var) or `Authorization: Bearer <SUPERVISOR_TOKEN>`, rate-limited 10/sec
+- Popup trigger: admin-only endpoint (ingress auth), rate-limited 10/sec
 - WebSocket: UUID access key per dashboard, entity isolation via `dashboard_entity_access`
 - Interactive mode: disabled by default, rate-limited (10/sec), entity validation
 - Display 401 recovery: fetch interceptor reloads page on any `/api/*` 401 to re-auth
 - Zod validation on all API inputs, ZodError → 400 response
+
+## MCP Server
+
+- Hosted on the external Fastify server (port 8099) at `POST /mcp` (Streamable HTTP transport, stateless mode)
+- Uses `@modelcontextprotocol/sdk` with `StreamableHTTPServerTransport`
+- Tool handlers call admin API routes internally via Fastify `adminApp.inject()` — no code duplication
+- Auth: `MCP_API_KEY` env var → `Authorization: Bearer <key>` required. Without key: 503 in prod, skipped in dev mode.
+- 40 tools covering all admin CRUD: dashboards (12), components (7), layouts (6), themes (6), assets (6), other (3)
+- Complex nested objects (parameterDefs, entityBindings, etc.) passed as JSON strings in tool inputs
+- Source: `packages/server/src/mcp/` (server.ts + tools/)
+- Client config: `{ "url": "http://<host>:8099/mcp" }` in Claude Desktop MCP settings
 
 ## Environment Variables
 
@@ -154,6 +169,6 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 - `INGRESS_PORT` — Admin port (default: 8080)
 - `EXTERNAL_PORT` — Display port (default: 8099)
 - `JWT_SECRET` — JWT signing secret for dashboard password auth and ext_session cookies
-- `POPUP_API_KEY` — API key for popup trigger endpoint (server-to-server auth)
 - `EXTERNAL_BASE_URL` — Base URL for external dashboards (e.g. `http://192.168.1.100:8099`)
-- `NODE_ENV` — Set to "development" to skip ingress auth
+- `MCP_API_KEY` — API key for MCP endpoint auth (required in production, optional in dev)
+- `NODE_ENV` — Set to "development" to skip ingress auth and MCP auth
