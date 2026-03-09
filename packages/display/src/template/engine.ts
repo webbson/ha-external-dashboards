@@ -165,12 +165,9 @@ export function setDerivedEntityHandler(handler: ((entityIds: string[]) => void)
   _onRequestEntities = handler;
 }
 
-export function requestMissingDerivedEntities(entities: Record<string, unknown>) {
-  if (!_onRequestEntities) return;
-  const missing = Array.from(_derivedEntityIds).filter((id) => !(id in entities));
-  if (missing.length > 0) {
-    _onRequestEntities(missing);
-  }
+export function requestMissingDerivedEntities(missingIds: string[]) {
+  if (!_onRequestEntities || missingIds.length === 0) return;
+  _onRequestEntities(missingIds);
 }
 
 Handlebars.registerHelper("deriveEntity", function (entityId: string, newDomain: string, suffix?: string) {
@@ -274,17 +271,23 @@ Handlebars.registerHelper("eachEntity", function (this: unknown, selectorName: s
 
 const templateCache = new Map<string, HandlebarsTemplateDelegate>();
 
+export interface RenderResult {
+  html: string;
+  derivedEntityIds: string[];
+}
+
 export function renderTemplate(
   templateStr: string,
   context: TemplateContext
-): string {
+): RenderResult {
   _derivedEntityIds = new Set();
   let compiled = templateCache.get(templateStr);
   if (!compiled) {
     compiled = Handlebars.compile(templateStr);
     templateCache.set(templateStr, compiled);
   }
-  return compiled(context);
+  const html = compiled(context);
+  return { html, derivedEntityIds: Array.from(_derivedEntityIds) };
 }
 
 export function clearTemplateCache() {

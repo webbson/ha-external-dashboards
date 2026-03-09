@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef } from "react";
-import { renderTemplate, getDerivedEntityIds, requestMissingDerivedEntities, type EntityState, type TemplateContext } from "../template/engine.js";
+import { renderTemplate, requestMissingDerivedEntities, type EntityState, type TemplateContext } from "../template/engine.js";
 
 interface ComponentRendererProps {
   template: string;
@@ -50,26 +50,27 @@ export const ComponentRenderer = memo(function ComponentRenderer({
   // Detect if template uses data-script-once (run script only on first mount)
   const scriptOnce = template.includes("data-script-once");
 
-  const html = useMemo(() => {
-    if (!template) return "";
+  const { html, derivedEntityIds } = useMemo(() => {
+    if (!template) return { html: "", derivedEntityIds: [] };
     const ctx: TemplateContext = { entities, params: parameterValues, globalStyles, globExpansions: instanceGlobExpansions };
     try {
       return renderTemplate(template, ctx);
     } catch (err) {
-      return `<div style="color:red">Render error: ${(err as Error).message}</div>`;
+      return { html: `<div style="color:red">Render error: ${(err as Error).message}</div>`, derivedEntityIds: [] };
     }
   }, [template, entities, parameterValues, globalStyles, instanceGlobExpansions]);
 
   // After render, request any derived entities missing from context
   useEffect(() => {
-    const derived = getDerivedEntityIds();
-    if (derived.size === 0) return;
-    const ids = Array.from(derived);
+    if (derivedEntityIds.length === 0) return;
     // Tell the entity subset hook to include these
-    if (onDerivedEntities) onDerivedEntities(ids);
+    if (onDerivedEntities) onDerivedEntities(derivedEntityIds);
     // Request missing ones from server via WS
-    requestMissingDerivedEntities(entities);
-  }, [html, entities, onDerivedEntities]);
+    const missing = derivedEntityIds.filter((id) => !(id in entities));
+    if (missing.length > 0) {
+      requestMissingDerivedEntities(missing);
+    }
+  }, [html, derivedEntityIds, entities, onDerivedEntities]);
 
   // Set innerHTML and execute scripts
   useEffect(() => {

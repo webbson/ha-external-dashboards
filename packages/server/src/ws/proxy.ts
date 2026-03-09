@@ -54,6 +54,8 @@ interface SubscriptionResult {
   globPatterns: GlobPatternEntry[];
   /** For tracking which entities came from filtered glob patterns */
   globExpansionInfo: GlobExpansionInfo[];
+  /** Derived glob patterns for subscribe_entities validation */
+  derivedGlobPatterns: string[];
 }
 
 function applyStringFilter(
@@ -102,24 +104,18 @@ async function getSubscribedEntities(
   const globPatterns: GlobPatternEntry[] = [];
   const globExpansionInfo: GlobExpansionInfo[] = [];
 
-  // Expand glob patterns against current HA entities
+  // Cache glob expansions against current HA entities (no subscriptions yet)
   const allEntityIds = Array.from(haClient.getAllStates().keys());
-  for (const globPattern of accessPatterns.globs) {
-    const expanded = matchGlob(globPattern, allEntityIds);
-    expanded.forEach((id) => entityIds.add(id));
-
-    // Create a synthetic GlobPatternEntry for the manager's glob tracking
-    const gpEntry: GlobPatternEntry = {
-      pattern: globPattern,
-      instanceId: 0,
-      selectorName: globPattern,
-    };
-    globExpansions[globPattern] = expanded;
-    globPatterns.push(gpEntry);
-    globExpansionInfo.push({ pattern: gpEntry, expandedIds: expanded });
+  const allGlobs = [...accessPatterns.bindingGlobs, ...accessPatterns.derivedGlobs];
+  const globExpansionCache = new Map<string, string[]>();
+  for (const globPattern of allGlobs) {
+    globExpansionCache.set(globPattern, matchGlob(globPattern, allEntityIds));
   }
 
-  // Apply runtime entity filters from component instances (filters depend on live state)
+  // Track which binding globs are referenced by component instances
+  const referencedGlobs = new Set<string>();
+
+  // Process component instances to build filtered subscriptions
   const dls = await db
     .select()
     .from(dashboardLayouts)
@@ -139,7 +135,9 @@ async function getSubscribedEntities(
       const bindings = inst.entityBindings as Record<string, string | string[]>;
 
       for (const [selectorName, val] of Object.entries(bindings)) {
-        if (typeof val === "string" && accessPatterns.globs.includes(val)) {
+        if (typeof val === "string" && accessPatterns.bindingGlobs.includes(val)) {
+          referencedGlobs.add(val);
+          const expanded = globExpansionCache.get(val) ?? [];
           const selectorFilters = instanceFilters[selectorName];
           const attrFilters = selectorFilters?.attributeFilters;
           const stFilters = selectorFilters?.stateFilters;
@@ -148,7 +146,7 @@ async function getSubscribedEntities(
             (attrFilters && attrFilters.length > 0) ||
             (stFilters && stFilters.length > 0)
           ) {
-            const expanded = matchGlob(val, allEntityIds);
+            // Filtered glob: only subscribe entities passing filters
             const filtered = expanded.filter((id) => {
               const entityState = haClient.getState(id);
               if (!entityState) return false;
@@ -157,7 +155,7 @@ async function getSubscribedEntities(
               return true;
             });
 
-            // Override the expansion for this specific instance+selector with filtered results
+            filtered.forEach((id) => entityIds.add(id));
             const gpEntry: GlobPatternEntry = {
               pattern: val,
               instanceId: inst.id,
@@ -169,17 +167,51 @@ async function getSubscribedEntities(
             globExpansions[key] = filtered;
             globPatterns.push(gpEntry);
             globExpansionInfo.push({ pattern: gpEntry, expandedIds: filtered });
+          } else {
+            // Unfiltered glob: subscribe all expanded entities
+            expanded.forEach((id) => entityIds.add(id));
+            const gpEntry: GlobPatternEntry = {
+              pattern: val,
+              instanceId: inst.id,
+              selectorName,
+            };
+            const key = expansionKey(gpEntry);
+            globExpansions[key] = expanded;
+            globPatterns.push(gpEntry);
+            globExpansionInfo.push({ pattern: gpEntry, expandedIds: expanded });
           }
         }
       }
     }
   }
 
+  // Add unreferenced binding globs (e.g. from visibility rules or other non-instance sources)
+  for (const globPattern of accessPatterns.bindingGlobs) {
+    if (!referencedGlobs.has(globPattern)) {
+      const expanded = globExpansionCache.get(globPattern) ?? [];
+      expanded.forEach((id) => entityIds.add(id));
+      const gpEntry: GlobPatternEntry = {
+        pattern: globPattern,
+        instanceId: 0,
+        selectorName: globPattern,
+      };
+      globExpansions[globPattern] = expanded;
+      globPatterns.push(gpEntry);
+      globExpansionInfo.push({ pattern: gpEntry, expandedIds: expanded });
+    }
+  }
+
+  // Derived globs: display manages subscriptions via subscribe_entities.
+  // Store separately for subscribe_entities validation — not in globPatterns
+  // (which would trigger glob_expansion_update in manager.ts dynamic discovery).
+  const derivedGlobPatterns = accessPatterns.derivedGlobs;
+
   return {
     entityIds: Array.from(entityIds),
     globExpansions,
     globPatterns,
     globExpansionInfo,
+    derivedGlobPatterns,
   };
 }
 
@@ -292,6 +324,13 @@ export async function setupWebSocketProxy(app: FastifyInstance) {
 
           for (const entityId of entityIds) {
             if (conn.subscribedEntities.has(entityId)) continue;
+
+            // Validate entity against allowed derived glob patterns
+            const allowed = subscription.derivedGlobPatterns.some(
+              (pattern) => matchGlob(pattern, [entityId]).length > 0
+            );
+            if (!allowed) continue;
+
             conn.subscribedEntities.add(entityId);
 
             const state = haClient.getState(entityId);

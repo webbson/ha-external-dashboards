@@ -196,7 +196,8 @@ export async function recomputeAllEntityAccess(): Promise<void> {
  */
 export async function getEntityAccessPatterns(dashboardId: number): Promise<{
   entities: Set<string>;
-  globs: string[];
+  bindingGlobs: string[];
+  derivedGlobs: string[];
 }> {
   const rows = await db
     .select()
@@ -204,36 +205,42 @@ export async function getEntityAccessPatterns(dashboardId: number): Promise<{
     .where(eq(dashboardEntityAccess.dashboardId, dashboardId));
 
   const entities = new Set<string>();
-  const globs: string[] = [];
+  const bindingGlobs: string[] = [];
+  const derivedGlobs: string[] = [];
 
   for (const row of rows) {
     if (row.type === "entity" || row.type === "derived") {
       entities.add(row.pattern);
+    } else if (row.type === "glob") {
+      bindingGlobs.push(row.pattern);
     } else {
-      globs.push(row.pattern);
+      // derived_glob
+      derivedGlobs.push(row.pattern);
     }
   }
 
-  return { entities, globs };
+  return { entities, bindingGlobs, derivedGlobs };
 }
 
 /**
  * Check if a single entity is allowed for a dashboard.
  */
 export async function isEntityAllowed(dashboardId: number, entityId: string): Promise<boolean> {
-  const { entities, globs } = await getEntityAccessPatterns(dashboardId);
+  const { entities, bindingGlobs, derivedGlobs } = await getEntityAccessPatterns(dashboardId);
   if (entities.has(entityId)) return true;
-  return globs.some((g) => matchGlob(g, [entityId]).length > 0);
+  const allGlobs = [...bindingGlobs, ...derivedGlobs];
+  return allGlobs.some((g) => matchGlob(g, [entityId]).length > 0);
 }
 
 /**
  * Filter a list of entity IDs to only those allowed for a dashboard.
  */
 export async function filterAllowedEntities(dashboardId: number, entityIds: string[]): Promise<string[]> {
-  const { entities, globs } = await getEntityAccessPatterns(dashboardId);
+  const { entities, bindingGlobs, derivedGlobs } = await getEntityAccessPatterns(dashboardId);
+  const allGlobs = [...bindingGlobs, ...derivedGlobs];
   return entityIds.filter((id) => {
     if (entities.has(id)) return true;
-    return globs.some((g) => matchGlob(g, [id]).length > 0);
+    return allGlobs.some((g) => matchGlob(g, [id]).length > 0);
   });
 }
 
