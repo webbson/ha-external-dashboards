@@ -10,6 +10,8 @@ interface Dashboard {
   slug: string;
   accessMode: string;
   interactiveMode: boolean;
+  entityCount: number;
+  globCount: number;
   createdAt: string;
 }
 
@@ -71,6 +73,16 @@ export function DashboardList() {
             render: (mode: string) => (
               <Tag color={mode === "public" ? "green" : mode === "disabled" ? "default" : "blue"}>{mode}</Tag>
             ),
+          },
+          {
+            title: "Entities",
+            dataIndex: "entityCount",
+            render: (v: number) => <Tag>{v}</Tag>,
+          },
+          {
+            title: "Globs",
+            dataIndex: "globCount",
+            render: (v: number) => <Tag>{v}</Tag>,
           },
           {
             title: "Interactive",

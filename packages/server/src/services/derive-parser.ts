@@ -6,7 +6,9 @@ interface DeriveCall {
 
 /**
  * Parse deriveEntity calls from a Handlebars template.
- * Finds patterns like: {{deriveEntity someVar "newDomain" "_suffix"}}
+ * Finds patterns like:
+ *   {{deriveEntity someVar "newDomain" "_suffix"}}
+ *   (deriveEntity this.entity_id "newDomain" "_suffix")  — subexpression syntax
  * Also handles calls inside {{#eachEntity "selectorName"}} blocks.
  */
 export function parseDeriveEntityCalls(template: string): DeriveCall[] {
@@ -17,6 +19,9 @@ export function parseDeriveEntityCalls(template: string): DeriveCall[] {
   let blockMatch: RegExpExecArray | null;
   const processedRanges: { start: number; end: number; selectorName: string }[] = [];
 
+  // Matches both {{deriveEntity ...}} and (deriveEntity ...) subexpression syntax
+  const derivePattern = /(?:\{\{|\()deriveEntity\s+\S+\s+"([^"]+)"(?:\s+"([^"]*)")?\s*(?:\}\}|\))/g;
+
   while ((blockMatch = eachEntityRegex.exec(template)) !== null) {
     const selectorName = blockMatch[1];
     const blockContent = blockMatch[2];
@@ -26,10 +31,10 @@ export function parseDeriveEntityCalls(template: string): DeriveCall[] {
       selectorName,
     });
 
-    // Find deriveEntity calls within the block
-    const deriveRegex = /\{\{deriveEntity\s+\S+\s+"([^"]+)"(?:\s+"([^"]*)")?\s*\}\}/g;
+    // Find deriveEntity calls within the block (both syntaxes)
+    const blockDerive = new RegExp(derivePattern.source, "g");
     let deriveMatch: RegExpExecArray | null;
-    while ((deriveMatch = deriveRegex.exec(blockContent)) !== null) {
+    while ((deriveMatch = blockDerive.exec(blockContent)) !== null) {
       calls.push({
         selectorName,
         newDomain: deriveMatch[1],
@@ -39,7 +44,7 @@ export function parseDeriveEntityCalls(template: string): DeriveCall[] {
   }
 
   // Find top-level deriveEntity calls (outside eachEntity blocks)
-  const topLevelRegex = /\{\{deriveEntity\s+(\w+)\s+"([^"]+)"(?:\s+"([^"]*)")?\s*\}\}/g;
+  const topLevelRegex = /(?:\{\{|\()deriveEntity\s+(\S+)\s+"([^"]+)"(?:\s+"([^"]*)")?\s*(?:\}\}|\))/g;
   let topMatch: RegExpExecArray | null;
   while ((topMatch = topLevelRegex.exec(template)) !== null) {
     const pos = topMatch.index;

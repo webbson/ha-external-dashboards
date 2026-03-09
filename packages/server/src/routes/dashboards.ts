@@ -1,8 +1,8 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { db } from "../db/connection.js";
-import { dashboards, dashboardLayouts, componentInstances } from "../db/schema.js";
-import { eq } from "drizzle-orm";
+import { dashboards, dashboardLayouts, componentInstances, dashboardEntityAccess } from "../db/schema.js";
+import { eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import { broadcastReload } from "../ws/popup-broadcast.js";
@@ -62,7 +62,31 @@ const updateSchema = z.object({
 
 export async function dashboardRoutes(app: FastifyInstance) {
   app.get("/api/dashboards", async () => {
-    return db.select().from(dashboards);
+    const rows = await db.select().from(dashboards);
+    const accessRows = await db
+      .select({
+        dashboardId: dashboardEntityAccess.dashboardId,
+        type: dashboardEntityAccess.type,
+      })
+      .from(dashboardEntityAccess);
+    const countMap = new Map<number, { entityCount: number; globCount: number }>();
+    for (const row of accessRows) {
+      let entry = countMap.get(row.dashboardId);
+      if (!entry) {
+        entry = { entityCount: 0, globCount: 0 };
+        countMap.set(row.dashboardId, entry);
+      }
+      if (row.type === "entity" || row.type === "derived") {
+        entry.entityCount++;
+      } else {
+        entry.globCount++;
+      }
+    }
+    return rows.map((r) => ({
+      ...r,
+      entityCount: countMap.get(r.id)?.entityCount ?? 0,
+      globCount: countMap.get(r.id)?.globCount ?? 0,
+    }));
   });
 
   app.get<{ Params: { id: string } }>(
