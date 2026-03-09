@@ -12,6 +12,7 @@ interface PrebuiltComponent {
     type: string;
     default?: string | number | boolean;
     options?: { label: string; value: string }[];
+    step?: number;
   }[];
   entitySelectorDefs: {
     name: string;
@@ -98,7 +99,7 @@ const prebuiltComponents: PrebuiltComponent[] = [
   },
   {
     name: "Weather Card",
-    template: `<div class="weather-card">
+    template: `<div class="weather-card" data-layout="{{param "layout"}}" style="--wi-icon-size:{{param "iconSize"}}px;--wi-temp-size:{{param "tempSize"}}em;--wi-label-size:{{param "labelSize"}}em;--wi-value-size:{{param "valueSize"}}em">
   <div class="weather-main">
     <div class="weather-icon">
       {{#if (eq (state (param "entity")) "sunny")}}
@@ -130,13 +131,14 @@ const prebuiltComponents: PrebuiltComponent[] = [
       {{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}{{/if}}
     </div>
     <div class="weather-temp">{{attr (param "entity") "temperature"}}{{attr (param "entity") "temperature_unit"}}</div>
-    <div class="weather-condition">{{state (param "entity")}}</div>
   </div>
   <div class="weather-details">
+    {{#if (param "showHumidity")}}
     <div class="weather-detail">
       <span class="detail-label">Humidity</span>
       <span class="detail-value">{{attr (param "entity") "humidity"}}%</span>
     </div>
+    {{/if}}
     {{#if (param "showWind")}}
     <div class="weather-detail">
       <span class="detail-label">Wind</span>
@@ -163,14 +165,20 @@ const prebuiltComponents: PrebuiltComponent[] = [
     styles: `.weather-card { padding: 20px; }
 .weather-main { text-align: center; margin-bottom: 16px; }
 .weather-icon { display: flex; justify-content: center; margin-bottom: 8px; }
-.weather-icon svg { width: 80px; height: 80px; }
-.weather-temp { font-size: 3.5em; font-weight: 200; color: var(--db-font-color, #fff); }
-.weather-condition { color: var(--db-font-color-secondary, #aaa); text-transform: capitalize; margin-top: 2px; }
+.weather-icon svg { width: var(--wi-icon-size, 120px); height: var(--wi-icon-size, 120px); }
+.weather-temp { font-size: var(--wi-temp-size, 2em); font-weight: 200; color: var(--db-font-color, #fff); }
 .weather-details { display: flex; justify-content: space-around; }
 .weather-detail { text-align: center; }
-.detail-label { display: block; font-size: 0.8em; color: var(--db-font-color-secondary, #aaa); }
-.detail-value { font-size: 1.2em; color: var(--db-font-color, #fff); display: flex; align-items: center; justify-content: center; gap: 4px; }
+.detail-label { display: block; font-size: var(--wi-label-size, 0.8em); color: var(--db-font-color-secondary, #aaa); }
+.detail-value { font-size: var(--wi-value-size, 1.2em); color: var(--db-font-color, #fff); display: flex; align-items: center; justify-content: center; gap: 4px; }
 .wind-arrow { width: 18px; height: 18px; fill: var(--db-font-color-secondary, #aaa); transition: transform 0.5s ease; flex-shrink: 0; }
+
+/* Horizontal layout */
+.weather-card[data-layout="horizontal"] { display: flex; align-items: center; gap: 20px; }
+.weather-card[data-layout="horizontal"] .weather-main { display: flex; align-items: center; gap: 12px; text-align: left; margin-bottom: 0; flex-shrink: 0; }
+.weather-card[data-layout="horizontal"] .weather-icon { margin-bottom: 0; }
+.weather-card[data-layout="horizontal"] .weather-details { flex: 1; gap: 12px; }
+.weather-card[data-layout="horizontal"] .weather-detail { text-align: center; }
 
 /* Sun */
 .sun-core { fill: #fdd835; }
@@ -246,6 +254,12 @@ const prebuiltComponents: PrebuiltComponent[] = [
     parameterDefs: [
       { name: "showWind", label: "Show Wind", type: "boolean", default: true },
       { name: "showPressure", label: "Show Pressure", type: "boolean", default: false },
+      { name: "showHumidity", label: "Show Humidity", type: "boolean", default: true },
+      { name: "layout", label: "Layout", type: "select", default: "vertical", options: [{ label: "Vertical", value: "vertical" }, { label: "Horizontal", value: "horizontal" }] },
+      { name: "iconSize", label: "Icon Size (px)", type: "number", default: 120, step: 10 },
+      { name: "tempSize", label: "Temperature Size (em)", type: "number", default: 2, step: 0.1 },
+      { name: "labelSize", label: "Detail Label Size (em)", type: "number", default: 0.8, step: 0.1 },
+      { name: "valueSize", label: "Detail Value Size (em)", type: "number", default: 1.2, step: 0.1 },
     ],
     entitySelectorDefs: [
       { name: "entity", label: "Weather Entity", mode: "single", allowedDomains: ["weather"] },

@@ -22,6 +22,7 @@ interface ParameterDef {
   type: "string" | "number" | "boolean" | "color" | "select" | "icon";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
+  step?: number;
 }
 
 interface EntitySelectorDef {
@@ -485,6 +486,7 @@ export function ComponentConfigModal({
                   ) : def.type === "number" ? (
                     <InputNumber
                       value={parameterValues[def.name] as number}
+                      step={def.step}
                       onChange={(v) =>
                         setParameterValues((prev) => ({
                           ...prev,

@@ -23,6 +23,7 @@ interface ParameterDef {
   type: "string" | "number" | "boolean" | "color" | "select" | "icon";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
+  step?: number;
 }
 
 interface EntitySelectorDef {
@@ -98,9 +99,17 @@ export function ComponentEditor() {
           form.setFieldsValue(data);
           setTemplate(data.template);
           setStyles(data.styles);
-          setParameterDefs(data.parameterDefs ?? []);
+          const defs = data.parameterDefs ?? [];
+          setParameterDefs(defs);
           setEntitySelectorDefs(data.entitySelectorDefs ?? []);
-          setTestEntityBindings(data.testEntityBindings ?? {});
+          const bindings = data.testEntityBindings ?? {};
+          setTestEntityBindings(bindings);
+          // Seed test parameter values with defaults
+          const defaults: Record<string, string | number | boolean> = {};
+          for (const def of defs) {
+            if (def.default !== undefined) defaults[def.name] = def.default;
+          }
+          setTestParameterValues((prev) => ({ ...defaults, ...prev }));
         })
         .finally(() => setLoading(false));
     }
@@ -387,6 +396,7 @@ export function ComponentEditor() {
               ) : def.type === "number" ? (
                 <InputNumber
                   value={testParameterValues[def.name] as number}
+                  step={def.step}
                   onChange={(v) =>
                     setTestParameterValues((prev) => ({ ...prev, [def.name]: v ?? 0 }))
                   }
@@ -475,7 +485,15 @@ export function ComponentEditor() {
             styles={styles}
             onStylesChange={setStyles}
             parameterDefs={parameterDefs}
-            onParameterDefsChange={setParameterDefs}
+            onParameterDefsChange={(defs) => {
+              setParameterDefs(defs);
+              // Seed defaults for any new params
+              const defaults: Record<string, string | number | boolean> = {};
+              for (const def of defs) {
+                if (def.default !== undefined) defaults[def.name] = def.default;
+              }
+              setTestParameterValues((prev) => ({ ...defaults, ...prev }));
+            }}
             entitySelectorDefs={entitySelectorDefs}
             onEntitySelectorDefsChange={setEntitySelectorDefs}
           />
