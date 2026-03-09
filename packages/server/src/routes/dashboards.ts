@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import { broadcastReload } from "../ws/popup-broadcast.js";
+import { recomputeEntityAccess, findDashboardByLayoutId } from "../services/entity-access.js";
 
 const createSchema = z.object({
   name: z.string().min(1),
@@ -129,6 +130,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         .where(eq(dashboards.id, id))
         .returning();
       if (!row) return reply.code(404).send({ error: "Not found" });
+      await recomputeEntityAccess(id);
       broadcastReload(id);
       return row;
     }
@@ -210,6 +212,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
         }
       }
 
+      await recomputeEntityAccess(dashboardId);
+
       return db
         .select()
         .from(dashboardLayouts)
@@ -283,6 +287,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
         .insert(componentInstances)
         .values({ dashboardLayoutId: dlId, ...body })
         .returning();
+
+      const dashboardId = await findDashboardByLayoutId(dlId);
+      if (dashboardId) await recomputeEntityAccess(dashboardId);
+
       return reply.code(201).send(row);
     }
   );
@@ -340,6 +348,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
         .where(eq(componentInstances.id, id))
         .returning();
       if (!row) return reply.code(404).send({ error: "Not found" });
+
+      const dashboardId = await findDashboardByLayoutId(row.dashboardLayoutId);
+      if (dashboardId) await recomputeEntityAccess(dashboardId);
+
       return row;
     }
   );
@@ -358,6 +370,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
         .where(eq(componentInstances.id, id))
         .returning();
       if (!row) return reply.code(404).send({ error: "Not found" });
+
+      const dashboardId = await findDashboardByLayoutId(row.dashboardLayoutId);
+      if (dashboardId) await recomputeEntityAccess(dashboardId);
+
       return { success: true };
     }
   );

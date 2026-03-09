@@ -2,6 +2,8 @@ import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { haClient } from "../ws/ha-client.js";
 import { matchGlob } from "@ha-external-dashboards/shared";
+import { externalApiAuth } from "../middleware/external-api-auth.js";
+import { isEntityAllowed } from "../services/entity-access.js";
 
 const HA_HTTP_BASE =
   (process.env.HA_WS_URL ?? "ws://supervisor/core/websocket")
@@ -9,7 +11,13 @@ const HA_HTTP_BASE =
     .replace(/\/websocket$/, "")
     .replace(/\/api$/, "");
 
-export async function haImageProxyRoutes(app: FastifyInstance) {
+interface ProxyOptions {
+  isExternal?: boolean;
+}
+
+export async function haImageProxyRoutes(app: FastifyInstance, opts?: ProxyOptions) {
+  const preHandler = opts?.isExternal ? externalApiAuth : undefined;
+
   async function proxyToHA(req: { url: string }, reply: import("fastify").FastifyReply) {
     const token = process.env.SUPERVISOR_TOKEN;
     if (!token) return reply.code(503).send({ error: "HA not configured" });
@@ -30,8 +38,9 @@ export async function haImageProxyRoutes(app: FastifyInstance) {
     }
   }
 
-  app.get("/api/image_proxy/*", proxyToHA);
-  app.get("/api/camera_proxy/*", proxyToHA);
+  const routeOpts = preHandler ? { preHandler } : {};
+  app.get("/api/image_proxy/*", routeOpts, proxyToHA);
+  app.get("/api/camera_proxy/*", routeOpts, proxyToHA);
 }
 
 const historyQuerySchema = z.object({
@@ -39,9 +48,12 @@ const historyQuerySchema = z.object({
   end: z.string().datetime().optional(),
 });
 
-export async function haHistoryProxyRoutes(app: FastifyInstance) {
+export async function haHistoryProxyRoutes(app: FastifyInstance, opts?: ProxyOptions) {
+  const preHandler = opts?.isExternal ? externalApiAuth : undefined;
+
   app.get<{ Params: { entityIds: string }; Querystring: { start?: string; end?: string } }>(
     "/api/history/:entityIds",
+    preHandler ? { preHandler } : {},
     async (req, reply) => {
       const token = process.env.SUPERVISOR_TOKEN;
       if (!token) return reply.code(503).send({ error: "HA not configured" });
@@ -52,6 +64,17 @@ export async function haHistoryProxyRoutes(app: FastifyInstance) {
       }
       if (!entityIds.every((id) => /^[a-z_]+\.[a-z0-9_]+$/.test(id))) {
         return reply.code(400).send({ error: "Invalid entity ID format" });
+      }
+
+      // Entity filtering for external server
+      if (opts?.isExternal) {
+        const dashboard = (req as unknown as Record<string, unknown>).dashboard as { id: number };
+        for (const entityId of entityIds) {
+          const allowed = await isEntityAllowed(dashboard.id, entityId);
+          if (!allowed) {
+            return reply.code(403).send({ error: `Entity not accessible: ${entityId}` });
+          }
+        }
       }
 
       const query = historyQuerySchema.safeParse(req.query);

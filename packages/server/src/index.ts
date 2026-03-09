@@ -16,6 +16,7 @@ import { componentRoutes } from "./routes/components.js";
 import { themeRoutes } from "./routes/themes.js";
 import { assetRoutes } from "./routes/assets.js";
 import { haProxyRoutes, haImageProxyRoutes, haHistoryProxyRoutes } from "./routes/ha-proxy.js";
+import { externalHaProxyRoutes } from "./routes/external-ha-proxy.js";
 import { previewRoutes } from "./routes/preview.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { popupTriggerRoutes } from "./routes/popup-trigger.js";
@@ -25,6 +26,7 @@ import { ingressAuth } from "./middleware/auth.js";
 import { dashboardLogin } from "./middleware/dashboard-auth.js";
 import { seedPrebuiltComponents } from "./prebuilt/index.js";
 import { errorHandler } from "./middleware/error-handler.js";
+import { recomputeAllEntityAccess } from "./services/entity-access.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const INGRESS_PORT = parseInt(process.env.INGRESS_PORT ?? "8080");
@@ -45,6 +47,9 @@ async function start() {
 
   // Seed prebuilt components
   await seedPrebuiltComponents();
+
+  // Backfill entity access table for all dashboards
+  await recomputeAllEntityAccess();
 
   // Connect to HA WebSocket + forward state changes to display clients
   haClient.setOnStateChanged((entityId, newState) => {
@@ -135,14 +140,14 @@ async function start() {
     dashboardLogin
   );
 
-  // HA image proxy for display (entity_picture URLs)
-  await external.register(haImageProxyRoutes);
+  // HA image proxy for display (requires auth via ext_session cookie)
+  await external.register((app) => haImageProxyRoutes(app, { isExternal: true }));
 
-  // HA entity proxy for display (camera overlay, etc.)
-  await external.register(haProxyRoutes);
+  // HA entity proxy for display (entity-scoped, requires auth)
+  await external.register(externalHaProxyRoutes);
 
-  // HA history proxy for graph components
-  await external.register(haHistoryProxyRoutes);
+  // HA history proxy for graph components (entity-scoped, requires auth)
+  await external.register((app) => haHistoryProxyRoutes(app, { isExternal: true }));
 
   // Display data API (serves dashboard config to display app)
   await external.register(displayDataRoutes);

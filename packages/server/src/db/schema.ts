@@ -194,6 +194,20 @@ export const componentInstances = sqliteTable("component_instances", {
   index("idx_component_instances_component_id").on(table.componentId),
 ]);
 
+export const dashboardEntityAccess = sqliteTable("dashboard_entity_access", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  dashboardId: integer("dashboard_id")
+    .notNull()
+    .references(() => dashboards.id, { onDelete: "cascade" }),
+  pattern: text("pattern").notNull(),
+  type: text("type", {
+    enum: ["entity", "glob", "derived", "derived_glob"],
+  }).notNull(),
+  source: text("source"),
+}, (table) => [
+  index("idx_dashboard_entity_access_dashboard_id").on(table.dashboardId),
+]);
+
 export const assets = sqliteTable("assets", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),

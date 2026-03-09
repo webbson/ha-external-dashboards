@@ -10,11 +10,11 @@ import { eq } from "drizzle-orm";
 import { connectionManager } from "./manager.js";
 import { haClient } from "./ha-client.js";
 import {
-  isGlobPattern,
   matchGlob,
   type GlobAttributeFilter,
   type GlobStateFilter,
 } from "@ha-external-dashboards/shared";
+import { getEntityAccessPatterns } from "../services/entity-access.js";
 
 // Rate limiting for call_service
 const rateLimits = new Map<WebSocket, { count: number; resetAt: number }>();
@@ -94,15 +94,36 @@ function applyStateFilters(
 async function getSubscribedEntities(
   dashboardId: number
 ): Promise<SubscriptionResult> {
+  // Read allowed entities/globs from pre-computed entity-access table
+  const accessPatterns = await getEntityAccessPatterns(dashboardId);
+
+  const entityIds = new Set<string>(accessPatterns.entities);
+  const globExpansions: Record<string, string[]> = {};
+  const globPatterns: GlobPatternEntry[] = [];
+  const globExpansionInfo: GlobExpansionInfo[] = [];
+
+  // Expand glob patterns against current HA entities
+  const allEntityIds = Array.from(haClient.getAllStates().keys());
+  for (const globPattern of accessPatterns.globs) {
+    const expanded = matchGlob(globPattern, allEntityIds);
+    expanded.forEach((id) => entityIds.add(id));
+
+    // Create a synthetic GlobPatternEntry for the manager's glob tracking
+    const gpEntry: GlobPatternEntry = {
+      pattern: globPattern,
+      instanceId: 0,
+      selectorName: globPattern,
+    };
+    globExpansions[globPattern] = expanded;
+    globPatterns.push(gpEntry);
+    globExpansionInfo.push({ pattern: gpEntry, expandedIds: expanded });
+  }
+
+  // Apply runtime entity filters from component instances (filters depend on live state)
   const dls = await db
     .select()
     .from(dashboardLayouts)
     .where(eq(dashboardLayouts.dashboardId, dashboardId));
-
-  const entityIds = new Set<string>();
-  const globExpansions: Record<string, string[]> = {};
-  const globPatterns: GlobPatternEntry[] = [];
-  const globExpansionInfo: GlobExpansionInfo[] = [];
 
   for (const dl of dls) {
     const instances = await db
@@ -111,65 +132,47 @@ async function getSubscribedEntities(
       .where(eq(componentInstances.dashboardLayoutId, dl.id));
 
     for (const inst of instances) {
-      const bindings = inst.entityBindings as Record<
-        string,
-        string | string[]
-      >;
       const instanceFilters = (inst.entityFilters ?? {}) as Record<
         string,
         { attributeFilters?: GlobAttributeFilter[]; stateFilters?: GlobStateFilter[] }
       >;
+      const bindings = inst.entityBindings as Record<string, string | string[]>;
 
       for (const [selectorName, val] of Object.entries(bindings)) {
-        if (Array.isArray(val)) {
-          val.forEach((id) => entityIds.add(id));
-        } else if (isGlobPattern(val)) {
+        if (typeof val === "string" && accessPatterns.globs.includes(val)) {
           const selectorFilters = instanceFilters[selectorName];
           const attrFilters = selectorFilters?.attributeFilters;
           const stFilters = selectorFilters?.stateFilters;
 
-          const allEntityIds = Array.from(haClient.getAllStates().keys());
-          let expanded = matchGlob(val, allEntityIds);
-
-          // Apply filters server-side to reduce subscriptions
           if (
             (attrFilters && attrFilters.length > 0) ||
             (stFilters && stFilters.length > 0)
           ) {
-            expanded = expanded.filter((id) => {
+            const expanded = matchGlob(val, allEntityIds);
+            const filtered = expanded.filter((id) => {
               const entityState = haClient.getState(id);
               if (!entityState) return false;
               if (attrFilters && attrFilters.length > 0 && !applyAttributeFilters(entityState.attributes, attrFilters)) return false;
               if (stFilters && stFilters.length > 0 && !applyStateFilters(entityState.state, stFilters)) return false;
               return true;
             });
-          }
 
-          expanded.forEach((id) => entityIds.add(id));
-          const gpEntry: GlobPatternEntry = { pattern: val, instanceId: inst.id, selectorName, attributeFilters: attrFilters, stateFilters: stFilters };
-          globExpansions[expansionKey(gpEntry)] = expanded;
-          globPatterns.push(gpEntry);
-          globExpansionInfo.push({ pattern: gpEntry, expandedIds: expanded });
-        } else {
-          entityIds.add(val);
+            // Override the expansion for this specific instance+selector with filtered results
+            const gpEntry: GlobPatternEntry = {
+              pattern: val,
+              instanceId: inst.id,
+              selectorName,
+              attributeFilters: attrFilters,
+              stateFilters: stFilters,
+            };
+            const key = expansionKey(gpEntry);
+            globExpansions[key] = filtered;
+            globPatterns.push(gpEntry);
+            globExpansionInfo.push({ pattern: gpEntry, expandedIds: filtered });
+          }
         }
       }
-
-      // Also entities from visibility rules
-      const rules = inst.visibilityRules as { entityId: string }[];
-      for (const rule of rules) {
-        entityIds.add(rule.entityId);
-      }
     }
-  }
-
-  // Add blackout entity if configured
-  const [dashboardRow] = await db
-    .select()
-    .from(dashboards)
-    .where(eq(dashboards.id, dashboardId));
-  if (dashboardRow?.blackoutEntity) {
-    entityIds.add(dashboardRow.blackoutEntity);
   }
 
   return {

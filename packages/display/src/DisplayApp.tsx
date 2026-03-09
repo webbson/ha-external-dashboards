@@ -245,6 +245,25 @@ export function DisplayApp() {
     };
   }, [config]);
 
+  // 401 recovery: if any /api/* fetch returns 401, reload to re-auth
+  useEffect(() => {
+    if (!config) return;
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const res = await originalFetch(...args);
+      if (res.status === 401) {
+        const url = typeof args[0] === "string" ? args[0] : (args[0] as Request).url;
+        if (url.startsWith("/api/")) {
+          window.location.reload();
+        }
+      }
+      return res;
+    };
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, [config]);
+
   // Connect WebSocket once config is loaded
   useEffect(() => {
     if (!config) return;

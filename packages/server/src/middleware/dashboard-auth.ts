@@ -5,12 +5,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import crypto from "node:crypto";
-
-const JWT_SECRET = process.env.JWT_SECRET ?? (() => {
-  console.warn("[WARN] JWT_SECRET not set — using random secret. Dashboard tokens will not survive restarts.");
-  return crypto.randomBytes(32).toString("hex");
-})();
+import { JWT_SECRET } from "../config/jwt.js";
 
 export async function dashboardAuth(
   req: FastifyRequest<{ Params: { slug: string } }>,

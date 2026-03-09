@@ -9,21 +9,17 @@ import {
   themes,
 } from "../db/schema.js";
 import { eq } from "drizzle-orm";
+import jwt from "jsonwebtoken";
+import { JWT_SECRET } from "../config/jwt.js";
+import { dashboardAuth } from "../middleware/dashboard-auth.js";
 
 export async function displayDataRoutes(app: FastifyInstance) {
   // Serves full dashboard config to the display app
   app.get<{ Params: { slug: string } }>(
     "/api/display/:slug",
+    { preHandler: dashboardAuth },
     async (req, reply) => {
-      const { slug } = req.params;
-      const [dashboard] = await db
-        .select()
-        .from(dashboards)
-        .where(eq(dashboards.slug, slug));
-
-      if (!dashboard) {
-        return reply.code(404).send({ error: "Dashboard not found" });
-      }
+      const dashboard = (req as unknown as Record<string, unknown>).dashboard as typeof dashboards.$inferSelect;
 
       // Resolve theme if set
       let themeData = { standardVariables: {} as Record<string, string>, globalStyles: {} as Record<string, string> };
@@ -83,6 +79,17 @@ export async function displayDataRoutes(app: FastifyInstance) {
           componentDefs[compId] = comp;
         }
       }
+
+      // Set ext_session cookie for subsequent API requests (image proxy, history, etc.)
+      const sessionToken = jwt.sign(
+        { dashboardId: dashboard.id, slug: dashboard.slug },
+        JWT_SECRET,
+        { expiresIn: "1d" }
+      );
+      reply.header(
+        "Set-Cookie",
+        `ext_session=${sessionToken}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`
+      );
 
       return {
         dashboard: {

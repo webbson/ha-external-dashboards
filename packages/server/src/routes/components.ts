@@ -4,6 +4,7 @@ import { db } from "../db/connection.js";
 import { components, componentInstances, dashboardLayouts } from "../db/schema.js";
 import { eq, sql } from "drizzle-orm";
 import { broadcastReloadForDashboards } from "../ws/popup-broadcast.js";
+import { findDashboardsByComponent, recomputeEntityAccessForDashboards } from "../services/entity-access.js";
 
 const parameterDefSchema = z.object({
   name: z.string(),
@@ -189,17 +190,11 @@ export async function componentRoutes(app: FastifyInstance) {
         .returning();
       if (!row) return reply.code(404).send({ error: "Not found" });
 
-      // Cascade reload to all dashboards using this component
-      const affected = await db
-        .selectDistinct({ dashboardId: dashboardLayouts.dashboardId })
-        .from(componentInstances)
-        .innerJoin(
-          dashboardLayouts,
-          eq(componentInstances.dashboardLayoutId, dashboardLayouts.id)
-        )
-        .where(eq(componentInstances.componentId, id));
-      if (affected.length > 0) {
-        broadcastReloadForDashboards(affected.map((r) => r.dashboardId));
+      // Cascade reload + recompute entity access for all dashboards using this component
+      const affectedIds = await findDashboardsByComponent(id);
+      if (affectedIds.length > 0) {
+        await recomputeEntityAccessForDashboards(affectedIds);
+        broadcastReloadForDashboards(affectedIds);
       }
 
       return row;

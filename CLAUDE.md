@@ -45,6 +45,7 @@ Build order matters: shared → admin/display → server
 - `components` — template (Handlebars), styles (CSS), parameterDefs, entitySelectorDefs (modes: single/multiple/glob, optional allowedDomains, optional glob filters), testEntityBindings
 - `component_instances` — placed in dashboard_layout regions with parameterValues, entityBindings, visibilityRules
 - `assets` — uploaded files in /config/assets/, virtual folder field for organization
+- `dashboard_entity_access` — pre-computed entity access per dashboard: pattern (entity ID or glob), type (entity/glob/derived/derived_glob), source (binding:name, visibility, blackout, derive:domain+suffix). Recomputed on dashboard/component/layout save. Used by REST middleware and WS proxy for entity scoping.
 
 ## Template Script Modes
 
@@ -136,8 +137,12 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 
 - Admin: HA Ingress auth (X-Ingress-Path header check)
 - External dashboards: public / password (bcrypt+JWT) / header auth per dashboard
-- WebSocket: UUID access key per dashboard, entity isolation
+- External REST API: `ext_session` cookie (JWT `{dashboardId, slug}`, `Path=/`, `HttpOnly`, `SameSite=Strict`, 24h TTL) set on `/api/display/:slug` auth success. Fallback: `Authorization: Bearer <accessKey>`. All external `/api/ha/*`, `/api/image_proxy/*`, `/api/camera_proxy/*`, `/api/history/*` routes require auth.
+- Entity isolation: `dashboard_entity_access` table pre-computes allowed entities/globs per dashboard. REST routes filter responses; WS proxy uses same table for initial subscriptions. `/api/ha/status` and `/api/icons/:names` stay public.
+- Popup trigger: requires `X-Api-Key` header (against `POPUP_API_KEY` env var) or `Authorization: Bearer <SUPERVISOR_TOKEN>`, rate-limited 10/sec
+- WebSocket: UUID access key per dashboard, entity isolation via `dashboard_entity_access`
 - Interactive mode: disabled by default, rate-limited (10/sec), entity validation
+- Display 401 recovery: fetch interceptor reloads page on any `/api/*` 401 to re-auth
 - Zod validation on all API inputs, ZodError → 400 response
 
 ## Environment Variables
@@ -148,6 +153,7 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 - `ASSETS_DIR` — Asset storage path (default: /config/assets)
 - `INGRESS_PORT` — Admin port (default: 8080)
 - `EXTERNAL_PORT` — Display port (default: 8099)
-- `JWT_SECRET` — JWT signing secret for dashboard password auth
+- `JWT_SECRET` — JWT signing secret for dashboard password auth and ext_session cookies
+- `POPUP_API_KEY` — API key for popup trigger endpoint (server-to-server auth)
 - `EXTERNAL_BASE_URL` — Base URL for external dashboards (e.g. `http://192.168.1.100:8099`)
 - `NODE_ENV` — Set to "development" to skip ingress auth
