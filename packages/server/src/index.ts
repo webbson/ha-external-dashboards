@@ -138,6 +138,9 @@ async function start() {
   // HA image proxy for display (entity_picture URLs)
   await external.register(haImageProxyRoutes);
 
+  // HA entity proxy for display (camera overlay, etc.)
+  await external.register(haProxyRoutes);
+
   // HA history proxy for graph components
   await external.register(haHistoryProxyRoutes);
 

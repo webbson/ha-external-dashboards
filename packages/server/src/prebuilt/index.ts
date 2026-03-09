@@ -706,6 +706,69 @@ comp.addEventListener('click', function() {
     containerConfig: null,
   },
   {
+    name: "Camera",
+    template: `<div class="camera" data-script-once data-entity-id="{{param "camera"}}" data-refresh="{{param "refreshInterval"}}" data-show-name="{{param "showName"}}" data-show-state="{{param "showState"}}">
+  <img class="camera-img" src="/api/camera_proxy/{{param "camera"}}" style="object-fit: {{param "fitMode"}};" alt="Camera feed" />
+  <div class="camera-error" style="display:none;">No camera feed available</div>
+  <div class="camera-overlay" style="display:none;"><span class="camera-name"></span><span class="camera-state"></span></div>
+</div>
+<script>
+  var root = comp.querySelector('.camera');
+  var entityId = root.getAttribute('data-entity-id');
+  var interval = parseInt(root.getAttribute('data-refresh'), 10) || 2;
+  var showName = root.getAttribute('data-show-name') === 'true';
+  var showState = root.getAttribute('data-show-state') === 'true';
+  if (comp._camInterval) clearInterval(comp._camInterval);
+  comp._camInterval = setInterval(function() {
+    var img = comp.querySelector('.camera-img');
+    if (img && entityId) img.setAttribute('src', '/api/camera_proxy/' + entityId + '?_t=' + Date.now());
+  }, interval * 1000);
+  if (showName && entityId) {
+    fetch('/api/ha/entities/' + entityId).then(function(r) { return r.json(); }).then(function(data) {
+      var overlay = comp.querySelector('.camera-overlay');
+      var nameEl = comp.querySelector('.camera-name');
+      var stateEl = comp.querySelector('.camera-state');
+      if (nameEl) nameEl.textContent = data.attributes.friendly_name || entityId;
+      if (showState && stateEl) stateEl.textContent = data.state || '';
+      if (overlay) overlay.style.display = '';
+    }).catch(function() {});
+  }
+</script>`,
+    styles: `.camera { position: relative; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000; }
+.camera-img { width: 100%; height: 100%; display: block; }
+.camera-error { color: var(--db-font-color-secondary, #aaa); font-size: 0.9em; }
+.camera-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 6px 10px; background: rgba(0,0,0,0.55); display: flex; align-items: center; gap: 8px; }
+.camera-name { color: #fff; font-size: 0.95em; font-weight: 500; }
+.camera-state { color: rgba(255,255,255,0.7); font-size: 0.85em; margin-left: auto; }`,
+    parameterDefs: [
+      {
+        name: "refreshInterval", label: "Refresh Interval", type: "select", default: "2",
+        options: [
+          { label: "1 second", value: "1" },
+          { label: "2 seconds", value: "2" },
+          { label: "5 seconds", value: "5" },
+          { label: "10 seconds", value: "10" },
+          { label: "30 seconds", value: "30" },
+        ],
+      },
+      { name: "showName", label: "Show Name", type: "boolean", default: true },
+      { name: "showState", label: "Show State", type: "boolean", default: false },
+      {
+        name: "fitMode", label: "Fit Mode", type: "select", default: "contain",
+        options: [
+          { label: "Contain", value: "contain" },
+          { label: "Cover", value: "cover" },
+          { label: "Fill", value: "fill" },
+        ],
+      },
+    ],
+    entitySelectorDefs: [
+      { name: "camera", label: "Camera Entity", mode: "single", allowedDomains: ["camera"] },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
     name: "Tabs Container",
     template: `<div class="tabs-container"><!-- children rendered by display runtime --></div>`,
     styles: `.tabs-container { width: 100%; height: 100%; }`,
