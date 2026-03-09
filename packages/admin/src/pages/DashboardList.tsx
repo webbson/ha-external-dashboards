@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Table, Button, Space, Popconfirm, Tag, Tooltip, message } from "antd";
-import { PlusOutlined, LinkOutlined, CopyOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, LinkOutlined, CopyOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
 interface Dashboard {
@@ -41,6 +41,11 @@ export function DashboardList() {
     await api.delete(`/api/dashboards/${id}`);
     message.success("Dashboard deleted");
     load();
+  };
+
+  const handleReload = async (id: number) => {
+    await api.post(`/api/dashboards/${id}/reload`, {});
+    message.success("Displays refreshed");
   };
 
   const handleCopy = async (id: number) => {
@@ -112,6 +117,9 @@ export function DashboardList() {
                       )
                     }
                   />
+                </Tooltip>
+                <Tooltip title="Refresh displays">
+                  <Button size="small" icon={<ReloadOutlined />} onClick={() => handleReload(record.id)} />
                 </Tooltip>
                 <Tooltip title="Edit">
                   <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/dashboards/${record.id}`)} />

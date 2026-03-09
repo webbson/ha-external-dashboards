@@ -187,6 +187,20 @@ export async function dashboardRoutes(app: FastifyInstance) {
     }
   );
 
+  app.post<{ Params: { id: string } }>(
+    "/api/dashboards/:id/reload",
+    async (req, reply) => {
+      const id = parseInt(req.params.id);
+      const [row] = await db
+        .select({ id: dashboards.id })
+        .from(dashboards)
+        .where(eq(dashboards.id, id));
+      if (!row) return reply.code(404).send({ error: "Not found" });
+      broadcastReload(id);
+      return { success: true };
+    }
+  );
+
   // Copy dashboard (deep copy with layouts + instances)
   app.post<{ Params: { id: string } }>(
     "/api/dashboards/:id/copy",

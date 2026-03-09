@@ -116,6 +116,19 @@ export function registerDashboardTools(mcp: McpServer, adminApp: FastifyInstance
   );
 
   mcp.tool(
+    "dashboard_reload",
+    "Reload all display clients currently showing a specific dashboard",
+    { id: z.number().describe("Dashboard ID") },
+    async ({ id }) => {
+      const res = await adminApp.inject({
+        method: "POST",
+        url: `/api/dashboards/${id}/reload`,
+      });
+      return formatResponse(res);
+    },
+  );
+
+  mcp.tool(
     "dashboard_copy",
     "Deep copy a dashboard including all layouts and component instances",
     { id: z.number().describe("Dashboard ID to copy") },
