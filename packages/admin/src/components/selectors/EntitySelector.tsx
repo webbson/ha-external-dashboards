@@ -23,8 +23,8 @@ export function EntitySelector({ mode, value, onChange, allowedDomains }: Entity
   useEffect(() => {
     setLoading(true);
     api
-      .get<HAEntity[]>("/api/ha/entities")
-      .then(setEntities)
+      .get<{ entities: HAEntity[]; total: number }>("/api/ha/entities")
+      .then((res) => setEntities(res.entities))
       .catch(() => setEntities([]))
       .finally(() => setLoading(false));
   }, []);
