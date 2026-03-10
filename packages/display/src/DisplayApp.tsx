@@ -137,6 +137,27 @@ export function DisplayApp() {
     try {
       const res = await fetch(`/api/display/${slug}`);
       if (res.status === 401) {
+        // Try auto-login via ?p= query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const qp = urlParams.get("p");
+        if (qp) {
+          // Strip password from URL immediately
+          urlParams.delete("p");
+          const cleanUrl = urlParams.toString()
+            ? `${window.location.pathname}?${urlParams.toString()}`
+            : window.location.pathname;
+          window.history.replaceState({}, "", cleanUrl);
+
+          const loginRes = await fetch(`/d/${slug}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: qp }),
+          });
+          if (loginRes.ok) {
+            // Cookie is set — retry config load via recursive call
+            return loadConfig();
+          }
+        }
         setNeedsAuth(true);
         return;
       }
