@@ -78,6 +78,50 @@ export function registerOtherTools(mcp: McpServer, adminApp: FastifyInstance) {
     },
   );
 
+  mcp.tool(
+    "ha_entities_list",
+    "List available Home Assistant entities with optional filtering by domain, state, attributes, or search term. Returns entity IDs, current states, and attributes.",
+    {
+      domain: z
+        .string()
+        .optional()
+        .describe("Filter by entity domain (e.g. 'light', 'sensor', 'binary_sensor')"),
+      state: z
+        .string()
+        .optional()
+        .describe("Filter by current state value (e.g. 'on', 'off')"),
+      stateNot: z
+        .string()
+        .optional()
+        .describe("Exclude entities with this state (e.g. 'unavailable')"),
+      attribute: z
+        .string()
+        .optional()
+        .describe("Attribute name to filter on (use with attributeValue)"),
+      attributeValue: z
+        .string()
+        .optional()
+        .describe("Required attribute value (used with attribute)"),
+      search: z
+        .string()
+        .optional()
+        .describe("Free-text search across entity_id and friendly_name"),
+      limit: z
+        .number()
+        .optional()
+        .describe("Max results to return (default 200, max 1000)"),
+    },
+    async (params) => {
+      const qs = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined) qs.set(key, String(value));
+      }
+      const url = `/api/ha/entities${qs.size ? `?${qs}` : ""}`;
+      const res = await adminApp.inject({ method: "GET", url });
+      return formatResponse(res);
+    },
+  );
+
   mcp.tool("settings_get", "Get server settings (external base URL, dev mode status)", {}, async () => {
     const res = await adminApp.inject({ method: "GET", url: "/api/settings" });
     return formatResponse(res);

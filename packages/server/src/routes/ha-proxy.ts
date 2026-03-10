@@ -101,15 +101,58 @@ export async function haHistoryProxyRoutes(app: FastifyInstance, opts?: ProxyOpt
   );
 }
 
+const entitiesQuerySchema = z.object({
+  domain: z.string().optional(),
+  state: z.string().optional(),
+  stateNot: z.string().optional(),
+  attribute: z.string().optional(),
+  attributeValue: z.string().optional(),
+  search: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+});
+
 export async function haProxyRoutes(app: FastifyInstance) {
-  app.get("/api/ha/entities", async () => {
-    const states = haClient.getAllStates();
-    return Array.from(states.values()).map((s) => ({
-      entity_id: s.entity_id,
-      state: s.state,
-      attributes: s.attributes,
-    }));
-  });
+  app.get<{ Querystring: z.infer<typeof entitiesQuerySchema> }>(
+    "/api/ha/entities",
+    async (req) => {
+      const query = entitiesQuerySchema.parse(req.query);
+      let entities = Array.from(haClient.getAllStates().values());
+
+      if (query.domain) {
+        entities = entities.filter((s) => s.entity_id.startsWith(query.domain + "."));
+      }
+      if (query.state) {
+        entities = entities.filter((s) => s.state === query.state);
+      }
+      if (query.stateNot) {
+        entities = entities.filter((s) => s.state !== query.stateNot);
+      }
+      if (query.attribute && query.attributeValue !== undefined) {
+        entities = entities.filter(
+          (s) => String(s.attributes[query.attribute!]) === query.attributeValue,
+        );
+      }
+      if (query.search) {
+        const term = query.search.toLowerCase();
+        entities = entities.filter(
+          (s) =>
+            s.entity_id.toLowerCase().includes(term) ||
+            String(s.attributes.friendly_name ?? "").toLowerCase().includes(term),
+        );
+      }
+
+      const total = entities.length;
+      const limit = query.limit ?? 200;
+      return {
+        entities: entities.slice(0, limit).map((s) => ({
+          entity_id: s.entity_id,
+          state: s.state,
+          attributes: s.attributes,
+        })),
+        total,
+      };
+    },
+  );
 
   app.get<{ Params: { entityId: string } }>(
     "/api/ha/entities/:entityId",

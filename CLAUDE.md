@@ -155,7 +155,7 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 - Uses `@modelcontextprotocol/sdk` with `StreamableHTTPServerTransport`
 - Tool handlers call admin API routes internally via Fastify `adminApp.inject()` — no code duplication
 - Auth: `MCP_API_KEY` env var → `Authorization: Bearer <key>` required. Without key: 503 in prod, skipped in dev mode.
-- 40 tools covering all admin CRUD: dashboards (12), components (7), layouts (6), themes (6), assets (6), other (3)
+- 41 tools covering all admin CRUD: dashboards (12), components (7), layouts (6), themes (6), assets (6), other (4 — includes `ha_entities_list` for querying HA entities with domain/state/attribute/search filters)
 - Complex nested objects (parameterDefs, entityBindings, etc.) passed as JSON strings in tool inputs
 - Source: `packages/server/src/mcp/` (server.ts + tools/)
 - Client config: `{ "url": "http://<host>:8099/mcp" }` in Claude Desktop MCP settings
