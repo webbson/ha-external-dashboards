@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router";
 import { Layout, Menu, ConfigProvider, theme, Button } from "antd";
 import {
@@ -9,6 +10,7 @@ import {
   FormatPainterOutlined,
   SunOutlined,
   MoonOutlined,
+  ApiOutlined,
 } from "@ant-design/icons";
 import { useDarkMode } from "./hooks/useDarkMode.js";
 import { DashboardList } from "./pages/DashboardList.js";
@@ -21,10 +23,11 @@ import { AssetList } from "./pages/AssetList.js";
 import { PopupTrigger } from "./pages/PopupTrigger.js";
 import { ThemeList } from "./pages/ThemeList.js";
 import { ThemeEditor } from "./pages/ThemeEditor.js";
+import { McpSetup } from "./pages/McpSetup.js";
 
 const { Sider, Content } = Layout;
 
-const menuItems = [
+const baseMenuItems = [
   { key: "/dashboards", icon: <DashboardOutlined />, label: "Dashboards" },
   { key: "/themes", icon: <FormatPainterOutlined />, label: "Themes" },
   { key: "/layouts", icon: <LayoutOutlined />, label: "Layouts" },
@@ -37,6 +40,18 @@ function AppLayout({ isDark, toggle }: { isDark: boolean; toggle: () => void }) 
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = theme.useToken();
+  const [mcpEnabled, setMcpEnabled] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => setMcpEnabled(data.mcpEnabled ?? false))
+      .catch(() => {});
+  }, []);
+
+  const menuItems = mcpEnabled
+    ? [...baseMenuItems, { key: "/mcp", icon: <ApiOutlined />, label: "MCP" }]
+    : baseMenuItems;
 
   const selectedKey =
     menuItems.find((item) => location.pathname.startsWith(item.key))?.key ??
@@ -88,6 +103,7 @@ function AppLayout({ isDark, toggle }: { isDark: boolean; toggle: () => void }) 
             <Route path="/components/:id" element={<ComponentEditor />} />
             <Route path="/assets" element={<AssetList />} />
             <Route path="/popups" element={<PopupTrigger />} />
+            <Route path="/mcp" element={<McpSetup />} />
           </Routes>
         </Content>
       </Layout>
