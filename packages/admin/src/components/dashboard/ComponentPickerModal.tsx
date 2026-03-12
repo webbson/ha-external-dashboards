@@ -6,11 +6,13 @@ interface Component {
   id: number;
   name: string;
   isContainer: boolean;
+  isInteractive: boolean;
 }
 
 interface ComponentPickerModalProps {
   open: boolean;
   components: Component[];
+  isInteractiveMode: boolean;
   onSelect: (componentId: number) => void;
   onCancel: () => void;
 }
@@ -18,16 +20,18 @@ interface ComponentPickerModalProps {
 export function ComponentPickerModal({
   open,
   components,
+  isInteractiveMode,
   onSelect,
   onCancel,
 }: ComponentPickerModalProps) {
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
-    if (!search) return components;
+    let list = isInteractiveMode ? components : components.filter((c) => !c.isInteractive);
+    if (!search) return list;
     const lower = search.toLowerCase();
-    return components.filter((c) => c.name.toLowerCase().includes(lower));
-  }, [components, search]);
+    return list.filter((c) => c.name.toLowerCase().includes(lower));
+  }, [components, isInteractiveMode, search]);
 
   return (
     <Modal

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { Button, Typography, theme } from "antd";
-import { PlusOutlined, HolderOutlined } from "@ant-design/icons";
+import { Button, Typography, Tooltip, theme } from "antd";
+import { PlusOutlined, HolderOutlined, WarningOutlined } from "@ant-design/icons";
 import {
   DndContext,
   closestCenter,
@@ -36,6 +36,7 @@ interface ComponentDef {
   id: number;
   name: string;
   isContainer: boolean;
+  isInteractive: boolean;
   containerConfig?: { type: string; rotateInterval?: number } | null;
 }
 
@@ -44,6 +45,7 @@ interface VisualLayoutGridProps {
   regions: LayoutRegion[];
   instances: ComponentInstance[];
   components: ComponentDef[];
+  isInteractiveMode: boolean;
   onAddClick: (regionId: string) => void;
   onInstanceClick: (instance: ComponentInstance) => void;
   onReorder: (
@@ -60,6 +62,7 @@ function SortableCard({
   component,
   children: childInstances,
   componentMap,
+  isInteractiveMode,
   onClick,
   onChildClick,
   onAddChild,
@@ -69,6 +72,7 @@ function SortableCard({
   component: ComponentDef | undefined;
   children: ComponentInstance[];
   componentMap: Record<number, ComponentDef>;
+  isInteractiveMode: boolean;
   onClick: () => void;
   onChildClick: (inst: ComponentInstance) => void;
   onAddChild: () => void;
@@ -120,6 +124,11 @@ function SortableCard({
             >
               {componentName}
             </span>
+            {!isInteractiveMode && component?.isInteractive && (
+              <Tooltip title="Interactive component on passive dashboard">
+                <WarningOutlined style={{ color: '#faad14' }} />
+              </Tooltip>
+            )}
             <span
               style={{ fontSize: 11, color: token.purple5, marginLeft: "auto" }}
             >
@@ -202,7 +211,14 @@ function SortableCard({
         <HolderOutlined />
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 500, fontSize: 13, color: token.colorText }}>{componentName}</div>
+        <div style={{ fontWeight: 500, fontSize: 13, color: token.colorText, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {componentName}
+          {!isInteractiveMode && component?.isInteractive && (
+            <Tooltip title="Interactive component on passive dashboard">
+              <WarningOutlined style={{ color: '#faad14' }} />
+            </Tooltip>
+          )}
+        </div>
         {bindingSummary && (
           <div
             style={{
@@ -226,6 +242,7 @@ export function VisualLayoutGrid({
   regions,
   instances,
   components,
+  isInteractiveMode,
   onAddClick,
   onInstanceClick,
   onReorder,
@@ -354,6 +371,7 @@ export function VisualLayoutGrid({
                     component={componentMap[inst.componentId]}
                     children={childrenOf[inst.id] || []}
                     componentMap={componentMap}
+                    isInteractiveMode={isInteractiveMode}
                     onClick={() => onInstanceClick(inst)}
                     onChildClick={(child) => onInstanceClick(child)}
                     onAddChild={() => onAddToContainer?.(inst.id)}

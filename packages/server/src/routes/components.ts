@@ -64,6 +64,10 @@ const importSchema = z.object({
   containerConfig: containerConfigSchema,
 });
 
+function detectInteractive(template: string): boolean {
+  return /\bon\w+\s*=|<(button|input|form|select|textarea)\b|__ha\.(callService|openDialog)\b/i.test(template);
+}
+
 export async function componentRoutes(app: FastifyInstance) {
   app.get("/api/components", async () => {
     const rows = await db
@@ -83,7 +87,7 @@ export async function componentRoutes(app: FastifyInstance) {
         usageCount: sql<number>`(select count(*) from "component_instances" where "component_instances"."component_id" = "components"."id")`.as("usage_count"),
       })
       .from(components);
-    return rows;
+    return rows.map((r) => ({ ...r, isInteractive: detectInteractive(r.template) }));
   });
 
   app.get<{ Params: { id: string } }>(
@@ -95,7 +99,7 @@ export async function componentRoutes(app: FastifyInstance) {
         .from(components)
         .where(eq(components.id, id));
       if (!row) return reply.code(404).send({ error: "Not found" });
-      return row;
+      return { ...row, isInteractive: detectInteractive(row.template) };
     }
   );
 

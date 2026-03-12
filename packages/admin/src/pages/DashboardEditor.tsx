@@ -87,6 +87,7 @@ interface Component {
   parameterDefs: ParameterDef[];
   entitySelectorDefs: EntitySelectorDef[];
   isContainer: boolean;
+  isInteractive: boolean;
   containerConfig?: { type: string; rotateInterval?: number } | null;
 }
 
@@ -302,6 +303,14 @@ export function DashboardEditor() {
       {accessMode === "public" && interactiveMode && (
         <Alert
           title="Warning: Public dashboard with interactive mode enabled."
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
+      {!interactiveMode && instances.some((inst) => allComponents.find((c) => c.id === inst.componentId)?.isInteractive) && (
+        <Alert
+          message="Some placed components use interactive features which are disabled on this dashboard."
           type="warning"
           showIcon
           style={{ marginBottom: 16 }}
@@ -559,6 +568,7 @@ export function DashboardEditor() {
                                   regions={layout.structure.regions}
                                   instances={instances}
                                   components={allComponents}
+                                  isInteractiveMode={!!interactiveMode}
                                   onAddClick={(regionId) =>
                                     setPickerRegionId(regionId)
                                   }
@@ -585,6 +595,7 @@ export function DashboardEditor() {
                               ? allComponents.filter((c) => !c.isContainer)
                               : allComponents
                           }
+                          isInteractiveMode={!!interactiveMode}
                           onSelect={handlePickerSelect}
                           onCancel={() => {
                             setPickerRegionId(null);

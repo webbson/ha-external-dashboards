@@ -8,6 +8,7 @@ interface Component {
   id: number;
   name: string;
   isContainer: boolean;
+  isInteractive: boolean;
   isPrebuilt: boolean;
   usageCount: number;
   createdAt: string;
@@ -115,12 +116,16 @@ export function ComponentList() {
           { title: "Name", dataIndex: "name" },
           {
             title: "Type",
-            render: (_, r) =>
-              r.isContainer ? (
-                <Tag color="purple">Container</Tag>
-              ) : (
-                <Tag>Standard</Tag>
-              ),
+            render: (_, r) => (
+              <Space size={4}>
+                {r.isContainer ? (
+                  <Tag color="purple">Container</Tag>
+                ) : (
+                  <Tag>Standard</Tag>
+                )}
+                {r.isInteractive && <Tag color="orange">Interactive</Tag>}
+              </Space>
+            ),
           },
           {
             title: "Source",
