@@ -69,6 +69,7 @@ export function DashboardList() {
         rowKey="id"
         loading={loading}
         dataSource={data}
+        pagination={{ pageSize: 20 }}
         columns={[
           { title: "Name", dataIndex: "name" },
           { title: "Slug", dataIndex: "slug" },

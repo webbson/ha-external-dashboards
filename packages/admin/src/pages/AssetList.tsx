@@ -160,6 +160,7 @@ export function AssetList() {
         rowKey="id"
         loading={loading}
         dataSource={data}
+        pagination={{ pageSize: 20 }}
         columns={[
           {
             title: "Preview",

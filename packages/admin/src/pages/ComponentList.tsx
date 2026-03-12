@@ -112,6 +112,7 @@ export function ComponentList() {
         rowKey="id"
         loading={loading}
         dataSource={data.filter((c) => !(c.isContainer && c.isPrebuilt))}
+        pagination={{ pageSize: 20 }}
         columns={[
           { title: "Name", dataIndex: "name" },
           {

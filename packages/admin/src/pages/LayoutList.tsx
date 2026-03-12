@@ -91,6 +91,7 @@ export function LayoutList() {
         rowKey="id"
         loading={loading}
         dataSource={data}
+        pagination={{ pageSize: 20 }}
         columns={[
           { title: "Name", dataIndex: "name" },
           {
