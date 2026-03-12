@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Form, Input, Button, Card, Checkbox, Space, Typography, Select, Table, Tooltip, message } from "antd";
+import { Form, Input, Button, Card, Checkbox, Space, Typography, Select, Table, Tabs, Tooltip, message } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
@@ -27,12 +27,44 @@ interface Region {
   flexGrow?: boolean;
 }
 
+type BreakpointKey = "mobile" | "tablet" | "desktop" | "tv";
+
+interface GridTemplates {
+  mobile?: string;
+  tablet?: string;
+  desktop?: string;
+  tv?: string;
+}
+
 interface LayoutData {
   name: string;
   structure: {
-    gridTemplate: string;
+    gridTemplate?: string;
+    gridTemplates?: GridTemplates;
     regions: Region[];
   };
+}
+
+const BREAKPOINT_LABELS: { key: BreakpointKey; label: string; desc: string }[] = [
+  { key: "mobile", label: "Mobile", desc: "< 600px" },
+  { key: "tablet", label: "Tablet", desc: "600–1024px" },
+  { key: "desktop", label: "Desktop", desc: "1024–1600px" },
+  { key: "tv", label: "TV", desc: "≥ 1600px" },
+];
+
+function validateBreakpoints(gridTemplates: GridTemplates, regionIds: string[]): string[] {
+  const errors: string[] = [];
+  for (const [bp, template] of Object.entries(gridTemplates)) {
+    if (!template) continue;
+    const areas = [...template.matchAll(/'([^']+)'/g)].flatMap((m) => m[1].split(/\s+/));
+    const uniqueAreas = [...new Set(areas)].filter((a) => a !== ".");
+    for (const area of uniqueAreas) {
+      if (!regionIds.includes(area)) {
+        errors.push(`Area '${area}' in ${bp} template has no matching region`);
+      }
+    }
+  }
+  return errors;
 }
 
 function GridPreview({
@@ -104,15 +136,20 @@ export function LayoutEditor() {
   const [form] = Form.useForm<LayoutData>();
   const [loading, setLoading] = useState(false);
   const [regionSettings, setRegionSettings] = useState<Record<string, Omit<Region, "id">>>({});
+  const [gridTemplates, setGridTemplates] = useState<GridTemplates>({});
   const isNew = !id;
 
-  const gridTemplate =
-    Form.useWatch(["structure", "gridTemplate"], form) ?? "";
-
-  const detectedAreas = useMemo(
-    () => parseGridAreas(gridTemplate),
-    [gridTemplate]
-  );
+  const detectedAreas = useMemo(() => {
+    const areas = new Set<string>();
+    for (const template of Object.values(gridTemplates)) {
+      if (template) {
+        for (const area of parseGridAreas(template)) {
+          areas.add(area);
+        }
+      }
+    }
+    return [...areas];
+  }, [gridTemplates]);
 
   const regions: Region[] = useMemo(
     () =>
@@ -129,10 +166,13 @@ export function LayoutEditor() {
       api
         .get<LayoutData>(`/api/layouts/${id}`)
         .then((data) => {
-          form.setFieldsValue({
-            name: data.name,
-            structure: { gridTemplate: data.structure.gridTemplate },
-          });
+          form.setFieldsValue({ name: data.name });
+          // Migrate legacy single gridTemplate to desktop breakpoint
+          if (data.structure.gridTemplates) {
+            setGridTemplates(data.structure.gridTemplates);
+          } else if (data.structure.gridTemplate) {
+            setGridTemplates({ desktop: data.structure.gridTemplate });
+          }
           const settings: Record<string, Omit<Region, "id">> = {};
           for (const r of data.structure.regions) {
             settings[r.id] = {
@@ -150,12 +190,21 @@ export function LayoutEditor() {
   }, [id, isNew, form]);
 
   const onFinish = async (values: LayoutData) => {
+    const regionIds = regions.map((r) => r.id);
+    const validationErrors = validateBreakpoints(gridTemplates, regionIds);
+    if (validationErrors.length > 0) {
+      message.error(validationErrors[0]);
+      return;
+    }
     setLoading(true);
     try {
+      const cleanedTemplates = Object.fromEntries(
+        Object.entries(gridTemplates).filter(([, v]) => !!v)
+      ) as GridTemplates;
       const payload = {
         name: values.name,
         structure: {
-          gridTemplate: values.structure.gridTemplate,
+          gridTemplates: Object.keys(cleanedTemplates).length > 0 ? cleanedTemplates : undefined,
           regions,
         },
       };
@@ -174,38 +223,56 @@ export function LayoutEditor() {
 
   return (
     <Card title={isNew ? "New Layout" : "Edit Layout"} loading={loading}>
-      <GridPreview gridTemplate={gridTemplate} regions={regions} />
-
       <Form
         form={form}
         layout="vertical"
         onFinish={onFinish}
-        initialValues={{
-          structure: {
-            gridTemplate:
-              '"header header" auto\n"left right" 1fr\n"footer footer" auto / 1fr 1fr',
-          },
-        }}
       >
         <Form.Item name="name" label="Name" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
-        <Form.Item
-          name={["structure", "gridTemplate"]}
-          label="CSS Grid Template"
-          rules={[{ required: true }]}
-          extra={
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Uses the CSS{" "}
-              <code>grid-template</code> shorthand. Define rows with quoted
-              area names, row heights, and column widths after <code>/</code>.
-              Use <code>.</code> for empty cells.
-              <br />
-              Example: <code>"header header" 60px "nav main" 1fr / 200px 1fr</code>
-            </Text>
-          }
-        >
-          <Input.TextArea rows={4} style={{ fontFamily: "monospace" }} />
+        <Form.Item label="CSS Grid Template">
+          <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
+            Uses the CSS <code>grid-template</code> shorthand. Define rows with quoted area names,
+            row heights, and column widths after <code>/</code>. Use <code>.</code> for empty cells.
+            <br />
+            Example: <code>"header header" 60px "nav main" 1fr / 200px 1fr</code>
+          </Text>
+          <Tabs
+            defaultActiveKey="desktop"
+            items={BREAKPOINT_LABELS.map((bp) => ({
+              key: bp.key,
+              label: (
+                <span>
+                  {bp.label}
+                  {gridTemplates[bp.key] ? " \u25cf" : ""}
+                </span>
+              ),
+              children: (
+                <div>
+                  <div style={{ color: "#888", fontSize: 12, marginBottom: 8 }}>{bp.desc}</div>
+                  <Input.TextArea
+                    rows={6}
+                    style={{ fontFamily: "monospace" }}
+                    value={gridTemplates[bp.key] ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setGridTemplates((prev) => ({
+                        ...prev,
+                        [bp.key]: val || undefined,
+                      }));
+                    }}
+                    placeholder={`Grid template for ${bp.label}...\nExample: 'header header' 'sidebar main'`}
+                  />
+                  {gridTemplates[bp.key] && (
+                    <div style={{ marginTop: 12 }}>
+                      <GridPreview gridTemplate={gridTemplates[bp.key]!} regions={regions} />
+                    </div>
+                  )}
+                </div>
+              ),
+            }))}
+          />
         </Form.Item>
 
         {detectedAreas.length > 0 && (

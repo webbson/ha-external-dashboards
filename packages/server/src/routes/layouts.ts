@@ -16,8 +16,16 @@ const regionSchema = z.object({
 });
 
 const structureSchema = z.object({
-  gridTemplate: z.string(),
+  gridTemplate: z.string().optional(),
+  gridTemplates: z.object({
+    mobile: z.string().optional(),
+    tablet: z.string().optional(),
+    desktop: z.string().optional(),
+    tv: z.string().optional(),
+  }).optional(),
   regions: z.array(regionSchema),
+}).refine(s => s.gridTemplate || (s.gridTemplates && Object.values(s.gridTemplates).some(Boolean)), {
+  message: "At least one grid template required",
 });
 
 const createSchema = z.object({

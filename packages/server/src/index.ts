@@ -15,11 +15,12 @@ import { layoutRoutes } from "./routes/layouts.js";
 import { componentRoutes } from "./routes/components.js";
 import { themeRoutes } from "./routes/themes.js";
 import { assetRoutes } from "./routes/assets.js";
-import { haProxyRoutes, haImageProxyRoutes, haHistoryProxyRoutes } from "./routes/ha-proxy.js";
+import { haProxyRoutes, haImageProxyRoutes, haHistoryProxyRoutes, haStatisticsProxyRoutes } from "./routes/ha-proxy.js";
 import { externalHaProxyRoutes } from "./routes/external-ha-proxy.js";
 import { previewRoutes } from "./routes/preview.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { popupTriggerRoutes } from "./routes/popup-trigger.js";
+import { switchLayoutTriggerRoutes } from "./routes/switch-layout-trigger.js";
 import { displayDataRoutes } from "./routes/display-data.js";
 import { iconRoutes } from "./routes/icons.js";
 import { ingressAuth } from "./middleware/auth.js";
@@ -82,8 +83,10 @@ async function start() {
   await admin.register(haProxyRoutes);
   await admin.register(haImageProxyRoutes);
   await admin.register(haHistoryProxyRoutes);
+  await admin.register(haStatisticsProxyRoutes);
   await admin.register(previewRoutes);
   await admin.register(popupTriggerRoutes);
+  await admin.register(switchLayoutTriggerRoutes);
   await admin.register(settingsRoutes);
   await admin.register(iconRoutes);
 
@@ -152,6 +155,7 @@ async function start() {
 
   // HA history proxy for graph components (entity-scoped, requires auth)
   await external.register((app) => haHistoryProxyRoutes(app, { isExternal: true }));
+  await external.register((app) => haStatisticsProxyRoutes(app, { isExternal: true }));
 
   // Display data API (serves dashboard config to display app)
   await external.register(displayDataRoutes);

@@ -426,7 +426,13 @@ comp.addEventListener('click', function() {
     data-fill-opacity="{{param "fillOpacity"}}"
     data-colors="{{param "colors"}}"
     data-bar-bucket="{{param "barBucketMinutes"}}"
-    data-chart-height="{{param "chartHeight"}}">
+    data-chart-height="{{param "chartHeight"}}"
+    data-data-source="{{param "dataSource"}}"
+    data-statistics-period="{{param "statisticsPeriod"}}"
+    data-statistics-value="{{param "statisticsValue"}}"
+    data-threshold-value="{{param "thresholdValue"}}"
+    data-threshold-color="{{param "thresholdColor"}}"
+    data-threshold-label="{{param "thresholdLabel"}}">
   </div>
 </div>
 <script>
@@ -456,6 +462,12 @@ comp.addEventListener('click', function() {
   var fillOpacity = parseFloat(attrs.fillOpacity) || 0.1;
   var barBucket = (parseInt(attrs.barBucket) || 60) * 60;
   var chartHeight = parseInt(attrs.chartHeight) || 200;
+  var dataSource = attrs.dataSource || 'history';
+  var statisticsPeriod = attrs.statisticsPeriod || 'hour';
+  var statisticsValue = attrs.statisticsValue || 'mean';
+  var thresholdValue = parseFloat(attrs.thresholdValue);
+  var thresholdColor = attrs.thresholdColor || '#ff4444';
+  var thresholdLabel = attrs.thresholdLabel || '';
   container.style.height = chartHeight + 'px';
 
   var userColors = (attrs.colors || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
@@ -478,15 +490,49 @@ comp.addEventListener('click', function() {
     var now = new Date();
     var start = new Date(now.getTime() - hours * 3600000).toISOString();
     var end = now.toISOString();
-    var url = '/api/history/' + entityIds.join(',') + '?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end);
 
-    fetch(url)
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (!Array.isArray(data)) return;
-        renderCharts(data);
-      })
-      .catch(function() {});
+    if (dataSource === 'statistics') {
+      var url = '/api/statistics/' + entityIds.join(',') +
+        '?start=' + encodeURIComponent(start) +
+        '&end=' + encodeURIComponent(end) +
+        '&period=' + statisticsPeriod;
+      fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          renderStatistics(data);
+        })
+        .catch(function() {});
+    } else {
+      var url = '/api/history/' + entityIds.join(',') + '?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end);
+      fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!Array.isArray(data)) return;
+          renderCharts(data);
+        })
+        .catch(function() {});
+    }
+  }
+
+  function renderStatistics(data) {
+    // data is object: { [entityId]: [{start, mean, min, max, sum, state}] }
+    if (!data || typeof data !== 'object') return;
+    var seriesArr = entityIds.map(function(id) {
+      var entries = data[id] || [];
+      return {
+        id: id,
+        ts: entries.map(function(e) { return Math.floor(new Date(e.start).getTime() / 1000); }),
+        vals: entries.map(function(e) { return e[statisticsValue] != null ? parseFloat(e[statisticsValue]) : null; }),
+      };
+    }).filter(function(s) { return s.ts.length > 0; });
+
+    if (seriesArr.length === 0) {
+      container.innerHTML = '<div style="color:var(--db-font-color-secondary,#aaa);padding:20px;text-align:center;">No statistics data available</div>';
+      return;
+    }
+
+    // Render using the same path as history (seriesArr already built)
+    renderSeriesData(seriesArr);
   }
 
   function aggregateToBuckets(timestamps, values, bucketSize) {
@@ -508,11 +554,6 @@ comp.addEventListener('click', function() {
   }
 
   function renderCharts(data) {
-    // Destroy old charts
-    charts.forEach(function(c) { try { c.destroy(); } catch(e) {} });
-    charts = [];
-    container.innerHTML = '';
-
     // Parse HA history response into per-entity time series
     var seriesData = [];
     for (var i = 0; i < data.length; i++) {
@@ -534,8 +575,19 @@ comp.addEventListener('click', function() {
       return;
     }
 
+    renderSeriesData(seriesData);
+  }
+
+  function renderSeriesData(seriesData) {
+    // Destroy old charts
+    charts.forEach(function(c) { try { c.destroy(); } catch(e) {} });
+    charts = [];
+    container.innerHTML = '';
+
     var isSparkline = chartMode === 'sparkline';
     var isBar = chartMode === 'bar';
+    var isArea = chartMode === 'area';
+    var isStepped = chartMode === 'stepped';
     var isStacked = displayMode === 'stacked';
 
     try {
@@ -545,13 +597,13 @@ comp.addEventListener('click', function() {
           var wrap = document.createElement('div');
           wrap.className = 'graph-card-stacked-item';
           container.appendChild(wrap);
-          var chart = buildChart(wrap, [sd], [getColor(idx)], isSparkline, isBar, sd.id);
+          var chart = buildChart(wrap, [sd], [getColor(idx)], isSparkline, isBar, isArea, isStepped, sd.id);
           charts.push(chart);
         });
       } else {
         container.classList.remove('graph-card-stacked');
         var colors = seriesData.map(function(_, idx) { return getColor(idx); });
-        var chart = buildChart(container, seriesData, colors, isSparkline, isBar, null);
+        var chart = buildChart(container, seriesData, colors, isSparkline, isBar, isArea, isStepped, null);
         charts.push(chart);
       }
     } catch(e) {
@@ -560,7 +612,7 @@ comp.addEventListener('click', function() {
     }
   }
 
-  function buildChart(target, seriesArr, colors, sparkline, bar, label) {
+  function buildChart(target, seriesArr, colors, sparkline, bar, isArea, isStepped, label) {
     // Merge all timestamps into a unified x-axis
     var allTs = {};
     seriesArr.forEach(function(sd) {
@@ -589,7 +641,7 @@ comp.addEventListener('click', function() {
       barData[0] = bucketTs || [];
       uplotData = barData;
     } else {
-      // Line / sparkline: align series to unified timestamps
+      // Line / sparkline / area / stepped: align series to unified timestamps
       var alignedData = [xVals];
       uplotSeries = [{}];
       seriesArr.forEach(function(sd, idx) {
@@ -597,13 +649,31 @@ comp.addEventListener('click', function() {
         sd.ts.forEach(function(t, i) { valMap[t] = sd.vals[i]; });
         var aligned = xVals.map(function(t) { return valMap[t] !== undefined ? valMap[t] : null; });
         alignedData.push(aligned);
-        uplotSeries.push({
+        var seriesOpts = {
           label: label || sd.id.split('.').pop(),
           stroke: colors[idx],
-          fill: hexToRgba(colors[idx], fillOpacity),
+          fill: isArea ? hexToRgba(colors[idx], fillOpacity > 0.1 ? fillOpacity : 0.3) : 'transparent',
           width: lineWidth,
-        });
+        };
+        if (isStepped && window.uPlot.paths && window.uPlot.paths.stepped) {
+          seriesOpts.paths = window.uPlot.paths.stepped({ align: 1 });
+        }
+        uplotSeries.push(seriesOpts);
       });
+
+      // Add threshold series if configured
+      if (!isNaN(thresholdValue) && xVals.length > 0) {
+        var threshY = xVals.map(function() { return thresholdValue; });
+        alignedData.push(threshY);
+        uplotSeries.push({
+          label: thresholdLabel || 'Threshold',
+          stroke: thresholdColor,
+          width: 1,
+          dash: [4, 4],
+          fill: 'transparent',
+        });
+      }
+
       uplotData = alignedData;
     }
 
@@ -682,6 +752,8 @@ comp.addEventListener('click', function() {
           { label: "Line Chart", value: "line" },
           { label: "Bar Chart", value: "bar" },
           { label: "Sparkline", value: "sparkline" },
+          { label: "Area Chart", value: "area" },
+          { label: "Stepped Line", value: "stepped" },
         ],
       },
       {
@@ -698,9 +770,29 @@ comp.addEventListener('click', function() {
       { name: "colors", label: "Colors (comma-separated hex)", type: "string", default: "" },
       { name: "barBucketMinutes", label: "Bar Bucket Size (minutes)", type: "number", default: 60 },
       { name: "chartHeight", label: "Chart Height (px)", type: "number", default: 200 },
+      {
+        name: "dataSource", label: "Data Source", type: "select", default: "history",
+        options: [{ label: "History", value: "history" }, { label: "Statistics", value: "statistics" }],
+      },
+      {
+        name: "statisticsPeriod", label: "Statistics Period", type: "select", default: "hour",
+        options: [{ label: "Hourly", value: "hour" }, { label: "Daily", value: "day" }],
+      },
+      {
+        name: "statisticsValue", label: "Statistics Value", type: "select", default: "mean",
+        options: [
+          { label: "Mean", value: "mean" },
+          { label: "Min", value: "min" },
+          { label: "Max", value: "max" },
+          { label: "Sum", value: "sum" },
+        ],
+      },
+      { name: "thresholdValue", label: "Threshold Value", type: "number", default: "" as any },
+      { name: "thresholdColor", label: "Threshold Color", type: "color", default: "#ff4444" },
+      { name: "thresholdLabel", label: "Threshold Label", type: "string", default: "" },
     ],
     entitySelectorDefs: [
-      { name: "entities", label: "Entities", mode: "multiple", allowedDomains: ["sensor"] },
+      { name: "entities", label: "Entities", mode: "multiple" },
     ],
     isContainer: false,
     containerConfig: null,
@@ -785,6 +877,520 @@ comp.addEventListener('click', function() {
     entitySelectorDefs: [],
     isContainer: true,
     containerConfig: { type: "auto-rotate", rotateInterval: 10 },
+  },
+  {
+    name: "Input Number",
+    template: `<div class="input-number">
+  <div class="input-number-label">{{#if (param "label")}}{{param "label"}}{{else}}{{attr (param "entity") "friendly_name"}}{{/if}}</div>
+  <div class="input-number-slider-row input-number-{{param "orientation"}}">
+    <input type="range"
+      class="input-number-slider"
+      min="{{attr (param "entity") "min"}}"
+      max="{{attr (param "entity") "max"}}"
+      step="{{attr (param "entity") "step"}}"
+      value="{{state (param "entity")}}"
+      data-entity="{{param "entity"}}"
+    />
+    {{#if (param "showValue")}}
+    <div class="input-number-value">{{state (param "entity")}}{{#if (param "showUnit")}} {{attr (param "entity") "unit_of_measurement"}}{{/if}}</div>
+    {{/if}}
+  </div>
+</div>
+<script>
+(function() {
+  var entityId = '{{param "entity"}}';
+  var showUnit = '{{param "showUnit"}}' === 'true';
+  var unit = '{{attr (param "entity") "unit_of_measurement"}}';
+  var slider = comp.querySelector('input[type=range]');
+  var valueEl = comp.querySelector('.input-number-value');
+  if (!slider) return;
+  if (!comp.dataset.listenerAttached) {
+    comp.dataset.listenerAttached = 'true';
+    slider.addEventListener('input', function() {
+      if (valueEl) valueEl.textContent = this.value + (showUnit && unit ? ' ' + unit : '');
+    });
+    slider.addEventListener('change', function() {
+      if (window.__ha) window.__ha.callService('input_number', 'set_value', { entity_id: entityId, value: Number(this.value) });
+    });
+  }
+})();
+</script>`,
+    styles: `.input-number { padding: 16px; user-select: none; }
+.input-number-label { font-size: 0.9em; color: var(--db-font-color-secondary, #aaa); margin-bottom: 10px; }
+.input-number-slider-row { display: flex; align-items: center; gap: 12px; }
+.input-number-horizontal { flex-direction: row; }
+.input-number-vertical { flex-direction: column; }
+.input-number-slider { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; background: var(--db-font-color-secondary, #555); outline: none; cursor: pointer; }
+.input-number-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--db-accent-color, #4fc3f7); cursor: pointer; }
+.input-number-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--db-accent-color, #4fc3f7); border: none; cursor: pointer; }
+.input-number-value { font-size: 1.1em; color: var(--db-font-color, #fff); min-width: 48px; text-align: right; white-space: nowrap; }`,
+    parameterDefs: [
+      { name: "label", label: "Label", type: "string", default: "" },
+      { name: "showValue", label: "Show Value", type: "boolean", default: true },
+      { name: "showUnit", label: "Show Unit", type: "boolean", default: true },
+      {
+        name: "orientation", label: "Orientation", type: "select", default: "horizontal",
+        options: [
+          { label: "Horizontal", value: "horizontal" },
+          { label: "Vertical", value: "vertical" },
+        ],
+      },
+    ],
+    entitySelectorDefs: [
+      { name: "entity", label: "Entity", mode: "single", allowedDomains: ["input_number"] },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
+    name: "Input Select",
+    template: `<div class="input-select" data-options="{{attr (param "entity") "options"}}">
+  {{#if (param "showLabel")}}
+  <div class="input-select-label">{{#if (param "label")}}{{param "label"}}{{else}}{{attr (param "entity") "friendly_name"}}{{/if}}</div>
+  {{/if}}
+  <select class="input-select-dropdown" data-entity="{{param "entity"}}">
+  </select>
+</div>
+<script>
+(function() {
+  var entityId = '{{param "entity"}}';
+  var currentState = '{{state (param "entity")}}';
+  var root = comp.querySelector('.input-select');
+  var select = comp.querySelector('.input-select-dropdown');
+  if (!select || !root) return;
+  var rawOptions = root.getAttribute('data-options') || '[]';
+  var options = [];
+  try { options = JSON.parse(rawOptions); } catch(e) {}
+  select.innerHTML = '';
+  options.forEach(function(opt) {
+    var el = document.createElement('option');
+    el.value = opt;
+    el.textContent = opt;
+    if (opt === currentState) el.selected = true;
+    select.appendChild(el);
+  });
+  if (!comp.dataset.listenerAttached) {
+    comp.dataset.listenerAttached = 'true';
+    select.addEventListener('change', function() {
+      if (window.__ha) window.__ha.callService('input_select', 'select_option', { entity_id: entityId, option: this.value });
+    });
+  }
+})();
+</script>`,
+    styles: `.input-select { padding: 16px; }
+.input-select-label { font-size: 0.9em; color: var(--db-font-color-secondary, #aaa); margin-bottom: 8px; }
+.input-select-dropdown { width: 100%; padding: 8px 12px; background: rgba(255,255,255,0.08); color: var(--db-font-color, #fff); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; font-size: 1em; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23aaa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+.input-select-dropdown:focus { border-color: var(--db-accent-color, #4fc3f7); }
+.input-select-dropdown option { background: var(--db-bg-color, #1e1e2e); color: var(--db-font-color, #fff); }`,
+    parameterDefs: [
+      { name: "label", label: "Label", type: "string", default: "" },
+      { name: "showLabel", label: "Show Label", type: "boolean", default: true },
+    ],
+    entitySelectorDefs: [
+      { name: "entity", label: "Entity", mode: "single", allowedDomains: ["input_select"] },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
+    name: "Input Boolean",
+    template: `<div class="input-boolean input-boolean-{{param "size"}}" data-entity="{{param "entity"}}" style="--ib-on-color:{{param "onColor"}};--ib-off-color:{{param "offColor"}};">
+  {{#if (param "showIcon")}}
+  {{#stateEquals (param "entity") "on"}}
+    <div class="input-boolean-icon on">{{mdiIcon "mdi:toggle-switch" size="28" color="var(--ib-on-color, #22c55e)"}}</div>
+  {{else}}
+    <div class="input-boolean-icon off">{{mdiIcon "mdi:toggle-switch-off-outline" size="28" color="var(--ib-off-color, #6b7280)"}}</div>
+  {{/stateEquals}}
+  {{/if}}
+  <div class="input-boolean-label">{{#if (param "label")}}{{param "label"}}{{else}}{{attr (param "entity") "friendly_name"}}{{/if}}</div>
+  <div class="input-boolean-toggle {{#stateEquals (param "entity") "on"}}active{{/stateEquals}}">
+    <div class="input-boolean-thumb"></div>
+  </div>
+</div>
+<script>
+(function() {
+  if (comp.dataset.listenerAttached) return;
+  comp.dataset.listenerAttached = 'true';
+  var entityId = '{{param "entity"}}';
+  comp.style.cursor = 'pointer';
+  comp.addEventListener('click', function() {
+    if (window.__ha) window.__ha.callService('input_boolean', 'toggle', { entity_id: entityId });
+  });
+})();
+</script>`,
+    styles: `.input-boolean { display: flex; align-items: center; padding: 14px 16px; gap: 12px; user-select: none; -webkit-tap-highlight-color: transparent; }
+.input-boolean:active { opacity: 0.7; }
+.input-boolean-icon { display: flex; align-items: center; }
+.input-boolean-label { flex: 1; font-size: 0.95em; color: var(--db-font-color, #fff); }
+.input-boolean-toggle { position: relative; border-radius: 999px; background: var(--ib-off-color, #6b7280); transition: background 0.2s; flex-shrink: 0; }
+.input-boolean-toggle.active { background: var(--ib-on-color, #22c55e); }
+.input-boolean-thumb { position: absolute; top: 50%; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.4); transform: translateY(-50%); transition: left 0.2s; }
+
+/* Sizes */
+.input-boolean-small .input-boolean-toggle { width: 32px; height: 18px; }
+.input-boolean-small .input-boolean-thumb { width: 14px; height: 14px; left: 2px; }
+.input-boolean-small .input-boolean-toggle.active .input-boolean-thumb { left: 16px; }
+
+.input-boolean-medium .input-boolean-toggle { width: 48px; height: 26px; }
+.input-boolean-medium .input-boolean-thumb { width: 20px; height: 20px; left: 3px; }
+.input-boolean-medium .input-boolean-toggle.active .input-boolean-thumb { left: 25px; }
+
+.input-boolean-large .input-boolean-toggle { width: 64px; height: 34px; }
+.input-boolean-large .input-boolean-thumb { width: 26px; height: 26px; left: 4px; }
+.input-boolean-large .input-boolean-toggle.active .input-boolean-thumb { left: 34px; }`,
+    parameterDefs: [
+      { name: "label", label: "Label", type: "string", default: "" },
+      { name: "showIcon", label: "Show Icon", type: "boolean", default: true },
+      { name: "onColor", label: "On Color", type: "color", default: "#22c55e" },
+      { name: "offColor", label: "Off Color", type: "color", default: "#6b7280" },
+      {
+        name: "size", label: "Size", type: "select", default: "medium",
+        options: [
+          { label: "Small", value: "small" },
+          { label: "Medium", value: "medium" },
+          { label: "Large", value: "large" },
+        ],
+      },
+    ],
+    entitySelectorDefs: [
+      { name: "entity", label: "Entity", mode: "single", allowedDomains: ["input_boolean"] },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
+    name: "Scene / Script Button",
+    template: `<div class="scene-button scene-button-{{param "buttonStyle"}}" style="--sb-color:{{param "color"}};" data-entity="{{param "entity"}}">
+  {{#stateEquals (param "entity") "on"}}
+    <span class="scene-button-running">●</span>
+  {{/stateEquals}}
+  <span class="scene-button-icon">{{mdiIcon (param "icon") size="22" color="var(--sb-icon-color)"}}</span>
+  <span class="scene-button-label">{{#if (param "label")}}{{param "label"}}{{else}}{{attr (param "entity") "friendly_name"}}{{/if}}</span>
+</div>
+<script>
+(function() {
+  if (comp.dataset.listenerAttached) return;
+  comp.dataset.listenerAttached = 'true';
+  var entityId = '{{param "entity"}}';
+  var domain = entityId.split('.')[0];
+  var confirmAction = '{{param "confirmAction"}}' === 'true';
+  var confirmTimeout = null;
+
+  function triggerAction() {
+    var svc = 'turn_on';
+    if (window.__ha) window.__ha.callService(domain, svc, { entity_id: entityId });
+  }
+
+  function resetButton() {
+    if (confirmTimeout) { clearTimeout(confirmTimeout); confirmTimeout = null; }
+    var confirmEl = comp.querySelector('.scene-button-confirm');
+    if (confirmEl) confirmEl.remove();
+    var icon = comp.querySelector('.scene-button-icon');
+    var label = comp.querySelector('.scene-button-label');
+    if (icon) icon.style.display = '';
+    if (label) label.style.display = '';
+  }
+
+  comp.style.cursor = 'pointer';
+  comp.addEventListener('click', function(e) {
+    if (e.target.classList.contains('scene-button-yes')) {
+      resetButton();
+      triggerAction();
+      return;
+    }
+    if (e.target.classList.contains('scene-button-no')) {
+      resetButton();
+      return;
+    }
+    if (comp.querySelector('.scene-button-confirm')) return;
+    if (!confirmAction) {
+      triggerAction();
+      return;
+    }
+    var icon = comp.querySelector('.scene-button-icon');
+    var label = comp.querySelector('.scene-button-label');
+    if (icon) icon.style.display = 'none';
+    if (label) label.style.display = 'none';
+    var confirmEl = document.createElement('span');
+    confirmEl.className = 'scene-button-confirm';
+    confirmEl.innerHTML = '<span class="scene-button-confirm-text">Confirm?</span><button class="scene-button-yes">✓</button><button class="scene-button-no">✗</button>';
+    comp.appendChild(confirmEl);
+    confirmTimeout = setTimeout(resetButton, 3000);
+  });
+})();
+</script>`,
+    styles: `.scene-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 8px; font-size: 1em; user-select: none; -webkit-tap-highlight-color: transparent; width: 100%; box-sizing: border-box; position: relative; }
+.scene-button:active { opacity: 0.75; transform: scale(0.97); }
+
+/* Filled */
+.scene-button-filled { background: var(--sb-color, #4a9eff); color: #fff; --sb-icon-color: #fff; }
+
+/* Outlined */
+.scene-button-outlined { background: transparent; color: var(--sb-color, #4a9eff); border: 2px solid var(--sb-color, #4a9eff); --sb-icon-color: var(--sb-color, #4a9eff); }
+
+/* Text */
+.scene-button-text { background: transparent; color: var(--sb-color, #4a9eff); --sb-icon-color: var(--sb-color, #4a9eff); }
+
+.scene-button-label { font-weight: 500; }
+.scene-button-running { position: absolute; top: 6px; right: 8px; font-size: 0.6em; color: var(--sb-color, #4a9eff); animation: sb-pulse 1s ease-in-out infinite; }
+@keyframes sb-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+.scene-button-confirm { display: flex; align-items: center; gap: 6px; }
+.scene-button-confirm-text { font-size: 0.9em; }
+.scene-button-yes, .scene-button-no { background: rgba(255,255,255,0.15); border: none; color: inherit; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 1em; }
+.scene-button-yes:hover { background: rgba(255,255,255,0.3); }
+.scene-button-no:hover { background: rgba(255,255,255,0.3); }`,
+    parameterDefs: [
+      { name: "label", label: "Label", type: "string", default: "" },
+      { name: "icon", label: "Icon", type: "icon", default: "mdi:play" },
+      {
+        name: "buttonStyle", label: "Button Style", type: "select", default: "filled",
+        options: [
+          { label: "Filled", value: "filled" },
+          { label: "Outlined", value: "outlined" },
+          { label: "Text", value: "text" },
+        ],
+      },
+      { name: "color", label: "Color", type: "color", default: "#4a9eff" },
+      { name: "confirmAction", label: "Confirm Before Action", type: "boolean", default: false },
+    ],
+    entitySelectorDefs: [
+      { name: "entity", label: "Entity", mode: "single", allowedDomains: ["scene", "script"] },
+    ],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
+    name: "Markdown",
+    template: `<div class="markdown-card" style="padding:{{param "padding"}}px;font-size:{{param "fontSize"}}px;text-align:{{param "textAlign"}};">{{{markdownToHtml (param "content")}}}</div>`,
+    styles: `.markdown-card { width: 100%; height: 100%; overflow: auto; box-sizing: border-box; color: var(--db-font-color, #e0e0e0); font-family: var(--db-font-family, inherit); line-height: 1.6; }
+.markdown-card h1, .markdown-card h2, .markdown-card h3 { margin-top: 0.5em; margin-bottom: 0.25em; color: var(--db-font-color, #e0e0e0); }
+.markdown-card p { margin: 0 0 0.5em; }
+.markdown-card strong { font-weight: 600; }
+.markdown-card a { color: var(--db-accent-color, #4a9eff); }
+.markdown-card ul, .markdown-card ol { padding-left: 1.5em; margin: 0 0 0.5em; }
+.markdown-card code { background: rgba(255,255,255,0.1); padding: 0.1em 0.3em; border-radius: 3px; font-family: monospace; font-size: 0.9em; }
+.markdown-card pre { background: rgba(255,255,255,0.08); padding: 0.75em; border-radius: 4px; overflow-x: auto; margin: 0 0 0.5em; }
+.markdown-card pre code { background: none; padding: 0; }
+.markdown-card blockquote { border-left: 3px solid var(--db-accent-color, #4a9eff); margin: 0 0 0.5em; padding-left: 0.75em; color: var(--db-font-color-secondary, #aaa); }`,
+    parameterDefs: [
+      { name: "content", label: "Content (Markdown + Handlebars)", type: "textarea", default: "## Hello\n\nShow entity values inline:\n- Temperature: **{{state \"sensor.temperature\"}}**\n- Status: **{{state \"input_boolean.example\"}}**\n\nUse `{{state \"entity.id\"}}` for state, `{{attr \"entity.id\" \"friendly_name\"}}` for attributes." },
+      { name: "padding", label: "Padding (px)", type: "number", default: 16 },
+      { name: "fontSize", label: "Font Size (px)", type: "number", default: 14 },
+      {
+        name: "textAlign", label: "Text Align", type: "select", default: "left",
+        options: [
+          { label: "Left", value: "left" },
+          { label: "Center", value: "center" },
+          { label: "Right", value: "right" },
+        ],
+      },
+    ],
+    entitySelectorDefs: [],
+    isContainer: false,
+    containerConfig: null,
+  },
+  {
+    name: "Map",
+    template: `<div class="map-card" data-script-once
+     data-entities="{{param "entities"}}"
+     data-mapheight="{{param "mapHeight"}}"
+     data-defaultzoom="{{param "defaultZoom"}}"
+     data-autofit="{{param "autoFit"}}"
+     data-showaccuracy="{{param "showAccuracy"}}"
+     data-showlabels="{{param "showLabels"}}"
+     data-colorhome="{{param "colorHome"}}"
+     data-coloraway="{{param "colorAway"}}"
+     data-colorother="{{param "colorOther"}}"
+     data-avatarsize="{{param "avatarSize"}}">
+  <div class="map-container" style="width:100%;height:{{param "mapHeight"}}px;"></div>
+</div>
+<script>
+(function() {
+  var mapCard = comp.querySelector('.map-card');
+  var entityIds = (mapCard.dataset.entities || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  var defaultZoom = parseInt(mapCard.dataset.defaultzoom) || 12;
+  var autoFit = mapCard.dataset.autofit !== 'false';
+  var showAccuracy = mapCard.dataset.showaccuracy !== 'false';
+  var showLabels = mapCard.dataset.showlabels !== 'false';
+  var colorHome = mapCard.dataset.colorhome || '#22c55e';
+  var colorAway = mapCard.dataset.coloraway || '#ef4444';
+  var colorOther = mapCard.dataset.colorother || '#f59e0b';
+  var avatarSize = parseInt(mapCard.dataset.avatarsize) || 40;
+
+  function getColor(state) {
+    if (state === 'home') return colorHome;
+    if (state === 'not_home') return colorAway;
+    return colorOther;
+  }
+
+  function createMarkerEl(entityState) {
+    var color = getColor(entityState.state);
+    var size = avatarSize;
+    var el = document.createElement('div');
+    el.style.cssText = [
+      'width:' + size + 'px',
+      'height:' + size + 'px',
+      'border-radius:50%',
+      'overflow:hidden',
+      'border:3px solid ' + color,
+      'box-shadow:0 2px 6px rgba(0,0,0,0.4)',
+      'cursor:default',
+      'position:relative',
+    ].join(';');
+
+    var pic = entityState.attributes && entityState.attributes.entity_picture;
+    if (pic) {
+      var src = pic.startsWith('/') ? '/api/image_proxy' + pic : pic;
+      var img = document.createElement('img');
+      img.src = src;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+      img.onerror = function() {
+        el.removeChild(img);
+        el.style.background = color;
+      };
+      el.appendChild(img);
+    } else {
+      el.style.background = color;
+    }
+
+    return el;
+  }
+
+  var initRetries = 0;
+  function initMap() {
+    var maplib = window.maplibregl;
+    if (!maplib) {
+      initRetries++;
+      if (initRetries > 20) {
+        var container = comp.querySelector('.map-container');
+        if (container) container.textContent = 'Map failed to load.';
+        return;
+      }
+      setTimeout(initMap, 150);
+      return;
+    }
+
+    var container = comp.querySelector('.map-container');
+    var map = new maplib.Map({
+      container: container,
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      zoom: defaultZoom,
+      center: [0, 51],
+    });
+
+    comp.__mapInstance = map;
+    var markers = {};
+    var labelMarkers = {};
+    var accuracyMarkers = {};
+
+    function updateMarkers(entityStates) {
+      entityIds.forEach(function(id) {
+        var state = entityStates[id];
+        if (!state) return;
+
+        var lat = state.attributes && parseFloat(state.attributes.latitude);
+        var lng = state.attributes && parseFloat(state.attributes.longitude);
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+
+        var color = getColor(state.state);
+
+        if (markers[id]) {
+          markers[id].setLngLat([lng, lat]);
+          if (labelMarkers[id]) labelMarkers[id].setLngLat([lng, lat]);
+          if (accuracyMarkers[id]) accuracyMarkers[id].setLngLat([lng, lat]);
+          var el = markers[id].getElement();
+          el.style.borderColor = color;
+          if (!el.querySelector('img')) el.style.background = color;
+        } else {
+          var el = createMarkerEl(state);
+          markers[id] = new maplib.Marker({ element: el, anchor: 'center' })
+            .setLngLat([lng, lat])
+            .addTo(map);
+
+          if (showLabels) {
+            var name = (state.attributes && state.attributes.friendly_name) || id.split('.').pop();
+            var labelEl = document.createElement('div');
+            labelEl.textContent = name;
+            labelEl.style.cssText = 'color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.8);font-size:11px;font-weight:500;pointer-events:none;white-space:nowrap;margin-top:' + (avatarSize / 2 + 4) + 'px;';
+            labelMarkers[id] = new maplib.Marker({ element: labelEl, anchor: 'top' })
+              .setLngLat([lng, lat])
+              .addTo(map);
+          }
+
+          if (showAccuracy && state.attributes && state.attributes.gps_accuracy) {
+            var acc = parseFloat(state.attributes.gps_accuracy);
+            if (!isNaN(acc)) {
+              var ringSize = Math.min(Math.max(acc, 20), 200);
+              var ringEl = document.createElement('div');
+              ringEl.style.cssText = [
+                'width:' + ringSize + 'px',
+                'height:' + ringSize + 'px',
+                'border-radius:50%',
+                'border:2px solid ' + color,
+                'opacity:0.5',
+                'pointer-events:none',
+              ].join(';');
+              accuracyMarkers[id] = new maplib.Marker({ element: ringEl, anchor: 'center' })
+                .setLngLat([lng, lat])
+                .addTo(map);
+            }
+          }
+        }
+
+        if (labelMarkers[id]) labelMarkers[id].setLngLat([lng, lat]);
+        if (accuracyMarkers[id]) accuracyMarkers[id].setLngLat([lng, lat]);
+      });
+
+      if (autoFit && Object.keys(markers).length > 0) {
+        var lnglats = Object.values(markers).map(function(m) { return m.getLngLat(); });
+        if (lnglats.length === 1) {
+          map.flyTo({ center: lnglats[0], zoom: defaultZoom, duration: 500 });
+        } else {
+          var bounds = new maplib.LngLatBounds();
+          lnglats.forEach(function(ll) { bounds.extend(ll); });
+          map.fitBounds(bounds, { padding: 60, maxZoom: 16, duration: 500 });
+        }
+      }
+    }
+
+    comp.__updateMap = function(entityStates) {
+      updateMarkers(entityStates);
+    };
+
+    comp.__mapCleanup = function() {
+      map.remove();
+      comp.__updateMap = null;
+    };
+  }
+
+  initMap();
+})();
+</script>`,
+    styles: `.map-card { width: 100%; height: 100%; overflow: hidden; }
+.map-container { width: 100%; }
+.maplibregl-canvas { border-radius: var(--db-border-radius, 0); }`,
+    parameterDefs: [
+      { name: "mapHeight", label: "Map Height (px)", type: "number", default: 400 },
+      { name: "defaultZoom", label: "Default Zoom", type: "number", default: 12 },
+      { name: "autoFit", label: "Auto-fit to markers", type: "boolean", default: true },
+      { name: "showAccuracy", label: "Show Accuracy Circle", type: "boolean", default: true },
+      { name: "showLabels", label: "Show Entity Labels", type: "boolean", default: true },
+      { name: "colorHome", label: "Home Color", type: "color", default: "#22c55e" },
+      { name: "colorAway", label: "Away Color", type: "color", default: "#ef4444" },
+      { name: "colorOther", label: "Other Color", type: "color", default: "#f59e0b" },
+      { name: "avatarSize", label: "Avatar Size (px)", type: "number", default: 40 },
+    ],
+    entitySelectorDefs: [
+      {
+        name: "entities",
+        label: "Entities (person, device_tracker)",
+        mode: "multiple",
+        allowedDomains: ["person", "device_tracker"],
+      },
+    ],
+    isContainer: false,
+    containerConfig: null,
   },
 ];
 

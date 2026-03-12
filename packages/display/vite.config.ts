@@ -11,6 +11,8 @@ export default defineConfig({
         manualChunks: {
           uplot: ["uplot"],
           handlebars: ["handlebars"],
+          marked: ["marked"],
+          "maplibre-gl": ["maplibre-gl"],
         },
       },
     },

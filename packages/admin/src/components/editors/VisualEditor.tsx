@@ -300,6 +300,7 @@ export function VisualEditor({
                     style={{ width: "100%" }}
                     options={[
                       { value: "string", label: "String" },
+                      { value: "textarea", label: "Textarea" },
                       { value: "number", label: "Number" },
                       { value: "boolean", label: "Boolean" },
                       { value: "color", label: "Color" },

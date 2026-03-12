@@ -133,12 +133,19 @@ Handlebars.registerHelper("iconForEntity", function (entityId: string, options: 
 Handlebars.registerHelper("attr", function (entityId: string, attrName: string, options: Handlebars.HelperOptions) {
   const ctx = options.data?.root as TemplateContext;
   const entity = ctx?.entities?.[entityId];
+  if (!entity && typeof entityId === "string" && entityId) {
+    _derivedEntityIds.add(entityId);
+  }
   return entity?.attributes?.[attrName] ?? "";
 });
 
 Handlebars.registerHelper("state", function (entityId: string, options: Handlebars.HelperOptions) {
   const ctx = options.data?.root as TemplateContext;
-  return ctx?.entities?.[entityId]?.state ?? "unavailable";
+  const entity = ctx?.entities?.[entityId];
+  if (!entity && typeof entityId === "string" && entityId) {
+    _derivedEntityIds.add(entityId);
+  }
+  return entity?.state ?? "unavailable";
 });
 
 Handlebars.registerHelper("param", function (paramName: string, options: Handlebars.HelperOptions) {
@@ -178,6 +185,27 @@ Handlebars.registerHelper("deriveEntity", function (entityId: string, newDomain:
   const derived = `${newDomain}.${baseName}${typeof suffix === "string" ? suffix : ""}`;
   _derivedEntityIds.add(derived);
   return derived;
+});
+
+Handlebars.registerHelper("markdownToHtml", function (content: unknown, options: Handlebars.HelperOptions) {
+  if (!content) return "";
+  try {
+    // Evaluate the content string as a Handlebars template so {{state}}/{{attr}} etc. work
+    let evaluated = String(content);
+    try {
+      const compiled = Handlebars.compile(evaluated);
+      evaluated = compiled(options.data?.root);
+    } catch {
+      // leave as-is if content has invalid Handlebars
+    }
+    const lib = (window as any).__markedLib || (window as any).marked;
+    if (!lib) return new Handlebars.SafeString(evaluated);
+    const result = lib.parse ? lib.parse(evaluated) : lib(evaluated);
+    if (result && typeof result.then === "function") return new Handlebars.SafeString(evaluated);
+    return new Handlebars.SafeString(String(result));
+  } catch {
+    return String(content);
+  }
 });
 
 Handlebars.registerHelper("eq", function (a: unknown, b: unknown) {

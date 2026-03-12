@@ -77,7 +77,7 @@ export const ComponentRenderer = memo(function ComponentRenderer({
     const container = containerRef.current;
     if (!container) return;
 
-    // For script-once components, only run on first mount
+    // For script-once components that are already mounted, skip re-execution
     if (scriptOnce && mountedRef.current) return;
 
     // For script-once, set innerHTML manually (React won't via dangerouslySetInnerHTML)
@@ -93,8 +93,30 @@ export const ComponentRenderer = memo(function ComponentRenderer({
       oldScript.replaceWith(newScript);
     });
 
-    if (scriptOnce) mountedRef.current = true;
+    if (scriptOnce) {
+      mountedRef.current = true;
+    }
+
+    return () => {
+      if (scriptOnce) {
+        const mapCleanupFn = (container as any).__mapCleanup;
+        if (typeof mapCleanupFn === "function") {
+          mapCleanupFn();
+        }
+      }
+    };
   }, [html, scriptOnce, instanceId]);
+
+  // For script-once components: pass entity state updates to __updateMap hook
+  useEffect(() => {
+    if (!scriptOnce || !mountedRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const updateFn = (container as any).__updateMap;
+    if (typeof updateFn === "function") {
+      updateFn(entities);
+    }
+  }, [entities, scriptOnce]);
 
   return (
     <>

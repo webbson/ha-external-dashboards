@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Modal, Form, Select, Input, Button, Space, theme } from "antd";
+import { Modal, Form, Select, Input, Button, Space, theme, Checkbox, InputNumber, Divider } from "antd";
 import { MdiIconSelector } from "../selectors/MdiIconSelector.js";
 
 interface Layout {
@@ -11,15 +11,34 @@ interface Layout {
   };
 }
 
+interface VisibilityRule {
+  entityId: string;
+  attribute?: string;
+  operator: string;
+  value: string;
+}
+
 interface LayoutTabModalProps {
   open: boolean;
   mode: "add" | "edit";
   layoutId?: number;
   label?: string | null;
   icon?: string | null;
+  visibilityRules?: VisibilityRule[] | null;
+  hideInTabBar?: boolean | null;
+  autoReturn?: boolean | null;
+  autoReturnDelay?: number | null;
   allLayouts: Layout[];
   canRemove: boolean;
-  onSave: (layoutId: number, label: string | null, icon: string | null) => void;
+  onSave: (
+    layoutId: number,
+    label: string | null,
+    icon: string | null,
+    visibilityRules: VisibilityRule[],
+    hideInTabBar: boolean,
+    autoReturn: boolean,
+    autoReturnDelay: number
+  ) => void;
   onRemove: () => void;
   onCancel: () => void;
 }
@@ -30,6 +49,10 @@ export function LayoutTabModal({
   layoutId,
   label,
   icon,
+  visibilityRules: initialVisibilityRules,
+  hideInTabBar: initialHideInTabBar,
+  autoReturn: initialAutoReturn,
+  autoReturnDelay: initialAutoReturnDelay,
   allLayouts,
   canRemove,
   onSave,
@@ -39,6 +62,10 @@ export function LayoutTabModal({
   const [form] = Form.useForm<{ layoutId: number; label: string }>();
   const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [visibilityRules, setVisibilityRules] = useState<VisibilityRule[]>([]);
+  const [hideInTabBar, setHideInTabBar] = useState(false);
+  const [autoReturn, setAutoReturn] = useState(false);
+  const [autoReturnDelay, setAutoReturnDelay] = useState(10);
   const { token } = theme.useToken();
 
   useEffect(() => {
@@ -48,9 +75,13 @@ export function LayoutTabModal({
         label: label ?? "",
       });
       setSelectedIcon(icon ?? null);
+      setVisibilityRules(initialVisibilityRules?.length ? [...initialVisibilityRules] : []);
+      setHideInTabBar(initialHideInTabBar ?? false);
+      setAutoReturn(initialAutoReturn ?? false);
+      setAutoReturnDelay(initialAutoReturnDelay ?? 10);
       setValidationError(null);
     }
-  }, [open, layoutId, label, icon, allLayouts, form]);
+  }, [open, layoutId, label, icon, initialVisibilityRules, initialHideInTabBar, initialAutoReturn, initialAutoReturnDelay, allLayouts, form]);
 
   const selectedLayoutId = Form.useWatch("layoutId", form);
   const selectedLayout = allLayouts.find((l) => l.id === selectedLayoutId);
@@ -63,7 +94,7 @@ export function LayoutTabModal({
         return;
       }
       setValidationError(null);
-      onSave(values.layoutId, trimmedLabel, selectedIcon);
+      onSave(values.layoutId, trimmedLabel, selectedIcon, visibilityRules, hideInTabBar, autoReturn, autoReturnDelay);
     });
   };
 
@@ -109,6 +140,112 @@ export function LayoutTabModal({
         {validationError && (
           <div style={{ color: "#ff4d4f", marginBottom: 16 }}>
             {validationError}
+          </div>
+        )}
+
+        <Divider orientation="left" style={{ fontSize: 12, color: token.colorTextSecondary }}>Visibility</Divider>
+
+        <div style={{ marginBottom: 12 }}>
+          {visibilityRules.map((rule, i) => (
+            <Space key={i} style={{ display: "flex", marginBottom: 4 }} align="start">
+              <Input
+                placeholder="entity_id"
+                size="small"
+                style={{ width: 140 }}
+                value={rule.entityId}
+                onChange={(e) => {
+                  const next = [...visibilityRules];
+                  next[i] = { ...next[i], entityId: e.target.value };
+                  setVisibilityRules(next);
+                }}
+              />
+              <Input
+                placeholder="attribute (opt)"
+                size="small"
+                style={{ width: 120 }}
+                value={rule.attribute ?? ""}
+                onChange={(e) => {
+                  const next = [...visibilityRules];
+                  next[i] = { ...next[i], attribute: e.target.value || undefined };
+                  setVisibilityRules(next);
+                }}
+              />
+              <Select
+                size="small"
+                style={{ width: 70 }}
+                value={rule.operator}
+                onChange={(v) => {
+                  const next = [...visibilityRules];
+                  next[i] = { ...next[i], operator: v };
+                  setVisibilityRules(next);
+                }}
+                options={[
+                  { value: "eq", label: "=" },
+                  { value: "neq", label: "≠" },
+                  { value: "gt", label: ">" },
+                  { value: "lt", label: "<" },
+                  { value: "gte", label: "≥" },
+                  { value: "lte", label: "≤" },
+                ]}
+              />
+              <Input
+                placeholder="value"
+                size="small"
+                style={{ width: 100 }}
+                value={rule.value}
+                onChange={(e) => {
+                  const next = [...visibilityRules];
+                  next[i] = { ...next[i], value: e.target.value };
+                  setVisibilityRules(next);
+                }}
+              />
+              <Button
+                size="small"
+                danger
+                onClick={() => setVisibilityRules(visibilityRules.filter((_, j) => j !== i))}
+              >
+                ×
+              </Button>
+            </Space>
+          ))}
+          <Button
+            size="small"
+            onClick={() => setVisibilityRules([...visibilityRules, { entityId: "", operator: "eq", value: "" }])}
+          >
+            + Add Rule
+          </Button>
+        </div>
+
+        <Divider orientation="left" style={{ fontSize: 12, color: token.colorTextSecondary }}>Behaviour</Divider>
+
+        <div style={{ marginBottom: 8 }}>
+          <Checkbox
+            checked={hideInTabBar}
+            onChange={(e) => setHideInTabBar(e.target.checked)}
+          >
+            Hide from tab bar
+          </Checkbox>
+        </div>
+        <div style={{ marginBottom: 8 }}>
+          <Checkbox
+            checked={autoReturn}
+            onChange={(e) => setAutoReturn(e.target.checked)}
+          >
+            Auto-return after switching to this tab
+          </Checkbox>
+        </div>
+        {autoReturn && (
+          <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ color: token.colorText, fontSize: 13 }}>Return after</span>
+            <InputNumber
+              min={1}
+              max={3600}
+              value={autoReturnDelay}
+              onChange={(v) => setAutoReturnDelay(v ?? 10)}
+              size="small"
+              style={{ width: 80 }}
+            />
+            <span style={{ color: token.colorText, fontSize: 13 }}>seconds</span>
           </div>
         )}
       </Form>

@@ -428,6 +428,15 @@ export function ComponentEditor() {
                     setTestParameterValues((prev) => ({ ...prev, [def.name]: v ?? "" }))
                   }
                 />
+              ) : def.type === "textarea" ? (
+                <Input.TextArea
+                  value={(testParameterValues[def.name] as string) ?? ""}
+                  onChange={(e) =>
+                    setTestParameterValues((prev) => ({ ...prev, [def.name]: e.target.value }))
+                  }
+                  placeholder={def.default != null ? String(def.default) : undefined}
+                  rows={4}
+                />
               ) : (
                 <Input
                   value={(testParameterValues[def.name] as string) ?? ""}

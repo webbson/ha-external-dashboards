@@ -9,6 +9,8 @@ import type { EntityState } from "./template/engine.js";
 import { setDerivedEntityHandler } from "./template/engine.js";
 import { resolveIcons, extractIconNames, getIconPath } from "./icons/icon-resolver.js";
 import { ensureUPlot } from "./uplot-loader.js";
+import { ensureMarked } from "./marked-loader.js";
+import { ensureMapLibreGL } from "./maplibre-loader.js";
 
 interface DashboardConfig {
   dashboard: {
@@ -38,6 +40,10 @@ interface DashboardLayout {
   sortOrder: number;
   label: string | null;
   icon: string | null;
+  visibilityRules?: { entityId: string; attribute?: string; operator: string; value: string }[] | null;
+  hideInTabBar?: boolean | null;
+  autoReturn?: boolean | null;
+  autoReturnDelay?: number | null;
   layout: {
     structure: {
       gridTemplate: string;
@@ -69,6 +75,7 @@ interface ComponentDef {
   styles: string;
   isContainer: boolean;
   containerConfig: { type: string; rotateInterval?: number } | null;
+  parameterDefs?: string | { name: string; default?: string | number | boolean }[];
 }
 
 interface PopupData {
@@ -124,6 +131,7 @@ export function DisplayApp() {
   const [needsAuth, setNeedsAuth] = useState(false);
   const [password, setPassword] = useState("");
   const [dialogState, setDialogState] = useState<{ type: string; props: Record<string, unknown> } | null>(null);
+  const [switchLayoutMsg, setSwitchLayoutMsg] = useState<{ layoutId: number; autoReturn?: boolean; autoReturnDelay?: number } | null>(null);
   const clientRef = useRef<DisplayClient | null>(null);
 
   const slug = getSlugFromUrl();
@@ -184,6 +192,18 @@ export function DisplayApp() {
       const needsUPlot = templates.some((t) => t.includes("uPlot"));
       if (needsUPlot) {
         await ensureUPlot();
+      }
+
+      // Lazy-load marked if any component template uses it
+      const needsMarked = templates.some((t) => t.includes("markdownToHtml") || t.includes("__markedLib"));
+      if (needsMarked) {
+        await ensureMarked();
+      }
+
+      // Lazy-load MapLibre GL if any component template uses it
+      const needsMapLibre = templates.some((t) => t.includes("maplibregl"));
+      if (needsMapLibre) {
+        await ensureMapLibreGL();
       }
 
       setConfig(data);
@@ -316,6 +336,14 @@ export function DisplayApp() {
 
     client.onGlobExpansions((expansions) => {
       setGlobExpansions(expansions);
+    });
+
+    client.on("switch_layout", (msg) => {
+      setSwitchLayoutMsg({
+        layoutId: msg.layoutId as number,
+        autoReturn: msg.autoReturn as boolean | undefined,
+        autoReturnDelay: msg.autoReturnDelay as number | undefined,
+      });
     });
 
     // Subscribe to derived entities (from deriveEntity helper) on demand
@@ -482,6 +510,8 @@ export function DisplayApp() {
           padding={config.dashboard.padding}
           layoutSwitchMode={config.dashboard.layoutSwitchMode}
           layoutRotateInterval={config.dashboard.layoutRotateInterval}
+          switchLayoutMsg={switchLayoutMsg}
+          onSwitchLayoutHandled={() => setSwitchLayoutMsg(null)}
         />
       </ErrorBoundary>
       <BlackoutOverlay

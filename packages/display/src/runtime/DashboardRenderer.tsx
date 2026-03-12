@@ -1,7 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { LayoutRenderer } from "./LayoutRenderer.js";
 import type { EntityState } from "../template/engine.js";
 import { getIconPath } from "../icons/icon-resolver.js";
+
+interface VisibilityRule {
+  entityId: string;
+  attribute?: string;
+  operator: string;
+  value: string;
+}
 
 interface DashboardLayout {
   id: number;
@@ -9,6 +16,10 @@ interface DashboardLayout {
   sortOrder: number;
   label: string | null;
   icon: string | null;
+  visibilityRules?: VisibilityRule[] | null;
+  hideInTabBar?: boolean | null;
+  autoReturn?: boolean | null;
+  autoReturnDelay?: number | null;
   layout: {
     structure: {
       gridTemplate: string;
@@ -52,6 +63,34 @@ interface DashboardRendererProps {
   padding?: string | null;
   layoutSwitchMode: "tabs" | "auto-rotate";
   layoutRotateInterval: number;
+  switchLayoutMsg?: { layoutId: number; autoReturn?: boolean; autoReturnDelay?: number } | null;
+  onSwitchLayoutHandled?: () => void;
+}
+
+function evaluateVisibilityRule(
+  rule: VisibilityRule,
+  entities: Record<string, EntityState>
+): boolean {
+  const entity = entities[rule.entityId];
+  if (!entity) return false;
+  const actual = rule.attribute
+    ? String(entity.attributes[rule.attribute] ?? "")
+    : entity.state;
+  const expected = rule.value;
+  switch (rule.operator) {
+    case "eq": return actual === expected;
+    case "neq": return actual !== expected;
+    case "gt": return parseFloat(actual) > parseFloat(expected);
+    case "lt": return parseFloat(actual) < parseFloat(expected);
+    case "gte": return parseFloat(actual) >= parseFloat(expected);
+    case "lte": return parseFloat(actual) <= parseFloat(expected);
+    default: return true;
+  }
+}
+
+function isTabVisible(dl: DashboardLayout, entityStates: Record<string, EntityState>): boolean {
+  if (!dl.visibilityRules?.length) return true;
+  return dl.visibilityRules.every((r) => evaluateVisibilityRule(r, entityStates));
 }
 
 export function DashboardRenderer({
@@ -64,8 +103,72 @@ export function DashboardRenderer({
   padding,
   layoutSwitchMode,
   layoutRotateInterval,
+  switchLayoutMsg,
+  onSwitchLayoutHandled,
 }: DashboardRendererProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const autoReturnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevActiveIndexRef = useRef<number>(0);
+  const prevVisibilityRef = useRef<Record<number, boolean>>({});
+
+  function switchToTabWithAutoReturn(newIndex: number, dl: DashboardLayout) {
+    if (autoReturnTimerRef.current) clearTimeout(autoReturnTimerRef.current);
+    prevActiveIndexRef.current = activeIndex;
+    setActiveIndex(newIndex);
+    if (dl.autoReturn) {
+      autoReturnTimerRef.current = setTimeout(() => {
+        setActiveIndex(prevActiveIndexRef.current);
+      }, (dl.autoReturnDelay ?? 10) * 1000);
+    }
+  }
+
+  // Cleanup: clear autoReturn timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoReturnTimerRef.current) clearTimeout(autoReturnTimerRef.current);
+    };
+  }, []);
+
+  // Auto-switch when tab visibility changes
+  useEffect(() => {
+    dashboardLayouts.forEach((dl, i) => {
+      const wasVisible = prevVisibilityRef.current[dl.id] ?? true;
+      const isVisible = isTabVisible(dl, entities);
+
+      if (!wasVisible && isVisible) {
+        // Tab just became visible — switch to it
+        if (autoReturnTimerRef.current) {
+          clearTimeout(autoReturnTimerRef.current);
+          autoReturnTimerRef.current = null;
+        }
+        setActiveIndex(i);
+      }
+      if (wasVisible && !isVisible && activeIndex === i) {
+        // Active tab just became hidden — switch to first visible tab
+        const firstVisible = dashboardLayouts.findIndex((d, j) => j !== i && isTabVisible(d, entities));
+        if (firstVisible >= 0) setActiveIndex(firstVisible);
+      }
+
+      prevVisibilityRef.current[dl.id] = isVisible;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entities]);
+
+  // Handle WS switch_layout message
+  useEffect(() => {
+    if (!switchLayoutMsg) return;
+    const idx = dashboardLayouts.findIndex((dl) => dl.layoutId === switchLayoutMsg.layoutId);
+    if (idx >= 0) {
+      const dl = dashboardLayouts[idx];
+      switchToTabWithAutoReturn(idx, {
+        ...dl,
+        autoReturn: switchLayoutMsg.autoReturn ?? dl.autoReturn,
+        autoReturnDelay: switchLayoutMsg.autoReturnDelay ?? dl.autoReturnDelay,
+      });
+    }
+    onSwitchLayoutHandled?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [switchLayoutMsg]);
 
   // Auto-rotate layouts
   useEffect(() => {
@@ -119,12 +222,13 @@ export function DashboardRenderer({
           }}
         >
           {dashboardLayouts.map((dl, i) => {
+            if (dl.hideInTabBar) return null;
             const isActive = i === activeIndex;
             const iconPath = dl.icon ? getIconPath(dl.icon) : undefined;
             return (
               <button
                 key={dl.id}
-                onClick={() => setActiveIndex(i)}
+                onClick={() => switchToTabWithAutoReturn(i, dl)}
                 style={{
                   padding: "6px 16px",
                   border: "none",

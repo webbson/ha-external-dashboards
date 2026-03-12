@@ -12,7 +12,7 @@ export interface VisibilityRule {
 export interface ParameterDef {
   name: string;
   label: string;
-  type: "string" | "number" | "boolean" | "color" | "select" | "icon";
+  type: "string" | "textarea" | "number" | "boolean" | "color" | "select" | "icon";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
   step?: number;
@@ -47,13 +47,39 @@ export interface LayoutRegion {
 }
 
 export interface LayoutStructure {
-  gridTemplate: string;
+  gridTemplate?: string; // legacy — kept for backward compat
+  gridTemplates?: {
+    mobile?: string;
+    tablet?: string;
+    desktop?: string;
+    tv?: string;
+  };
   regions: LayoutRegion[];
 }
 
 export interface ContainerConfig {
   type: "tabs" | "auto-rotate" | "stack";
   rotateInterval?: number;
+}
+
+export interface DashboardLayout {
+  id: number;
+  dashboardId: number;
+  layoutId: number;
+  sortOrder: number;
+  label: string | null;
+  icon: string | null;
+  visibilityRules?: VisibilityRule[];
+  hideInTabBar?: boolean;
+  autoReturn?: boolean;
+  autoReturnDelay?: number;
+}
+
+export interface SwitchLayoutMessage {
+  type: "switch_layout";
+  layoutId: number;
+  autoReturn?: boolean;
+  autoReturnDelay?: number;
 }
 
 export interface WsMessage {

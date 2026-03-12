@@ -1,8 +1,22 @@
+import { useState, useEffect } from "react";
 import { RegionRenderer } from "./RegionRenderer.js";
 import type { EntityState } from "../template/engine.js";
 
+const BREAKPOINTS = [
+  { name: "tv" as const, min: 1600 },
+  { name: "desktop" as const, min: 1024 },
+  { name: "tablet" as const, min: 600 },
+  { name: "mobile" as const, min: 0 },
+] as const;
+
 interface LayoutStructure {
-  gridTemplate: string;
+  gridTemplate?: string;
+  gridTemplates?: {
+    mobile?: string;
+    tablet?: string;
+    desktop?: string;
+    tv?: string;
+  };
   regions: {
     id: string;
     gridArea?: string;
@@ -47,6 +61,17 @@ interface LayoutRendererProps {
   globExpansions: Record<string, string[]>;
 }
 
+function resolveGridTemplate(structure: LayoutStructure, viewportWidth: number): string {
+  if (structure.gridTemplates) {
+    for (const bp of BREAKPOINTS) {
+      if (viewportWidth >= bp.min && structure.gridTemplates[bp.name]) {
+        return structure.gridTemplates[bp.name]!;
+      }
+    }
+  }
+  return structure.gridTemplate ?? "";
+}
+
 export function LayoutRenderer({
   structure,
   instances,
@@ -55,11 +80,19 @@ export function LayoutRenderer({
   globalStyles,
   globExpansions,
 }: LayoutRendererProps) {
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
+
+  useEffect(() => {
+    const handler = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
   return (
     <div
       style={{
         display: "grid",
-        gridTemplate: structure.gridTemplate,
+        gridTemplate: resolveGridTemplate(structure, viewportWidth),
         width: "100%",
         height: "100%",
         gap: 8,

@@ -325,15 +325,15 @@ export async function setupWebSocketProxy(app: FastifyInstance) {
           for (const entityId of entityIds) {
             if (conn.subscribedEntities.has(entityId)) continue;
 
-            // Validate entity against allowed derived glob patterns
-            const allowed = subscription.derivedGlobPatterns.some(
+            // Allow derived glob patterns AND any valid HA entity (for inline {{state}} refs in templates)
+            const matchesDerivedGlob = subscription.derivedGlobPatterns.some(
               (pattern) => matchGlob(pattern, [entityId]).length > 0
             );
-            if (!allowed) continue;
+            const state = haClient.getState(entityId);
+            if (!matchesDerivedGlob && !state) continue;
 
             conn.subscribedEntities.add(entityId);
 
-            const state = haClient.getState(entityId);
             if (state) {
               socket.send(
                 JSON.stringify({

@@ -28,3 +28,17 @@ export function broadcastReloadForDashboards(dashboardIds: number[]) {
     broadcastReload(id);
   }
 }
+
+export function broadcastSwitchLayout(
+  dashboardId: number,
+  layoutId: number,
+  autoReturn: boolean,
+  autoReturnDelay: number
+): void {
+  connectionManager.broadcastToDashboard(dashboardId, {
+    type: "switch_layout",
+    layoutId,
+    autoReturn,
+    autoReturnDelay,
+  });
+}

@@ -1,6 +1,7 @@
 import Handlebars from "handlebars";
 import * as mdiIcons from "@mdi/js";
 import { isGlobPattern } from "@ha-external-dashboards/shared";
+import { marked } from "marked";
 
 interface EntityState {
   entity_id: string;
@@ -135,6 +136,25 @@ Handlebars.registerHelper("deriveEntity", (entityId: string, newDomain: string, 
   if (dotIdx < 0) return entityId;
   const baseName = entityId.substring(dotIdx + 1);
   return `${newDomain}.${baseName}${typeof suffix === "string" ? suffix : ""}`;
+});
+
+Handlebars.registerHelper("markdownToHtml", (content: unknown, options: Handlebars.HelperOptions) => {
+  if (!content) return "";
+  try {
+    // Evaluate the content string as a Handlebars template so {{state}}/{{attr}} etc. work
+    let evaluated = String(content);
+    try {
+      const compiled = Handlebars.compile(evaluated);
+      evaluated = compiled(options.data?.root);
+    } catch {
+      // leave as-is if content has invalid Handlebars
+    }
+    const result = marked.parse(evaluated);
+    if (typeof result === "string") return new Handlebars.SafeString(result);
+    return evaluated;
+  } catch {
+    return String(content);
+  }
 });
 
 Handlebars.registerHelper("eq", (a: unknown, b: unknown) => a === b);

@@ -45,7 +45,7 @@ Build order matters: shared → admin/display → server
 - `themes` — name, standardVariables (JSON: colors/typography/borders/gaps/background), globalStyles (JSON: custom CSS variables)
 - `dashboards` — slug, accessKey, accessMode, themeId (FK → themes), layoutSwitchMode, blackoutEntity, blackoutStartTime, blackoutEndTime
 - `layouts` — name, structure (JSON: gridTemplate + regions with applyChromeTo)
-- `dashboard_layouts` — join table with sortOrder, label
+- `dashboard_layouts` — join table with sortOrder, label, icon, visibilityRules (JSON: VisibilityRule[]), hideInTabBar, autoReturn, autoReturnDelay
 - `components` — template (Handlebars), styles (CSS), parameterDefs, entitySelectorDefs (modes: single/multiple/glob, optional allowedDomains, optional glob filters), testEntityBindings
 - `component_instances` — placed in dashboard_layout regions with parameterValues, entityBindings, visibilityRules
 - `assets` — uploaded files in /config/assets/, virtual folder field for organization
@@ -65,6 +65,17 @@ Build order matters: shared → admin/display → server
 - Evaluation is client-side: display subscribes to the blackout entity via existing WS connection; time schedule checked every 30s
 - Renders a pure black `position: fixed` overlay at z-index 99999 (above all content)
 - Overnight time ranges supported (e.g., 23:00-07:00)
+
+## Conditional Tabs + Switch Layout
+
+- Each `dashboard_layout` row can have `visibilityRules` (JSON array of `VisibilityRule`) evaluated client-side in `DashboardRenderer`
+- When a tab's rules become false while it's active, display auto-switches to the first visible tab
+- When a tab's rules become true, display auto-switches to it
+- `hideInTabBar` — tab exists and can be switched to programmatically, but is not rendered as a button in the tab bar
+- `autoReturn` / `autoReturnDelay` — after switching to this tab (via WS or visibility trigger), auto-return to the previous tab after N seconds
+- REST trigger: `POST /api/trigger/switch-layout` (admin server, rate-limited 10/s) — body: `{ dashboardSlug, layoutLabel, autoReturn?, autoReturnDelay? }`
+- WS message: `{ type: "switch_layout", layoutId, autoReturn, autoReturnDelay }` broadcast to display clients
+- MCP tool: `dashboard_trigger_switch_layout`
 
 ## Styling Architecture
 
@@ -155,7 +166,8 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 - Uses `@modelcontextprotocol/sdk` with `StreamableHTTPServerTransport`
 - Tool handlers call admin API routes internally via Fastify `adminApp.inject()` — no code duplication
 - Auth: `MCP_API_KEY` env var → `Authorization: Bearer <key>` required. Without key: 503 in prod, skipped in dev mode.
-- 41 tools covering all admin CRUD: dashboards (12), components (7), layouts (6), themes (6), assets (6), other (4 — includes `ha_entities_list` for querying HA entities with domain/state/attribute/search filters)
+- 42 tools covering all admin CRUD: dashboards (13), components (7), layouts (6), themes (6), assets (6), other (4 — includes `ha_entities_list` for querying HA entities with domain/state/attribute/search filters)
+- `dashboard_trigger_switch_layout` tool: sends WS switch_layout to all display clients for a dashboard by slug + tab label, with optional autoReturn/autoReturnDelay
 - Complex nested objects (parameterDefs, entityBindings, etc.) passed as JSON strings in tool inputs
 - Source: `packages/server/src/mcp/` (server.ts + tools/)
 - Client config: `{ "url": "http://<host>:8099/mcp" }` in Claude Desktop MCP settings

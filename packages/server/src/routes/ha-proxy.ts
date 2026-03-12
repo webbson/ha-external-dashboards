@@ -101,6 +101,76 @@ export async function haHistoryProxyRoutes(app: FastifyInstance, opts?: ProxyOpt
   );
 }
 
+const statisticsQuerySchema = z.object({
+  start: z.string().datetime().optional(),
+  end: z.string().datetime().optional(),
+  period: z.enum(["hour", "day"]).optional(),
+});
+
+export async function haStatisticsProxyRoutes(app: FastifyInstance, opts?: ProxyOptions) {
+  const preHandler = opts?.isExternal ? externalApiAuth : undefined;
+
+  app.get<{ Params: { entityIds: string }; Querystring: { start?: string; end?: string; period?: string } }>(
+    "/api/statistics/:entityIds",
+    preHandler ? { preHandler } : {},
+    async (req, reply) => {
+      const token = process.env.SUPERVISOR_TOKEN;
+      if (!token) return reply.code(503).send({ error: "HA not configured" });
+
+      const entityIds = req.params.entityIds.split(",").map((id) => id.trim()).filter(Boolean);
+      if (entityIds.length === 0 || entityIds.length > 10) {
+        return reply.code(400).send({ error: "Provide 1-10 comma-separated entity IDs" });
+      }
+      if (!entityIds.every((id) => /^[a-z_]+\.[a-z0-9_]+$/.test(id))) {
+        return reply.code(400).send({ error: "Invalid entity ID format" });
+      }
+
+      // Entity filtering for external server
+      if (opts?.isExternal) {
+        const dashboard = (req as unknown as Record<string, unknown>).dashboard as { id: number };
+        for (const entityId of entityIds) {
+          const allowed = await isEntityAllowed(dashboard.id, entityId);
+          if (!allowed) {
+            return reply.code(403).send({ error: `Entity not accessible: ${entityId}` });
+          }
+        }
+      }
+
+      const query = statisticsQuerySchema.safeParse(req.query);
+      if (!query.success) return reply.code(400).send({ error: "Invalid query parameters" });
+
+      const now = new Date();
+      const start = query.data.start ?? new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      const end = query.data.end ?? now.toISOString();
+      const period = query.data.period ?? "hour";
+
+      const url = `${HA_HTTP_BASE}/api/history/statistics_during_period`;
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            start_time: start,
+            end_time: end,
+            period,
+            statistic_ids: entityIds,
+          }),
+        });
+        if (!resp.ok) return reply.code(resp.status).send({ error: "HA statistics error" });
+
+        reply.header("content-type", "application/json");
+        reply.header("cache-control", "public, max-age=60");
+        return reply.send(Buffer.from(await resp.arrayBuffer()));
+      } catch {
+        return reply.code(502).send({ error: "Failed to fetch statistics from HA" });
+      }
+    }
+  );
+}
+
 const entitiesQuerySchema = z.object({
   domain: z.string().optional(),
   state: z.string().optional(),

@@ -25,6 +25,7 @@ interface ComponentDef {
   id: number;
   template: string;
   styles: string;
+  parameterDefs?: string | { name: string; default?: string | number | boolean }[];
 }
 
 interface TabsContainerProps {
@@ -149,10 +150,16 @@ function TabChildRenderer({
     [child.entityBindings, child.visibilityRules, globExpansions, child.id]
   );
   const [entitySubset, addDerivedIds] = useEntitySubsetWithDerived(entities, entityIds);
-  const parameterValues = useMemo(
-    () => ({ ...child.entityBindings, ...child.parameterValues }),
-    [child.entityBindings, child.parameterValues]
-  );
+  const parameterValues = useMemo(() => {
+    const rawDefs = comp?.parameterDefs;
+    const defs: { name: string; default?: string | number | boolean }[] =
+      typeof rawDefs === "string" ? JSON.parse(rawDefs) : (rawDefs ?? []);
+    const defaults: Record<string, string | number | boolean> = {};
+    for (const def of defs) {
+      if (def.default !== undefined) defaults[def.name] = def.default;
+    }
+    return { ...defaults, ...child.entityBindings, ...child.parameterValues };
+  }, [child.entityBindings, child.parameterValues, comp?.parameterDefs]);
 
   if (!comp) return null;
 

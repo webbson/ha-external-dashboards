@@ -13,6 +13,17 @@ import { parseDeriveEntityCalls } from "./derive-parser.js";
 // Re-export for tests and other consumers
 export { parseDeriveEntityCalls } from "./derive-parser.js";
 
+/** Extract entity IDs referenced inline via {{state "id"}} or {{attr "id" ...}} */
+function extractInlineEntityRefs(text: string): string[] {
+  const ids: string[] = [];
+  const stateRe = /\{\{state\s+"([^"]+)"/g;
+  const attrRe = /\{\{attr\s+"([^"]+)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = stateRe.exec(text)) !== null) ids.push(m[1]);
+  while ((m = attrRe.exec(text)) !== null) ids.push(m[1]);
+  return ids;
+}
+
 interface AccessEntry {
   pattern: string;
   type: "entity" | "glob" | "derived" | "derived_glob";
@@ -81,7 +92,7 @@ async function collectAccessEntries(dashboardId: number): Promise<AccessEntry[]>
     .from(componentInstances)
     .where(inArray(componentInstances.dashboardLayoutId, dlIds));
 
-  // Load component templates for deriveEntity parsing (batch)
+  // Load component templates for deriveEntity parsing and inline ref scanning (batch)
   const componentIds = [...new Set(instances.map((i) => i.componentId))];
   const componentMap = new Map<number, string>();
   if (componentIds.length > 0) {
@@ -91,13 +102,27 @@ async function collectAccessEntries(dashboardId: number): Promise<AccessEntry[]>
       .where(inArray(components.id, componentIds));
     for (const c of comps) {
       componentMap.set(c.id, c.template);
+      // Inline refs in the component template itself
+      for (const entityId of extractInlineEntityRefs(c.template)) {
+        add(entityId, "entity", "inline");
+      }
     }
   }
 
   for (const inst of instances) {
     const bindings = inst.entityBindings as Record<string, string | string[]>;
+    const paramValues = inst.parameterValues as Record<string, unknown>;
     const template = componentMap.get(inst.componentId) ?? "";
     const deriveCalls = template ? parseDeriveEntityCalls(template) : [];
+
+    // Inline refs in configured parameter values (e.g. markdown content with {{state "..."}})
+    for (const val of Object.values(paramValues)) {
+      if (typeof val === "string") {
+        for (const entityId of extractInlineEntityRefs(val)) {
+          add(entityId, "entity", "inline");
+        }
+      }
+    }
 
     for (const [selectorName, val] of Object.entries(bindings)) {
       if (Array.isArray(val)) {

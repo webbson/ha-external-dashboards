@@ -51,8 +51,12 @@ export async function displayDataRoutes(app: FastifyInstance) {
             .from(componentInstances)
             .where(eq(componentInstances.dashboardLayoutId, dl.id));
 
+          const visibilityRules = dl.visibilityRules
+            ? (() => { try { return JSON.parse(dl.visibilityRules); } catch { return []; } })()
+            : [];
           return {
             ...dl,
+            visibilityRules,
             layout: layout
               ? { structure: layout.structure }
               : { structure: { gridTemplate: "none", regions: [] } },

@@ -162,6 +162,25 @@ export function registerDashboardTools(mcp: McpServer, adminApp: FastifyInstance
     },
   );
 
+  mcp.tool(
+    "dashboard_trigger_switch_layout",
+    "Send a switch_layout WS message to all display clients currently showing a dashboard, causing them to switch to the specified layout tab. Optionally auto-return after N seconds.",
+    {
+      dashboardSlug: z.string().describe("Dashboard slug"),
+      layoutLabel: z.string().describe("Label of the tab to switch to"),
+      autoReturn: z.boolean().optional().describe("Auto-return to previous tab after delay (default: false)"),
+      autoReturnDelay: z.number().optional().describe("Seconds before auto-return (default: 10)"),
+    },
+    async ({ dashboardSlug, layoutLabel, autoReturn, autoReturnDelay }) => {
+      const res = await adminApp.inject({
+        method: "POST",
+        url: "/api/trigger/switch-layout",
+        payload: { dashboardSlug, layoutLabel, autoReturn, autoReturnDelay },
+      });
+      return formatResponse(res);
+    },
+  );
+
   // --- Component Instance tools ---
 
   mcp.tool(
