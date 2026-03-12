@@ -61,7 +61,8 @@ export const layouts = sqliteTable("layouts", {
   name: text("name").notNull(),
   structure: text("structure", { mode: "json" })
     .$type<{
-      gridTemplate: string;
+      gridTemplate?: string;
+      gridTemplates?: { mobile?: string; tablet?: string; desktop?: string; tv?: string };
       regions: { id: string; applyChromeTo?: "components" | "region" }[];
     }>()
     .notNull(),
@@ -84,6 +85,10 @@ export const dashboardLayouts = sqliteTable("dashboard_layouts", {
   sortOrder: integer("sort_order").notNull().default(0),
   label: text("label"),
   icon: text("icon"),
+  visibilityRules: text("visibility_rules"),
+  hideInTabBar: integer("hide_in_tab_bar", { mode: "boolean" }).notNull().default(false),
+  autoReturn: integer("auto_return", { mode: "boolean" }).notNull().default(false),
+  autoReturnDelay: integer("auto_return_delay").notNull().default(10),
 }, (table) => [
   index("idx_dashboard_layouts_dashboard_id").on(table.dashboardId),
   index("idx_dashboard_layouts_layout_id").on(table.layoutId),
@@ -183,6 +188,7 @@ export const componentInstances = sqliteTable("component_instances", {
     >()
     .notNull()
     .default(sql`'{}'`),
+  grow: integer("grow", { mode: "boolean" }).notNull().default(false),
   parentInstanceId: integer("parent_instance_id"),
   tabLabel: text("tab_label"),
   tabIcon: text("tab_icon"),

@@ -65,6 +65,7 @@ interface ComponentInstance {
   entityBindings: Record<string, string | string[]>;
   visibilityRules: VisibilityRule[];
   entityFilters: Record<string, EntityFilterEntry>;
+  grow?: boolean;
   parentInstanceId: number | null;
   tabLabel: string | null;
   tabIcon: string | null;
@@ -110,6 +111,7 @@ export function ComponentConfigModal({
   >({});
   const [visibilityRules, setVisibilityRules] = useState<VisibilityRule[]>([]);
   const [entityFilters, setEntityFilters] = useState<Record<string, EntityFilterEntry>>({});
+  const [grow, setGrow] = useState(false);
   const [tabLabel, setTabLabel] = useState<string>("");
   const [tabIcon, setTabIcon] = useState<string | null>(null);
 
@@ -124,6 +126,7 @@ export function ComponentConfigModal({
       setEntityBindings({ ...instance.entityBindings });
       setVisibilityRules([...instance.visibilityRules]);
       setEntityFilters({ ...(instance.entityFilters ?? {}) });
+      setGrow(instance.grow ?? false);
       setTabLabel(instance?.tabLabel ?? "");
       setTabIcon(instance?.tabIcon ?? null);
     }
@@ -138,9 +141,10 @@ export function ComponentConfigModal({
       entityBindings,
       visibilityRules,
       entityFilters,
+      grow,
       ...(instance.parentInstanceId != null ? { tabLabel: tabLabel || null, tabIcon } : {}),
     });
-  }, [instance, parameterValues, entityBindings, visibilityRules, entityFilters, tabLabel, tabIcon, onSave]);
+  }, [instance, parameterValues, entityBindings, visibilityRules, entityFilters, grow, tabLabel, tabIcon, onSave]);
 
   if (!instance || !component) return null;
 
@@ -188,6 +192,14 @@ export function ComponentConfigModal({
               </div>
             </div>
           )}
+
+          <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            <Switch checked={grow} onChange={setGrow} />
+            <span>Grow to fill space</span>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Applies flex-grow: 2 to this component
+            </Typography.Text>
+          </div>
 
           {hasEntityDefs && (
             <div style={{ marginBottom: 16 }}>
@@ -527,6 +539,17 @@ export function ComponentConfigModal({
                         }))
                       }
                       style={{ width: 60 }}
+                    />
+                  ) : def.type === "textarea" ? (
+                    <Input.TextArea
+                      value={(parameterValues[def.name] as string) ?? ""}
+                      onChange={(e) =>
+                        setParameterValues((prev) => ({
+                          ...prev,
+                          [def.name]: e.target.value,
+                        }))
+                      }
+                      rows={4}
                     />
                   ) : (
                     <Input

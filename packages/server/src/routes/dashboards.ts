@@ -260,6 +260,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
             sortOrder: dl.sortOrder,
             label: dl.label,
             icon: dl.icon,
+            visibilityRules: dl.visibilityRules,
+            hideInTabBar: dl.hideInTabBar,
+            autoReturn: dl.autoReturn,
+            autoReturnDelay: dl.autoReturnDelay,
           })
           .returning();
 
@@ -332,6 +336,20 @@ export async function dashboardRoutes(app: FastifyInstance) {
             sortOrder: z.number().int(),
             label: z.string().nullable().default(null),
             icon: z.string().nullable().default(null),
+            visibilityRules: z
+              .array(
+                z.object({
+                  entityId: z.string(),
+                  attribute: z.string().optional(),
+                  operator: z.string(),
+                  value: z.string(),
+                })
+              )
+              .nullable()
+              .optional(),
+            hideInTabBar: z.boolean().optional().default(false),
+            autoReturn: z.boolean().optional().default(false),
+            autoReturnDelay: z.number().int().positive().optional().default(10),
           }).refine(
             (item) => item.label || item.icon,
             { message: "Each tab must have at least a label or an icon" }
@@ -352,10 +370,22 @@ export async function dashboardRoutes(app: FastifyInstance) {
       }
 
       for (const l of body) {
+        const visibilityRulesJson = l.visibilityRules?.length
+          ? JSON.stringify(l.visibilityRules)
+          : null;
         if (l.id && existing.some((e) => e.id === l.id)) {
           await db
             .update(dashboardLayouts)
-            .set({ layoutId: l.layoutId, sortOrder: l.sortOrder, label: l.label, icon: l.icon })
+            .set({
+              layoutId: l.layoutId,
+              sortOrder: l.sortOrder,
+              label: l.label,
+              icon: l.icon,
+              visibilityRules: visibilityRulesJson,
+              hideInTabBar: l.hideInTabBar ?? false,
+              autoReturn: l.autoReturn ?? false,
+              autoReturnDelay: l.autoReturnDelay ?? 10,
+            })
             .where(eq(dashboardLayouts.id, l.id));
         } else {
           await db.insert(dashboardLayouts).values({
@@ -364,6 +394,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
             sortOrder: l.sortOrder,
             label: l.label,
             icon: l.icon,
+            visibilityRules: visibilityRulesJson,
+            hideInTabBar: l.hideInTabBar ?? false,
+            autoReturn: l.autoReturn ?? false,
+            autoReturnDelay: l.autoReturnDelay ?? 10,
           });
         }
       }
@@ -491,6 +525,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
                 .optional(),
             })
           ),
+          grow: z.boolean(),
           parentInstanceId: z.number().int().nullable(),
           tabLabel: z.string().nullable(),
           tabIcon: z.string().nullable(),

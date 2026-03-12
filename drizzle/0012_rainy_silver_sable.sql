@@ -1,0 +1,1 @@
+ALTER TABLE `component_instances` ADD `grow` integer DEFAULT false NOT NULL;

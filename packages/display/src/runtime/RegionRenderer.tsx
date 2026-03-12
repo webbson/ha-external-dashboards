@@ -19,6 +19,7 @@ interface ComponentInstance {
     operator: string;
     value: string;
   }[];
+  grow?: boolean;
   parentInstanceId: number | null;
   tabLabel: string | null;
   tabIcon: string | null;
@@ -30,6 +31,7 @@ interface ComponentDef {
   styles: string;
   isContainer: boolean;
   containerConfig: { type: string; rotateInterval?: number } | null;
+  parameterDefs?: string | { name: string; default?: string | number | boolean }[];
 }
 
 interface RegionRendererProps {
@@ -110,10 +112,16 @@ function InstanceRenderer({
     [inst.entityBindings, inst.visibilityRules, globExpansions, inst.id]
   );
   const [entitySubset, addDerivedIds] = useEntitySubsetWithDerived(entities, entityIds);
-  const parameterValues = useMemo(
-    () => ({ ...inst.entityBindings, ...inst.parameterValues }),
-    [inst.entityBindings, inst.parameterValues]
-  );
+  const parameterValues = useMemo(() => {
+    const rawDefs = comp.parameterDefs;
+    const defs: { name: string; default?: string | number | boolean }[] =
+      typeof rawDefs === "string" ? JSON.parse(rawDefs) : (rawDefs ?? []);
+    const defaults: Record<string, string | number | boolean> = {};
+    for (const def of defs) {
+      if (def.default !== undefined) defaults[def.name] = def.default;
+    }
+    return { ...defaults, ...inst.entityBindings, ...inst.parameterValues };
+  }, [inst.entityBindings, inst.parameterValues, comp.parameterDefs]);
 
   if (comp.isContainer && comp.containerConfig) {
     const childInstances = allInstances
@@ -148,6 +156,14 @@ function InstanceRenderer({
       </VisibilityGate>
     );
 
+    const instGrow = inst.grow ?? false;
+    if (instGrow) {
+      return (
+        <div style={{ flexGrow: 2, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          {wrapped}
+        </div>
+      );
+    }
     if (flexGrow) {
       return (
         <div style={{ flexGrow: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
@@ -158,6 +174,7 @@ function InstanceRenderer({
     return wrapped;
   }
 
+  const instanceGrow = inst.grow ?? false;
   const content = (
     <VisibilityGate rules={inst.visibilityRules} entities={entitySubset}>
       <ComponentRenderer
@@ -168,12 +185,20 @@ function InstanceRenderer({
         globalStyles={globalStyles}
         globExpansions={globExpansions}
         instanceId={inst.id}
-        fillRegion={flexGrow}
+        fillRegion={flexGrow || instanceGrow}
         applyChrome={applyChrome}
         onDerivedEntities={addDerivedIds}
       />
     </VisibilityGate>
   );
+
+  if (instanceGrow) {
+    return (
+      <div style={{ flexGrow: 2, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        {content}
+      </div>
+    );
+  }
 
   if (flexGrow) {
     return (

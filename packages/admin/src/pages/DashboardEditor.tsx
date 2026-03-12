@@ -52,13 +52,18 @@ interface DashboardLayout {
   sortOrder: number;
   label: string | null;
   icon: string | null;
+  visibilityRules?: { entityId: string; attribute?: string; operator: string; value: string }[] | null;
+  hideInTabBar?: boolean | null;
+  autoReturn?: boolean | null;
+  autoReturnDelay?: number | null;
 }
 
 interface Layout {
   id: number;
   name: string;
   structure?: {
-    gridTemplate: string;
+    gridTemplate?: string;
+    gridTemplates?: { mobile?: string; tablet?: string; desktop?: string; tv?: string };
     regions: { id: string }[];
   };
 }
@@ -66,7 +71,7 @@ interface Layout {
 interface ParameterDef {
   name: string;
   label: string;
-  type: "string" | "number" | "boolean" | "color" | "select";
+  type: "string" | "textarea" | "number" | "boolean" | "color" | "select" | "icon";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
   step?: number;
@@ -101,6 +106,7 @@ interface ComponentInstance {
   entityBindings: Record<string, string | string[]>;
   visibilityRules: VisibilityRule[];
   entityFilters: Record<string, { attributeFilters?: { attribute: string; operator: string; value: string }[] }>;
+  grow?: boolean;
   parentInstanceId: number | null;
   tabLabel: string | null;
   tabIcon: string | null;
@@ -194,6 +200,10 @@ export function DashboardEditor() {
         sortOrder: i,
         label: l.label,
         icon: l.icon,
+        visibilityRules: l.visibilityRules ?? [],
+        hideInTabBar: l.hideInTabBar ?? false,
+        autoReturn: l.autoReturn ?? false,
+        autoReturnDelay: l.autoReturnDelay ?? 10,
       }))
     );
     setDashLayouts(result);
@@ -564,7 +574,7 @@ export function DashboardEditor() {
                               if (!layout?.structure) return null;
                               return (
                                 <VisualLayoutGrid
-                                  gridTemplate={layout.structure.gridTemplate}
+                                  gridTemplate={layout.structure.gridTemplates?.desktop ?? layout.structure.gridTemplates?.tv ?? layout.structure.gridTemplates?.tablet ?? layout.structure.gridTemplates?.mobile ?? layout.structure.gridTemplate ?? ""}
                                   regions={layout.structure.regions}
                                   instances={instances}
                                   components={allComponents}
@@ -663,9 +673,29 @@ export function DashboardEditor() {
                               ? dashLayouts[layoutTabModal.index]?.icon
                               : undefined
                           }
+                          visibilityRules={
+                            layoutTabModal?.mode === "edit" && layoutTabModal.index >= 0
+                              ? dashLayouts[layoutTabModal.index]?.visibilityRules
+                              : undefined
+                          }
+                          hideInTabBar={
+                            layoutTabModal?.mode === "edit" && layoutTabModal.index >= 0
+                              ? dashLayouts[layoutTabModal.index]?.hideInTabBar
+                              : undefined
+                          }
+                          autoReturn={
+                            layoutTabModal?.mode === "edit" && layoutTabModal.index >= 0
+                              ? dashLayouts[layoutTabModal.index]?.autoReturn
+                              : undefined
+                          }
+                          autoReturnDelay={
+                            layoutTabModal?.mode === "edit" && layoutTabModal.index >= 0
+                              ? dashLayouts[layoutTabModal.index]?.autoReturnDelay
+                              : undefined
+                          }
                           allLayouts={allLayouts}
                           canRemove={dashLayouts.length > 1}
-                          onSave={(layoutId, label, icon) => {
+                          onSave={(layoutId, label, icon, visibilityRules, hideInTabBar, autoReturn, autoReturnDelay) => {
                             if (layoutTabModal?.mode === "add") {
                               setDashLayouts([
                                 ...dashLayouts,
@@ -675,6 +705,10 @@ export function DashboardEditor() {
                                   sortOrder: dashLayouts.length,
                                   label,
                                   icon,
+                                  visibilityRules,
+                                  hideInTabBar,
+                                  autoReturn,
+                                  autoReturnDelay,
                                 },
                               ]);
                               setActiveDlIndex(dashLayouts.length);
@@ -688,6 +722,10 @@ export function DashboardEditor() {
                                 layoutId,
                                 label,
                                 icon,
+                                visibilityRules,
+                                hideInTabBar,
+                                autoReturn,
+                                autoReturnDelay,
                               };
                               setDashLayouts(next);
                             }
