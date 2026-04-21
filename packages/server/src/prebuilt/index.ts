@@ -1,28 +1,12 @@
 import { db } from "../db/connection.js";
 import { components } from "../db/schema.js";
 import { eq } from "drizzle-orm";
-
-interface PrebuiltComponent {
-  name: string;
-  template: string;
-  styles: string;
-  parameterDefs: {
-    name: string;
-    label: string;
-    type: string;
-    default?: string | number | boolean;
-    options?: { label: string; value: string }[];
-    step?: number;
-  }[];
-  entitySelectorDefs: {
-    name: string;
-    label: string;
-    mode: string;
-    allowedDomains?: string[];
-  }[];
-  isContainer: boolean;
-  containerConfig: { type: "tabs" | "auto-rotate" | "stack"; rotateInterval?: number } | null;
-}
+import type { PrebuiltComponent } from "./types.js";
+import { brightnessSlider } from "./brightness-slider.js";
+import { thermostat } from "./thermostat.js";
+import { serviceButton } from "./service-button.js";
+import { miniHistory } from "./mini-history.js";
+import { sceneSelector } from "./scene-selector.js";
 
 const prebuiltComponents: PrebuiltComponent[] = [
   {
@@ -1392,6 +1376,11 @@ comp.addEventListener('click', function() {
     isContainer: false,
     containerConfig: null,
   },
+  brightnessSlider,
+  thermostat,
+  serviceButton,
+  miniHistory,
+  sceneSelector,
 ];
 
 export async function seedPrebuiltComponents() {
@@ -1415,6 +1404,7 @@ export async function seedPrebuiltComponents() {
           styles: comp.styles,
           parameterDefs: comp.parameterDefs,
           entitySelectorDefs: comp.entitySelectorDefs,
+          testEntityBindings: comp.testEntityBindings ?? null,
         })
         .where(eq(components.id, existing[0].id));
     }
