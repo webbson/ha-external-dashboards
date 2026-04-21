@@ -77,7 +77,7 @@ export function ThemeList() {
                 <Tooltip title="Edit">
                   <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/themes/${record.id}`)} />
                 </Tooltip>
-                <Tooltip title="Copy">
+                <Tooltip title="Duplicate">
                   <Button size="small" icon={<CopyOutlined />} onClick={() => handleCopy(record.id)} />
                 </Tooltip>
                 <Popconfirm

@@ -153,7 +153,7 @@ export function ComponentList() {
                     <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/components/${record.id}`)} />
                   </Tooltip>
                 )}
-                <Tooltip title="Copy">
+                <Tooltip title="Duplicate">
                   <Button size="small" icon={<CopyOutlined />} onClick={() => handleCopy(record.id)} />
                 </Tooltip>
                 {!record.isPrebuilt && (

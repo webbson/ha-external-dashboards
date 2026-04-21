@@ -7,6 +7,7 @@ import { registerLayoutTools } from "./tools/layouts.js";
 import { registerThemeTools } from "./tools/themes.js";
 import { registerAssetTools } from "./tools/assets.js";
 import { registerOtherTools } from "./tools/other.js";
+import { registerAdminTools } from "./tools/admin.js";
 
 export type InjectFn = FastifyInstance["inject"];
 
@@ -24,6 +25,7 @@ export function createMcpServer(adminApp: FastifyInstance): McpServer {
   registerThemeTools(mcp, adminApp);
   registerAssetTools(mcp, adminApp);
   registerOtherTools(mcp, adminApp);
+  registerAdminTools(mcp, adminApp);
 
   return mcp;
 }

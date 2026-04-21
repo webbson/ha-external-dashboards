@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Table, Button, Space, Popconfirm, Tag, Tooltip, message } from "antd";
-import { PlusOutlined, UploadOutlined, DownloadOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, UploadOutlined, DownloadOutlined, EditOutlined, DeleteOutlined, CopyOutlined } from "@ant-design/icons";
 import { api } from "../api.js";
 
 interface Layout {
@@ -73,6 +73,24 @@ export function LayoutList() {
     }
   };
 
+  const handleDuplicate = async (id: number) => {
+    try {
+      // Chain the existing export + import endpoints so we don't need a
+      // dedicated server-side copy endpoint.
+      const res = await fetch(`/api/layouts/${id}/export`);
+      if (!res.ok) throw new Error("Export failed");
+      const exported = await res.json();
+      if (exported && typeof exported === "object" && "name" in exported) {
+        (exported as { name: string }).name = `${(exported as { name: string }).name} (Copy)`;
+      }
+      await api.post("/api/layouts/import", exported);
+      message.success("Layout duplicated");
+      load();
+    } catch (err) {
+      message.error((err as Error).message || "Failed to duplicate layout");
+    }
+  };
+
   return (
     <>
       <Space style={{ marginBottom: 16 }}>
@@ -111,6 +129,9 @@ export function LayoutList() {
               <Space>
                 <Tooltip title="Edit">
                   <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/layouts/${record.id}`)} />
+                </Tooltip>
+                <Tooltip title="Duplicate">
+                  <Button size="small" icon={<CopyOutlined />} onClick={() => handleDuplicate(record.id)} />
                 </Tooltip>
                 <Tooltip title="Export">
                   <Button size="small" icon={<DownloadOutlined />} onClick={() => handleExport(record.id, record.name)} />
