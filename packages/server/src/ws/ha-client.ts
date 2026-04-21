@@ -20,6 +20,9 @@ export class HAClient {
   private haUrl: string;
   private connected = false;
   private reconnectAttempts = 0;
+  private _reconnectCount = 0;
+  private _lastReconnectAt: string | null = null;
+  private _lastMessageAt: string | null = null;
 
   constructor() {
     this.supervisorToken = process.env.SUPERVISOR_TOKEN ?? "";
@@ -43,6 +46,22 @@ export class HAClient {
     return this.connected;
   }
 
+  get reconnectCount(): number {
+    return this._reconnectCount;
+  }
+
+  get lastReconnectAt(): string | null {
+    return this._lastReconnectAt;
+  }
+
+  get lastMessageAt(): string | null {
+    return this._lastMessageAt;
+  }
+
+  get entityCount(): number {
+    return this.states.size;
+  }
+
   async connect(): Promise<void> {
     if (!this.supervisorToken) {
       console.warn(
@@ -59,6 +78,7 @@ export class HAClient {
       });
 
       this.ws.on("message", (data) => {
+        this._lastMessageAt = new Date().toISOString();
         const msg = JSON.parse(data.toString());
         this.handleMessage(msg, resolve, reject);
       });
@@ -185,6 +205,8 @@ export class HAClient {
     console.log(`HA reconnect in ${delay / 1000}s (attempt ${this.reconnectAttempts})`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
+      this._reconnectCount++;
+      this._lastReconnectAt = new Date().toISOString();
       this.connect().catch((err) => {
         console.error("HA reconnect failed:", err.message);
       });

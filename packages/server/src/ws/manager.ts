@@ -79,6 +79,19 @@ class ConnectionManager {
     return Array.from(this.connections.values());
   }
 
+  /** Aggregate stats for diagnostics: total connected display clients and count per slug */
+  getDisplayClientStats(): { count: number; bySlug: Record<string, number> } {
+    const bySlug: Record<string, number> = {};
+    let count = 0;
+    for (const conn of this.connections.values()) {
+      if (conn.ws.readyState === WebSocket.OPEN) {
+        count++;
+        bySlug[conn.slug] = (bySlug[conn.slug] ?? 0) + 1;
+      }
+    }
+    return { count, bySlug };
+  }
+
   broadcastToDashboard(dashboardId: number, message: unknown) {
     const payload = JSON.stringify(message);
     for (const conn of this.getByDashboardId(dashboardId)) {
