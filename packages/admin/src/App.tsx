@@ -24,6 +24,7 @@ import { PopupTrigger } from "./pages/PopupTrigger.js";
 import { ThemeList } from "./pages/ThemeList.js";
 import { ThemeEditor } from "./pages/ThemeEditor.js";
 import { McpSetup } from "./pages/McpSetup.js";
+import { BackupRestore } from "./components/BackupRestore.js";
 
 const { Sider, Content } = Layout;
 
@@ -77,12 +78,25 @@ function AppLayout({ isDark, toggle }: { isDark: boolean; toggle: () => void }) 
           items={menuItems}
           onClick={({ key }) => navigate(key)}
         />
-        <div style={{ position: "absolute", bottom: 16, width: "100%", textAlign: "center" }}>
-          <Button
-            type="text"
-            icon={isDark ? <SunOutlined /> : <MoonOutlined />}
-            onClick={toggle}
-          />
+        <div
+          style={{
+            position: "absolute",
+            bottom: 16,
+            width: "100%",
+            padding: "0 12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
+          <BackupRestore />
+          <div style={{ textAlign: "center" }}>
+            <Button
+              type="text"
+              icon={isDark ? <SunOutlined /> : <MoonOutlined />}
+              onClick={toggle}
+            />
+          </div>
         </div>
       </Sider>
       <Layout style={{ background: token.colorBgLayout }}>
