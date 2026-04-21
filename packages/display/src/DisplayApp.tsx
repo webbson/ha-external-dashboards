@@ -4,6 +4,7 @@ import { DashboardRenderer } from "./runtime/DashboardRenderer.js";
 import { PopupOverlay } from "./runtime/PopupOverlay.js";
 import { DialogOverlay } from "./runtime/DialogOverlay.js";
 import { BlackoutOverlay } from "./runtime/BlackoutOverlay.js";
+import { ConnectionBanner } from "./runtime/ConnectionBanner.js";
 import { DisplayClient } from "./ws/DisplayClient.js";
 import type { EntityState } from "./template/engine.js";
 import { setDerivedEntityHandler } from "./template/engine.js";
@@ -132,6 +133,7 @@ export function DisplayApp() {
   const [password, setPassword] = useState("");
   const [dialogState, setDialogState] = useState<{ type: string; props: Record<string, unknown> } | null>(null);
   const [switchLayoutMsg, setSwitchLayoutMsg] = useState<{ layoutId: number; autoReturn?: boolean; autoReturnDelay?: number } | null>(null);
+  const [wsClient, setWsClient] = useState<DisplayClient | null>(null);
   const clientRef = useRef<DisplayClient | null>(null);
 
   const slug = getSlugFromUrl();
@@ -357,6 +359,7 @@ export function DisplayApp() {
 
     client.connect();
     clientRef.current = client;
+    setWsClient(client);
 
     if (config.dashboard.interactiveMode) {
       window.__ha = {
@@ -377,6 +380,7 @@ export function DisplayApp() {
       setDerivedEntityHandler(null);
       client.close();
       clientRef.current = null;
+      setWsClient(null);
     };
   }, [config]);
 
@@ -514,6 +518,7 @@ export function DisplayApp() {
           onSwitchLayoutHandled={() => setSwitchLayoutMsg(null)}
         />
       </ErrorBoundary>
+      <ConnectionBanner client={wsClient} />
       <BlackoutOverlay
         blackoutEntity={config.dashboard.blackoutEntity}
         blackoutStartTime={config.dashboard.blackoutStartTime}

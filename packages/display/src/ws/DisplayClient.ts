@@ -10,6 +10,7 @@ export class DisplayClient {
   private _globExpansions: Record<string, string[]> = {};
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
+  private messageListeners = new Set<() => void>();
 
   constructor(slug: string, accessKey: string) {
     this.slug = slug;
@@ -20,12 +21,52 @@ export class DisplayClient {
     return this._globExpansions;
   }
 
+  /**
+   * Subscribe to every incoming WS message. Used by the connection-lost
+   * banner to track a heartbeat (any message keeps the link "alive").
+   */
+  onAnyMessage(listener: () => void): () => void {
+    this.messageListeners.add(listener);
+    return () => {
+      this.messageListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Force an immediate reconnect attempt. Cancels any pending auto-reconnect
+   * timer and closes the current socket so `onclose` triggers a fresh connect.
+   */
+  reconnect() {
+    if (this.closed) return;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    const ws = this.ws;
+    this.ws = null;
+    if (ws && ws.readyState !== WebSocket.CLOSED && ws.readyState !== WebSocket.CLOSING) {
+      // onclose handler will schedule a reconnect, but we want it now
+      ws.onclose = null;
+      ws.onerror = null;
+      ws.onmessage = null;
+      try {
+        ws.close();
+      } catch {
+        // ignore
+      }
+    }
+    this.connect();
+  }
+
   connect() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const url = `${protocol}//${window.location.host}/ws?slug=${this.slug}&accessKey=${this.accessKey}`;
     this.ws = new WebSocket(url);
 
     this.ws.onmessage = (event) => {
+      for (const listener of this.messageListeners) {
+        listener();
+      }
       try {
         const msg = JSON.parse(event.data);
         const handlers = this.handlers.get(msg.type) ?? [];
