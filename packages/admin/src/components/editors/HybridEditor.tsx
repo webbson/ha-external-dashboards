@@ -29,6 +29,8 @@ interface HybridEditorProps {
   onParameterDefsChange: (defs: ParameterDef[]) => void;
   entitySelectorDefs: EntitySelectorDef[];
   onEntitySelectorDefsChange: (defs: EntitySelectorDef[]) => void;
+  onSave?: () => void;
+  testEntityBindings?: Record<string, string | string[]>;
 }
 
 export function HybridEditor({
@@ -40,6 +42,8 @@ export function HybridEditor({
   onParameterDefsChange,
   entitySelectorDefs,
   onEntitySelectorDefsChange,
+  onSave,
+  testEntityBindings,
 }: HybridEditorProps) {
   const [mode, setMode] = useState<string>("visual");
 
@@ -69,6 +73,9 @@ export function HybridEditor({
                 value={template}
                 onChange={onTemplateChange}
                 language="handlebars"
+                onSave={onSave}
+                testEntityBindings={testEntityBindings}
+                entitySelectorDefs={entitySelectorDefs}
               />
               <TemplateHelperReference />
             </div>
@@ -83,6 +90,7 @@ export function HybridEditor({
                 value={styles}
                 onChange={onStylesChange}
                 language="css"
+                onSave={onSave}
               />
               <Alert
                 type="info"

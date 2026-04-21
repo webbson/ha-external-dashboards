@@ -1,10 +1,21 @@
+import { useEffect, useRef } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
+
+interface EntitySelectorDef {
+  name: string;
+  label: string;
+  mode: "single" | "multiple" | "glob";
+  allowedDomains?: string[];
+}
 
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
   language: "handlebars" | "css";
   height?: string;
+  onSave?: () => void;
+  testEntityBindings?: Record<string, string | string[]>;
+  entitySelectorDefs?: EntitySelectorDef[];
 }
 
 const handlebarsHelpers = [
@@ -25,15 +36,54 @@ const handlebarsHelpers = [
   { label: "each", insertText: '#each (param "${1:name}")}}\n  {{this}}\n{{/each', detail: "Iterate array" },
 ];
 
+// Module-level ref-like container so the singleton completion provider
+// always reads the latest entity context from the most-recently-rendered editor.
+const entityContextRef: {
+  current: {
+    testEntityBindings: Record<string, string | string[]>;
+    entitySelectorDefs: EntitySelectorDef[];
+  };
+} = {
+  current: { testEntityBindings: {}, entitySelectorDefs: [] },
+};
+
+function collectEntityIds(): string[] {
+  const ids = new Set<string>();
+  const { testEntityBindings, entitySelectorDefs } = entityContextRef.current;
+
+  for (const val of Object.values(testEntityBindings)) {
+    if (typeof val === "string" && val.length > 0) {
+      ids.add(val);
+    } else if (Array.isArray(val)) {
+      for (const v of val) if (typeof v === "string" && v) ids.add(v);
+    }
+  }
+
+  // Fixed patterns from entitySelectorDefs: if allowedDomains has a single
+  // concrete value, we can at least seed domain prefixes.
+  for (const def of entitySelectorDefs ?? []) {
+    if (def.allowedDomains && def.allowedDomains.length > 0) {
+      for (const d of def.allowedDomains) {
+        // Add a placeholder hint like `light.`
+        ids.add(`${d}.`);
+      }
+    }
+  }
+
+  return Array.from(ids);
+}
+
 let completionProviderRegistered = false;
 
 function registerHandlebarsCompletion(monaco: Monaco) {
   if (completionProviderRegistered) return;
   completionProviderRegistered = true;
 
+  // Helper completions — existing behaviour
   monaco.languages.registerCompletionItemProvider("html", {
     triggerCharacters: ["{"],
-    provideCompletionItems(model, position) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    provideCompletionItems(model: any, position: any) {
       const textUntilPosition = model.getValueInRange({
         startLineNumber: position.lineNumber,
         startColumn: Math.max(1, position.column - 3),
@@ -63,6 +113,56 @@ function registerHandlebarsCompletion(monaco: Monaco) {
       };
     },
   });
+
+  // Entity-ID completions — triggered inside string literals in Handlebars
+  // expressions (e.g. {{state "..."}}, {{attr "..." "..."}}, {{param "..."}}).
+  monaco.languages.registerCompletionItemProvider("html", {
+    triggerCharacters: ['"', "."],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    provideCompletionItems(model: any, position: any) {
+      // Read the line text up to the cursor.
+      const lineUntilPosition = model.getValueInRange({
+        startLineNumber: position.lineNumber,
+        startColumn: 1,
+        endLineNumber: position.lineNumber,
+        endColumn: position.column,
+      });
+
+      // Must be inside a handlebars expression.
+      const lastOpen = lineUntilPosition.lastIndexOf("{{");
+      const lastClose = lineUntilPosition.lastIndexOf("}}");
+      if (lastOpen === -1 || lastClose > lastOpen) return { suggestions: [] };
+
+      // Must be inside a quoted string (odd number of quotes after the last `{{`).
+      const sinceOpen = lineUntilPosition.slice(lastOpen);
+      const quoteCount = (sinceOpen.match(/"/g) ?? []).length;
+      if (quoteCount % 2 === 0) return { suggestions: [] };
+
+      // Compute the range we are replacing: from the last `"` or `.` to cursor.
+      const lastQuote = lineUntilPosition.lastIndexOf('"');
+      const startColumn = lastQuote + 2; // monaco columns are 1-indexed
+
+      const range = {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn,
+        endColumn: position.column,
+      };
+
+      const ids = collectEntityIds();
+      if (ids.length === 0) return { suggestions: [] };
+
+      return {
+        suggestions: ids.map((id) => ({
+          label: id,
+          kind: monaco.languages.CompletionItemKind.Value,
+          insertText: id,
+          detail: "Entity ID",
+          range,
+        })),
+      };
+    },
+  });
 }
 
 export function CodeEditor({
@@ -70,7 +170,26 @@ export function CodeEditor({
   onChange,
   language,
   height = "400px",
+  onSave,
+  testEntityBindings,
+  entitySelectorDefs,
 }: CodeEditorProps) {
+  // Keep the singleton context fresh on every render so the completion
+  // provider can see up-to-date bindings without re-registering.
+  useEffect(() => {
+    entityContextRef.current = {
+      testEntityBindings: testEntityBindings ?? {},
+      entitySelectorDefs: entitySelectorDefs ?? [],
+    };
+  }, [testEntityBindings, entitySelectorDefs]);
+
+  // Keep a live ref to onSave so the command handler uses the latest callback
+  // (Monaco commands capture the callback at mount time otherwise).
+  const onSaveRef = useRef(onSave);
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+
   return (
     <Editor
       height={height}
@@ -83,11 +202,17 @@ export function CodeEditor({
           registerHandlebarsCompletion(monaco);
         }
       }}
-      onMount={(editor) => {
+      onMount={(editor, monaco) => {
         // Auto-format on load so minified code is readable
         setTimeout(() => {
           editor.getAction("editor.action.formatDocument")?.run();
         }, 100);
+
+        // Ctrl/Cmd+S to trigger save. Monaco prevents the browser default
+        // while the editor has focus.
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+          onSaveRef.current?.();
+        });
       }}
       options={{
         minimap: { enabled: false },

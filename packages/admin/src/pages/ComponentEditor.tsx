@@ -508,6 +508,8 @@ export function ComponentEditor() {
             }}
             entitySelectorDefs={entitySelectorDefs}
             onEntitySelectorDefsChange={setEntitySelectorDefs}
+            onSave={() => form.submit()}
+            testEntityBindings={testEntityBindings}
           />
         </div>
 
