@@ -34,10 +34,15 @@ export async function externalApiAuth(
         .where(eq(dashboards.id, payload.dashboardId));
       if (dashboard) {
         (req as unknown as Record<string, unknown>).dashboard = dashboard;
+        // Attach dashboard context to log scope so downstream handlers inherit it.
+        (req as unknown as { log: typeof req.log }).log = req.log.child({
+          dashboardId: dashboard.id,
+          dashboardSlug: dashboard.slug,
+        });
         return;
       }
-    } catch {
-      // Invalid token, try fallback
+    } catch (err) {
+      req.log.warn({ err, source: "ext_session" }, "JWT verify failed");
     }
   }
 
@@ -51,6 +56,10 @@ export async function externalApiAuth(
       .where(eq(dashboards.accessKey, accessKey));
     if (dashboard) {
       (req as unknown as Record<string, unknown>).dashboard = dashboard;
+      (req as unknown as { log: typeof req.log }).log = req.log.child({
+        dashboardId: dashboard.id,
+        dashboardSlug: dashboard.slug,
+      });
       return;
     }
   }

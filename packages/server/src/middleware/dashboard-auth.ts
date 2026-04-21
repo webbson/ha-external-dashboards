@@ -55,10 +55,14 @@ export async function dashboardAuth(
         };
         if (payload.dashboardId === dashboard.id) {
           (req as unknown as Record<string, unknown>).dashboard = dashboard;
+          (req as unknown as { log: typeof req.log }).log = req.log.child({
+            dashboardId: dashboard.id,
+            dashboardSlug: dashboard.slug,
+          });
           return;
         }
-      } catch {
-        // Invalid token, fall through to 401
+      } catch (err) {
+        req.log.warn({ err, source: "dash_token" }, "JWT verify failed");
       }
     }
     return reply.code(401).send({ error: "Authentication required" });

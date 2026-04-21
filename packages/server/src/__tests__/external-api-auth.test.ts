@@ -21,7 +21,15 @@ function createMockReq(opts: { cookie?: string; authorization?: string } = {}) {
   const headers: Record<string, string | undefined> = {};
   if (opts.cookie) headers.cookie = opts.cookie;
   if (opts.authorization) headers.authorization = opts.authorization;
-  const req = { headers } as unknown as Record<string, unknown>;
+  // Mock pino logger: child() returns another logger-like object.
+  const log: Record<string, unknown> = {
+    warn: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  };
+  log.child = vi.fn().mockReturnValue(log);
+  const req = { headers, log } as unknown as Record<string, unknown>;
   return req;
 }
 

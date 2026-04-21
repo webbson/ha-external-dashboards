@@ -6,6 +6,7 @@ import fastifyWebsocket from "@fastify/websocket";
 import fastifyRateLimit from "@fastify/rate-limit";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 import { runMigrations } from "./db/migrate.js";
 import { haClient } from "./ws/ha-client.js";
 import { connectionManager } from "./ws/manager.js";
@@ -23,6 +24,9 @@ import { popupTriggerRoutes } from "./routes/popup-trigger.js";
 import { switchLayoutTriggerRoutes } from "./routes/switch-layout-trigger.js";
 import { displayDataRoutes } from "./routes/display-data.js";
 import { iconRoutes } from "./routes/icons.js";
+import { backupRoutes } from "./routes/admin/backup.js";
+import { restoreRoutes } from "./routes/admin/restore.js";
+import { diagnosticsRoutes } from "./routes/admin/diagnostics.js";
 import { ingressAuth } from "./middleware/auth.js";
 import { dashboardLogin } from "./middleware/dashboard-auth.js";
 import { seedPrebuiltComponents } from "./prebuilt/index.js";
@@ -64,11 +68,28 @@ async function start() {
     console.warn("HA WebSocket initial connection failed:", err.message);
   });
 
+  // Structured logger config — request IDs for correlation, compact serializers.
+  const loggerConfig = {
+    level: "info",
+    serializers: {
+      req: (req: { id: string; method: string; url: string }) => ({
+        id: req.id,
+        method: req.method,
+        url: req.url,
+      }),
+      res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
+    },
+  };
+
   // --- Admin/Ingress server ---
-  const admin = Fastify({ logger: true });
+  const admin = Fastify({
+    logger: loggerConfig,
+    genReqId: () => randomUUID(),
+  });
   await admin.register(errorHandler);
   await admin.register(fastifyCors);
   await admin.register(fastifyMultipart);
+  await admin.register(fastifyRateLimit, { global: false });
 
   if (!isDev) {
     await admin.register(ingressAuth);
@@ -89,6 +110,9 @@ async function start() {
   await admin.register(switchLayoutTriggerRoutes);
   await admin.register(settingsRoutes);
   await admin.register(iconRoutes);
+  await admin.register(backupRoutes);
+  await admin.register(restoreRoutes);
+  await admin.register(diagnosticsRoutes);
 
   // Shared assets path
   const assetsDir = path.resolve(__dirname, "../../..", process.env.ASSETS_DIR ?? "/config/assets");
@@ -124,7 +148,10 @@ async function start() {
   console.log(`Admin server listening on port ${INGRESS_PORT}`);
 
   // --- External display server ---
-  const external = Fastify({ logger: true });
+  const external = Fastify({
+    logger: loggerConfig,
+    genReqId: () => randomUUID(),
+  });
   await external.register(errorHandler);
   await external.register(fastifyCors);
   await external.register(fastifyRateLimit, { global: false });
