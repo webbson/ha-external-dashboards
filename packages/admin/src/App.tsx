@@ -11,6 +11,7 @@ import {
   SunOutlined,
   MoonOutlined,
   ApiOutlined,
+  MonitorOutlined,
 } from "@ant-design/icons";
 import { useDarkMode } from "./hooks/useDarkMode.js";
 import { DashboardList } from "./pages/DashboardList.js";
@@ -24,6 +25,7 @@ import { PopupTrigger } from "./pages/PopupTrigger.js";
 import { ThemeList } from "./pages/ThemeList.js";
 import { ThemeEditor } from "./pages/ThemeEditor.js";
 import { McpSetup } from "./pages/McpSetup.js";
+import { Diagnostics } from "./pages/Diagnostics.js";
 import { BackupRestore } from "./components/BackupRestore.js";
 
 const { Sider, Content } = Layout;
@@ -35,6 +37,7 @@ const baseMenuItems = [
   { key: "/components", icon: <AppstoreOutlined />, label: "Components" },
   { key: "/assets", icon: <FileImageOutlined />, label: "Assets" },
   { key: "/popups", icon: <NotificationOutlined />, label: "Popups" },
+  { key: "/diagnostics", icon: <MonitorOutlined />, label: "Diagnostics" },
 ];
 
 function AppLayout({ isDark, toggle }: { isDark: boolean; toggle: () => void }) {
@@ -118,6 +121,7 @@ function AppLayout({ isDark, toggle }: { isDark: boolean; toggle: () => void }) 
             <Route path="/assets" element={<AssetList />} />
             <Route path="/popups" element={<PopupTrigger />} />
             <Route path="/mcp" element={<McpSetup />} />
+            <Route path="/diagnostics" element={<Diagnostics />} />
           </Routes>
         </Content>
       </Layout>
