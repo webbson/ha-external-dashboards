@@ -86,7 +86,7 @@ async function start() {
     logger: loggerConfig,
     genReqId: () => randomUUID(),
   });
-  await admin.register(errorHandler);
+  errorHandler(admin);
   await admin.register(fastifyCors);
   await admin.register(fastifyMultipart);
   await admin.register(fastifyRateLimit, { global: false });
@@ -152,7 +152,7 @@ async function start() {
     logger: loggerConfig,
     genReqId: () => randomUUID(),
   });
-  await external.register(errorHandler);
+  errorHandler(external);
   await external.register(fastifyCors);
   await external.register(fastifyRateLimit, { global: false });
   await external.register(fastifyWebsocket);
