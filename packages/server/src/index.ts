@@ -27,6 +27,7 @@ import { iconRoutes } from "./routes/icons.js";
 import { backupRoutes } from "./routes/admin/backup.js";
 import { restoreRoutes } from "./routes/admin/restore.js";
 import { diagnosticsRoutes } from "./routes/admin/diagnostics.js";
+import { clientsRoutes } from "./routes/admin/clients.js";
 import { ingressAuth } from "./middleware/auth.js";
 import { dashboardLogin } from "./middleware/dashboard-auth.js";
 import { seedPrebuiltComponents } from "./prebuilt/index.js";
@@ -113,6 +114,7 @@ async function start() {
   await admin.register(backupRoutes);
   await admin.register(restoreRoutes);
   await admin.register(diagnosticsRoutes);
+  await admin.register(clientsRoutes);
 
   // Shared assets path
   const assetsDir = path.resolve(__dirname, "../../..", process.env.ASSETS_DIR ?? "/config/assets");

@@ -62,4 +62,52 @@ export function registerAdminTools(mcp: McpServer, adminApp: FastifyInstance) {
       return formatResponse(res);
     },
   );
+
+  mcp.tool(
+    "clients_list",
+    "List known display clients (persistent rows in display_clients) with their aliases, hostnames, last-seen timestamps, and current connected status.",
+    {},
+    async () => {
+      const res = await adminApp.inject({
+        method: "GET",
+        url: "/api/admin/clients",
+      });
+      return formatResponse(res);
+    },
+  );
+
+  mcp.tool(
+    "clients_set_alias",
+    "Set or clear the human-readable alias for a known display client.",
+    {
+      id: z.number().int().positive().describe("Client row id from clients_list"),
+      alias: z
+        .string()
+        .nullable()
+        .describe("Alias text. Pass null or empty string to clear."),
+    },
+    async ({ id, alias }) => {
+      const res = await adminApp.inject({
+        method: "PATCH",
+        url: `/api/admin/clients/${id}`,
+        payload: { alias },
+      });
+      return formatResponse(res);
+    },
+  );
+
+  mcp.tool(
+    "clients_forget",
+    "Delete a known display client. If the client is currently connected, the row will be recreated on the next WS connect — without the alias.",
+    {
+      id: z.number().int().positive().describe("Client row id from clients_list"),
+    },
+    async ({ id }) => {
+      const res = await adminApp.inject({
+        method: "DELETE",
+        url: `/api/admin/clients/${id}`,
+      });
+      return formatResponse(res);
+    },
+  );
 }
