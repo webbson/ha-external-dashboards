@@ -518,7 +518,7 @@ export function DisplayApp() {
           onSwitchLayoutHandled={() => setSwitchLayoutMsg(null)}
         />
       </ErrorBoundary>
-      <ConnectionBanner client={wsClient} />
+      <ConnectionBanner client={wsClient} interactive={config.dashboard.interactiveMode} />
       <BlackoutOverlay
         blackoutEntity={config.dashboard.blackoutEntity}
         blackoutStartTime={config.dashboard.blackoutStartTime}

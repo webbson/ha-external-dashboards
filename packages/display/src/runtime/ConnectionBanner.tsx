@@ -3,6 +3,13 @@ import type { DisplayClient } from "../ws/DisplayClient.js";
 
 interface ConnectionBannerProps {
   client: DisplayClient | null;
+  /**
+   * Whether the dashboard is interactive. Passive kiosks don't need a Retry
+   * button — the DisplayClient auto-reconnects every 3s anyway, and the
+   * button is pointless for unattended signage. Defaults to true so ad-hoc
+   * usage of the component doesn't lose the affordance.
+   */
+  interactive?: boolean;
 }
 
 type BannerState = "hidden" | "disconnected" | "reconnected";
@@ -22,7 +29,7 @@ const RECONNECTED_FLASH_MS = 2_000;
  *
  * z-index sits just below BlackoutOverlay (99999) so blackout always wins.
  */
-export function ConnectionBanner({ client }: ConnectionBannerProps) {
+export function ConnectionBanner({ client, interactive = true }: ConnectionBannerProps) {
   const [state, setState] = useState<BannerState>("hidden");
   const lastMessageAtRef = useRef<number | null>(null);
   const wasDisconnectedRef = useRef(false);
@@ -111,7 +118,7 @@ export function ConnectionBanner({ client }: ConnectionBannerProps) {
       <span>
         {isDisconnected ? "Disconnected — reconnecting…" : "Reconnected"}
       </span>
-      {isDisconnected && client && (
+      {isDisconnected && interactive && client && (
         <button
           type="button"
           onClick={() => client.reconnect()}

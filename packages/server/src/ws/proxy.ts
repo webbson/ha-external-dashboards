@@ -309,6 +309,21 @@ export async function setupWebSocketProxy(app: FastifyInstance) {
       );
     }
 
+    // Periodic app-level heartbeat. Without this, a quiet dashboard (no HA
+    // state changes for >15s) triggers the display's disconnect banner even
+    // though the socket is perfectly healthy. Sending every 10s gives the
+    // display a steady stream of traffic; it ignores the payload and just
+    // resets its "last message" timer.
+    const heartbeat = setInterval(() => {
+      if (socket.readyState === socket.OPEN) {
+        try {
+          socket.send(JSON.stringify({ type: "heartbeat" }));
+        } catch {
+          // transient send error — next interval will retry, close handler cleans up
+        }
+      }
+    }, 10_000);
+
     // Handle incoming messages (call_service for interactive mode)
     socket.on("message", async (data) => {
       try {
@@ -382,6 +397,7 @@ export async function setupWebSocketProxy(app: FastifyInstance) {
     });
 
     socket.on("close", () => {
+      clearInterval(heartbeat);
       if (clientRowId != null) {
         try {
           touchDisplayClient(clientRowId);
