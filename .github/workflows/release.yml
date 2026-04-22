@@ -61,9 +61,15 @@ jobs:
       - name: Run Home Assistant builder
         uses: home-assistant/builder@2024.08.2
         with:
+          # `image:` is the builder-container arch tag (the builder image
+          # itself). Must match --<arch> in args.
+          image: ${{ matrix.arch }}
+          # --target must be an absolute path inside the builder container.
+          # The action mounts ${GITHUB_WORKSPACE} at /data, so /data is the
+          # repo root (our add-on lives there).
           args: |
-            --${{ matrix.arch }}
-            --target .
-            --image "ghcr.io/${{ steps.owner.outputs.owner }}/{arch}-external-dashboards"
-            --version "${{ steps.version.outputs.version }}"
+            --${{ matrix.arch }} \
+            --target /data \
+            --image "ghcr.io/${{ steps.owner.outputs.owner }}/{arch}-external-dashboards" \
+            --version "${{ steps.version.outputs.version }}" \
             --addon
