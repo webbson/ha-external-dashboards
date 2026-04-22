@@ -54,7 +54,7 @@ jobs:
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile
+          dockerfile: external_dashboards/Dockerfile
           # DL3006 (tag image version explicitly) — the base is set via the
           # BUILD_FROM ARG which Supervisor substitutes with a tagged image
           # (e.g. ghcr.io/home-assistant/amd64-base:3.20) at build time.
@@ -78,7 +78,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile
+          file: external_dashboards/Dockerfile
           build-args: |
             BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.20
           platforms: linux/amd64

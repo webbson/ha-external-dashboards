@@ -20,7 +20,7 @@ Or manually:
 4. Find **External Dashboards** in the store, click **Install**.
 5. Start the add-on. **External Dashboards** appears in the sidebar.
 
-See [DOCS.md](./DOCS.md) for configuration, kiosk setup, networking notes, and MCP usage.
+See [external_dashboards/DOCS.md](./external_dashboards/DOCS.md) for configuration, kiosk setup, networking notes, and MCP usage. [CHANGELOG](./external_dashboards/CHANGELOG.md).
 
 ## Status
 

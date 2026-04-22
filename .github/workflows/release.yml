@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to release (e.g. 0.1.0). Must match config.yaml."
+        description: "Version to release (e.g. 0.1.0). Must match external_dashboards/config.yaml."
         required: true
 
 permissions:
@@ -23,7 +23,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [aarch64, amd64]
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            base_image: ghcr.io/home-assistant/amd64-base:3.20
+          - arch: aarch64
+            platform: linux/arm64
+            base_image: ghcr.io/home-assistant/aarch64-base:3.20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,7 +47,7 @@ jobs:
 
       - name: Verify version matches config.yaml
         run: |
-          CONFIG_VERSION=$(grep '^version:' config.yaml | sed -E 's/version: *"?([^"]+)"?/\1/')
+          CONFIG_VERSION=$(grep '^version:' external_dashboards/config.yaml | sed -E 's/version: *"?([^"]+)"?/\1/')
           if [ "${{ steps.version.outputs.version }}" != "$CONFIG_VERSION" ]; then
             echo "::error::tag version (${{ steps.version.outputs.version }}) != config.yaml version ($CONFIG_VERSION)"
             exit 1
@@ -51,6 +57,12 @@ jobs:
         id: owner
         run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
+      - name: Set up QEMU (needed for aarch64 cross-build on amd64 runner)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -58,18 +70,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Home Assistant builder
-        uses: home-assistant/builder@2024.08.2
+      - name: Build and push
+        # We skip home-assistant/builder because our Dockerfile sits in a
+        # subfolder but needs the repo root as build context (pnpm monorepo
+        # with packages/ at root). builder locks context == target.
+        # docker/build-push-action handles multi-arch cross-builds fine and
+        # the resulting image is what Supervisor pulls via config.yaml's
+        # `image:` field.
+        uses: docker/build-push-action@v6
         with:
-          # `image:` is the builder-container arch tag (the builder image
-          # itself). Must match --<arch> in args.
-          image: ${{ matrix.arch }}
-          # --target must be an absolute path inside the builder container.
-          # The action mounts ${GITHUB_WORKSPACE} at /data, so /data is the
-          # repo root (our add-on lives there).
-          args: |
-            --${{ matrix.arch }} \
-            --target /data \
-            --image "ghcr.io/${{ steps.owner.outputs.owner }}/{arch}-external-dashboards" \
-            --version "${{ steps.version.outputs.version }}" \
-            --addon
+          context: .
+          file: external_dashboards/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            BUILD_FROM=${{ matrix.base_image }}
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.owner }}/${{ matrix.arch }}-external-dashboards:${{ steps.version.outputs.version }}
+            ghcr.io/${{ steps.owner.outputs.owner }}/${{ matrix.arch }}-external-dashboards:latest
+          labels: |
+            org.opencontainers.image.title=External Dashboards
+            org.opencontainers.image.source=https://github.com/webbson/ha-external-dashboards
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.licenses=LicenseRef-OSaaSy
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,scope=${{ matrix.arch }},mode=max
