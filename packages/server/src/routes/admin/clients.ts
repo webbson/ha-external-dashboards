@@ -5,6 +5,22 @@ import { db } from "../../db/connection.js";
 import { displayClients } from "../../db/schema.js";
 import { connectionManager } from "../../ws/manager.js";
 
+/**
+ * SQLite's datetime('now') returns a UTC string like "2026-04-22 06:08:39"
+ * with no timezone suffix — JS clients then parse it as local time, which
+ * shifts the rendered value by the user's UTC offset. Normalise to ISO 8601
+ * UTC so the API contract is unambiguous.
+ */
+function toIsoUtc(ts: string): string {
+  // Already ISO (contains T, ends with Z or offset)?
+  if (/T/.test(ts) && (/[Zz]$/.test(ts) || /[+-]\d{2}:?\d{2}$/.test(ts))) return ts;
+  return ts.replace(" ", "T") + "Z";
+}
+
+function serialise<T extends { firstSeenAt: string; lastSeenAt: string }>(row: T): T {
+  return { ...row, firstSeenAt: toIsoUtc(row.firstSeenAt), lastSeenAt: toIsoUtc(row.lastSeenAt) };
+}
+
 const aliasSchema = z.object({
   alias: z.string().trim().max(100).nullable(),
 });
@@ -27,7 +43,10 @@ export async function clientsRoutes(app: FastifyInstance) {
       .from(displayClients)
       .orderBy(desc(displayClients.lastSeenAt));
     const connected = connectionManager.getConnectedIdentities();
-    return rows.map((r) => ({ ...r, connected: connected.has(r.identity) }));
+    return rows.map((r) => ({
+      ...serialise(r),
+      connected: connected.has(r.identity),
+    }));
   });
 
   /** PATCH /api/admin/clients/:id → set or clear alias */
@@ -45,7 +64,7 @@ export async function clientsRoutes(app: FastifyInstance) {
     if (result.length === 0) {
       return reply.code(404).send({ error: "Client not found" });
     }
-    return result[0];
+    return serialise(result[0]);
   });
 
   /** DELETE /api/admin/clients/:id → forget a client */

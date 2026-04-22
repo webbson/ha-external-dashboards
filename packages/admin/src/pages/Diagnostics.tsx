@@ -74,7 +74,14 @@ function formatUptime(ms: number): string {
 
 function formatTimeAgo(iso: string | null): string {
   if (!iso) return "never";
-  const d = new Date(iso).getTime();
+  // Defensive: SQLite's datetime('now') returns a UTC value without any
+  // timezone suffix ("2026-04-22 06:08:39"). Treat such strings as UTC
+  // rather than local time to avoid a UTC-offset skew.
+  const normalised =
+    /T/.test(iso) && (/[Zz]$/.test(iso) || /[+-]\d{2}:?\d{2}$/.test(iso))
+      ? iso
+      : iso.replace(" ", "T") + "Z";
+  const d = new Date(normalised).getTime();
   if (Number.isNaN(d)) return iso;
   const delta = Date.now() - d;
   if (delta < 1000) return "just now";
