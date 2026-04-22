@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-04-22
+
+### Fixed
+
+- Container starts. 0.1.1 failed at boot with
+  `Cannot find package 'fastify'` because the Dockerfile copied pnpm's
+  workspace-root `node_modules` — pnpm stores real deps under `.pnpm/`
+  with per-package symlinks, so top-level `/app/node_modules/fastify`
+  never existed. Rebuilt the image around `pnpm deploy`, which emits a
+  self-contained tree with workspace refs resolved, symlinks gone, and
+  only production dependencies included.
+
+### Changed
+
+- Node runtime upgraded from 20.15 (Alpine-bundled) to 24 (current LTS).
+  Runtime base switched from `ghcr.io/home-assistant/{arch}-base:3.20`
+  to `node:24-alpine` — we don't use s6-overlay or bashio
+  (`init: false` in config.yaml) so the HA base's extras weren't
+  earning their keep. Multi-arch is handled natively by Docker Buildx.
+- `packages/shared/package.json` declares `files: ["dist"]` so
+  `pnpm deploy` packs the built artefact for the consuming server.
+- AppArmor profile updated for the new container layout
+  (`/usr/local/bin/node`). The legacy HA-base paths are retained as
+  harmless no-ops so a future rebase stays compatible.
+
 ## [0.1.1] — 2026-04-22
 
 ### Fixed
@@ -83,6 +108,7 @@ First public release as a Home Assistant add-on.
 - MAC-based client identification requires `host_network: true`; without it,
   clients are tracked by IP only.
 
-[Unreleased]: https://github.com/webbson/ha-external-dashboards/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/webbson/ha-external-dashboards/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.2
 [0.1.1]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.1
 [0.1.0]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.0

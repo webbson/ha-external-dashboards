@@ -1,5 +1,27 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.20
-FROM node:20-alpine AS builder
+# syntax=docker/dockerfile:1.7
+#
+# External Dashboards — Home Assistant add-on image.
+#
+# Builder uses node:24-alpine + pnpm to compile the monorepo (shared → admin
+# → display → server). The server is bundled via `pnpm deploy` which resolves
+# workspace refs to real directories and drops devDependencies, producing a
+# self-contained tree with a flat node_modules that plain `node` can resolve
+# (no pnpm symlinks at runtime).
+#
+# Runtime is the same node:24-alpine image — Node 24 is the current LTS and
+# we don't need HA's base-image extras (we use `init: false` in config.yaml
+# and don't rely on s6-overlay or bashio). Multi-arch is handled by Docker
+# Buildx / docker/build-push-action, not home-assistant/builder, because the
+# build context needs the monorepo root.
+
+FROM node:24-alpine AS builder
+
+# better-sqlite3 and bcrypt ship prebuilt binaries for common Node versions
+# but may fall back to compiling from source (e.g. Node 24 prebuild lag).
+# Keep the toolchain available in the builder so that fallback succeeds.
+# These packages are not carried into the runtime image — only the
+# compiled .node binaries end up in the pnpm deploy output.
+RUN apk add --no-cache python3 make g++ libc6-compat
 
 WORKDIR /app
 
@@ -23,19 +45,25 @@ RUN pnpm --filter @ha-external-dashboards/shared build && \
     pnpm --filter @ha-external-dashboards/display build && \
     pnpm --filter @ha-external-dashboards/server build
 
-FROM ${BUILD_FROM}
+# pnpm deploy resolves workspace:* to real files and installs only prod
+# deps into /deploy/node_modules. It honours .gitignore, which excludes
+# dist/, so we copy the server's dist back in explicitly afterwards.
+RUN pnpm deploy --legacy --filter=@ha-external-dashboards/server --prod /deploy && \
+    cp -r packages/server/dist /deploy/dist
 
-RUN apk add --no-cache nodejs npm
+
+FROM node:24-alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/packages/server/dist ./dist
-COPY --from=builder /app/packages/server/package.json ./
+# Self-contained server bundle: package.json + node_modules + dist.
+COPY --from=builder /deploy/ ./
+
+# Static SPA bundles served by the server.
 COPY --from=builder /app/packages/admin/dist ./admin
 COPY --from=builder /app/packages/display/dist ./display
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/shared/dist ./shared
 
+# Drizzle migrations (run at server boot via migrate.ts).
 COPY drizzle/ ./drizzle/
 COPY drizzle.config.ts ./
 

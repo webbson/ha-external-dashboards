@@ -26,10 +26,8 @@ jobs:
         include:
           - arch: amd64
             platform: linux/amd64
-            base_image: ghcr.io/home-assistant/amd64-base:3.20
           - arch: aarch64
             platform: linux/arm64
-            base_image: ghcr.io/home-assistant/aarch64-base:3.20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,8 +81,6 @@ jobs:
           file: external_dashboards/Dockerfile
           platforms: ${{ matrix.platform }}
           push: true
-          build-args: |
-            BUILD_FROM=${{ matrix.base_image }}
           tags: |
             ghcr.io/${{ steps.owner.outputs.owner }}/${{ matrix.arch }}-external-dashboards:${{ steps.version.outputs.version }}
             ghcr.io/${{ steps.owner.outputs.owner }}/${{ matrix.arch }}-external-dashboards:latest

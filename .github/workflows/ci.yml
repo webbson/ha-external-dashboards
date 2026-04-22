@@ -79,8 +79,6 @@ jobs:
         with:
           context: .
           file: external_dashboards/Dockerfile
-          build-args: |
-            BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.20
           platforms: linux/amd64
           push: false
           cache-from: type=gha

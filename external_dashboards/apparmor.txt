@@ -8,10 +8,35 @@ profile external_dashboards flags=(attach_disconnected,mediate_deleted) {
   network,
   signal (send) set=(kill,term,int,hup,cont),
 
-  # S6-overlay (HA base image boot sequence)
-  /init ix,
+  # Node.js runtime (official node:24-alpine image places node under
+  # /usr/local/bin). /usr/bin is covered as a fallback for future rebasing.
+  /usr/local/bin/node ix,
+  /usr/local/bin/npm ix,
+  /usr/bin/node ix,
+  /usr/local/lib/node_modules/** r,
+  /usr/lib/node_modules/** r,
+
+  # Alpine core binaries + busybox shell (healthcheck, entrypoint, etc.).
   /bin/** ix,
   /usr/bin/** ix,
+  /sbin/** ix,
+  /usr/sbin/** ix,
+  /etc/** r,
+
+  # Application tree.
+  /app/** rix,
+  /tmp/** rwk,
+
+  # Persistent add-on state (options.json, secrets.json).
+  /data/** rwk,
+
+  # User config dir: SQLite database + uploaded assets.
+  /config/** rwk,
+
+  # Legacy / HA-base paths retained as no-ops — harmless under
+  # node:24-alpine but keep the profile forward-compatible if we ever
+  # rebase on an HA base image that uses s6-overlay.
+  /init ix,
   /run/{s6,s6-rc*,service}/** ix,
   /package/** ix,
   /command/** ix,
@@ -20,21 +45,7 @@ profile external_dashboards flags=(attach_disconnected,mediate_deleted) {
   /etc/cont-finish.d/** rwix,
   /run/{,**} rwk,
   /dev/tty rw,
-
-  # Bashio (if ever used for run scripts)
   /usr/lib/bashio/** ix,
-  /tmp/** rwk,
-
-  # Node.js runtime + bundled app
-  /usr/bin/node ix,
-  /usr/lib/node_modules/** r,
-  /app/** rix,
-
-  # Persistent add-on state (options.json, secrets.json)
-  /data/** rwk,
-
-  # User config dir: SQLite database + uploaded assets
-  /config/** rwk,
 
   # Deny the dangerous stuff explicitly so a future refactor can't
   # accidentally widen access.
