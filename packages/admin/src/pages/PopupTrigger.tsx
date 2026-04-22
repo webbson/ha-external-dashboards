@@ -15,7 +15,7 @@ import {
   message,
 } from "antd";
 import { SendOutlined } from "@ant-design/icons";
-import { api } from "../api.js";
+import { api, apiUrl } from "../api.js";
 
 const { Text, Paragraph } = Typography;
 
@@ -65,7 +65,7 @@ export function PopupTrigger() {
 
   const previewUrl = mediaUrl
     ? selectedAsset
-      ? `/api/assets/${selectedAsset.id}/file`
+      ? apiUrl(`/api/assets/${selectedAsset.id}/file`)
       : mediaUrl
     : undefined;
 

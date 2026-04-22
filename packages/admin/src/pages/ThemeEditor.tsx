@@ -15,7 +15,7 @@ import {
   message,
 } from "antd";
 import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { api } from "../api.js";
+import { api, apiUrl } from "../api.js";
 import type { StandardVariables } from "@ha-external-dashboards/shared";
 import { STANDARD_VARIABLE_DEFAULTS } from "@ha-external-dashboards/shared";
 
@@ -205,7 +205,7 @@ export function ThemeEditor() {
                 {merged.backgroundImage && (
                   <div style={{ marginTop: 8 }}>
                     <img
-                      src={`/api/assets/${imageAssets.find((a) => a.fileName === merged.backgroundImage)?.id}/file`}
+                      src={apiUrl(`/api/assets/${imageAssets.find((a) => a.fileName === merged.backgroundImage)?.id}/file`)}
                       alt="Background preview"
                       style={{
                         maxWidth: 200,

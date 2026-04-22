@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-04-22
+
+### Fixed
+
+- Admin SPA no longer sends `/api/*` fetches to the Home Assistant root
+  when loaded via HA ingress. The server now injects
+  `<base href="<X-Ingress-Path>/">` into `index.html` so
+  `document.baseURI` points at the add-on root across React Router
+  navigations; the client `api` helper and the handful of bare
+  `fetch(...)` / `<img src>` call sites resolve their paths against
+  that base via a new `apiUrl()` helper. Observed symptom: the
+  Diagnostics page showed a stream of
+  `https://<ha-host>/api/admin/clients 404` entries in the console.
+
 ## [0.1.2] — 2026-04-22
 
 ### Fixed
@@ -108,7 +122,8 @@ First public release as a Home Assistant add-on.
 - MAC-based client identification requires `host_network: true`; without it,
   clients are tracked by IP only.
 
-[Unreleased]: https://github.com/webbson/ha-external-dashboards/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/webbson/ha-external-dashboards/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.3
 [0.1.2]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.2
 [0.1.1]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.1
 [0.1.0]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.0

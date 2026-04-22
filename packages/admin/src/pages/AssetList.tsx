@@ -14,7 +14,7 @@ import {
   Tooltip,
 } from "antd";
 import { UploadOutlined, FolderOutlined, FolderAddOutlined, DeleteOutlined } from "@ant-design/icons";
-import { api } from "../api.js";
+import { api, apiUrl } from "../api.js";
 
 const { Text } = Typography;
 
@@ -168,7 +168,7 @@ export function AssetList() {
             render: (_, record) =>
               record.mimeType.startsWith("image/") ? (
                 <Image
-                  src={`/api/assets/${record.id}/file`}
+                  src={apiUrl(`/api/assets/${record.id}/file`)}
                   width={40}
                   height={40}
                   style={{ objectFit: "cover", borderRadius: 4 }}

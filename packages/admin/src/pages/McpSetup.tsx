@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Typography, Alert, Card, Spin, Space } from "antd";
+import { apiUrl } from "../api.js";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -14,7 +15,7 @@ export function McpSetup() {
   const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch(apiUrl("/api/settings"))
       .then((r) => r.json())
       .then(setSettings);
   }, []);

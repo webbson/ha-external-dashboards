@@ -7,6 +7,7 @@ import fastifyMultipart from "@fastify/multipart";
 import fastifyCors from "@fastify/cors";
 import fastifyWebsocket from "@fastify/websocket";
 import fastifyRateLimit from "@fastify/rate-limit";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -134,22 +135,52 @@ async function start() {
     ? path.resolve(__dirname, "../../admin/dist")
     : path.resolve(__dirname, "../admin");
 
+  // Read index.html once at boot; patched with <base href> per request so
+  // SPA-relative fetches resolve under HA's ingress prefix.
+  const indexHtmlPath = path.join(adminDir, "index.html");
+  const indexHtmlTemplate = (() => {
+    try {
+      return fs.readFileSync(indexHtmlPath, "utf8");
+    } catch {
+      return "<!doctype html><html><body>admin bundle missing</body></html>";
+    }
+  })();
+
+  function renderIndex(req: { headers: Record<string, string | string[] | undefined> }): string {
+    const raw = req.headers["x-ingress-path"];
+    const ingressPath = typeof raw === "string" ? raw : "";
+    const baseHref = ingressPath ? `${ingressPath}/` : "./";
+    let html = indexHtmlTemplate;
+    if (/<base\s/i.test(html)) {
+      html = html.replace(/<base\s[^>]*>/i, `<base href="${baseHref}">`);
+    } else {
+      html = html.replace(/<head([^>]*)>/i, `<head$1>\n    <base href="${baseHref}">`);
+    }
+    return html;
+  }
+
+  // Templated root — takes precedence over fastifyStatic's default index.
+  // HA ingress always hits `/`, so only that path needs the templated
+  // version; `/index.html` is handled by fastifyStatic normally.
+  admin.get("/", async (req, reply) => {
+    return reply.type("text/html").send(renderIndex(req));
+  });
+
   await admin.register(fastifyStatic, {
     root: adminDir,
     prefix: "/",
     decorateReply: false,
     wildcard: false,
+    index: false,
   });
 
-  // SPA fallback. `reply.sendFile` was decorated by the FIRST fastifyStatic
-  // registration (the assets dir), so we must pass adminDir explicitly —
-  // otherwise it looks for index.html inside /config/assets and 404s on
-  // any deep link reload (e.g. /diagnostics, /dashboards/foo).
+  // SPA fallback: React Router deep links (e.g. /diagnostics) resolve here.
+  // Same templated index.html so <base href> reflects ingress.
   admin.setNotFoundHandler(async (req, reply) => {
     if (req.url.startsWith("/api/")) {
       return reply.code(404).send({ error: "Not found" });
     }
-    return reply.sendFile("index.html", adminDir);
+    return reply.type("text/html").send(renderIndex(req));
   });
 
   await admin.listen({ port: INGRESS_PORT, host: "0.0.0.0" });

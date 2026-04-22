@@ -15,6 +15,7 @@ import {
   CloudUploadOutlined,
   InboxOutlined,
 } from "@ant-design/icons";
+import { apiUrl } from "../api.js";
 
 const { Dragger } = Upload;
 
@@ -43,7 +44,7 @@ export function BackupRestore() {
   const handleBackup = async () => {
     setBackingUp(true);
     try {
-      const res = await fetch("/api/admin/backup");
+      const res = await fetch(apiUrl("/api/admin/backup"));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
 
@@ -86,7 +87,7 @@ export function BackupRestore() {
       } catch {
         throw new Error("File is not valid JSON");
       }
-      const res = await fetch("/api/admin/restore", {
+      const res = await fetch(apiUrl("/api/admin/restore"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed),

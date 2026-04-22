@@ -27,6 +27,7 @@ import { ThemeEditor } from "./pages/ThemeEditor.js";
 import { McpSetup } from "./pages/McpSetup.js";
 import { Diagnostics } from "./pages/Diagnostics.js";
 import { BackupRestore } from "./components/BackupRestore.js";
+import { apiUrl } from "./api.js";
 
 const { Sider, Content } = Layout;
 
@@ -47,7 +48,7 @@ function AppLayout({ isDark, toggle }: { isDark: boolean; toggle: () => void }) 
   const [mcpEnabled, setMcpEnabled] = useState(false);
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch(apiUrl("/api/settings"))
       .then((r) => r.json())
       .then((data) => setMcpEnabled(data.mcpEnabled ?? false))
       .catch(() => {});

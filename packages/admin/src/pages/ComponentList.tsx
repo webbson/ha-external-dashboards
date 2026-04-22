@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Table, Button, Space, Popconfirm, Tag, Tooltip, message } from "antd";
 import { PlusOutlined, DownloadOutlined, UploadOutlined, EditOutlined, CopyOutlined, DeleteOutlined } from "@ant-design/icons";
-import { api } from "../api.js";
+import { api, apiUrl } from "../api.js";
 
 interface Component {
   id: number;
@@ -43,7 +43,7 @@ export function ComponentList() {
 
   const handleExport = async (id: number, name: string) => {
     try {
-      const res = await fetch(`/api/components/${id}/export`);
+      const res = await fetch(apiUrl(`/api/components/${id}/export`));
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

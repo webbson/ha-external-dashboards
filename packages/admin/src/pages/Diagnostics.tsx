@@ -26,6 +26,7 @@ import {
   WifiOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router";
+import { apiUrl } from "../api.js";
 
 interface DiagnosticsPayload {
   haWs: {
@@ -120,7 +121,7 @@ export function Diagnostics() {
 
   const fetchClients = useCallback(async (): Promise<KnownClient[] | null> => {
     try {
-      const res = await fetch("/api/admin/clients");
+      const res = await fetch(apiUrl("/api/admin/clients"));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()) as KnownClient[];
     } catch {
@@ -134,7 +135,7 @@ export function Diagnostics() {
     const fetchOnce = async () => {
       try {
         const [diagRes, clients] = await Promise.all([
-          fetch("/api/admin/diagnostics"),
+          fetch(apiUrl("/api/admin/diagnostics")),
           fetchClients(),
         ]);
         if (!diagRes.ok) throw new Error(`HTTP ${diagRes.status}`);
@@ -178,7 +179,7 @@ export function Diagnostics() {
   const setAlias = useCallback(
     async (id: number, alias: string | null) => {
       try {
-        const res = await fetch(`/api/admin/clients/${id}`, {
+        const res = await fetch(apiUrl(`/api/admin/clients/${id}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ alias }),
@@ -197,7 +198,7 @@ export function Diagnostics() {
   const forgetClient = useCallback(
     async (id: number) => {
       try {
-        const res = await fetch(`/api/admin/clients/${id}`, {
+        const res = await fetch(apiUrl(`/api/admin/clients/${id}`), {
           method: "DELETE",
         });
         if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);

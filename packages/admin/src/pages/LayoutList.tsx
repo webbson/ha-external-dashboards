@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Table, Button, Space, Popconfirm, Tag, Tooltip, message } from "antd";
 import { PlusOutlined, UploadOutlined, DownloadOutlined, EditOutlined, DeleteOutlined, CopyOutlined } from "@ant-design/icons";
-import { api } from "../api.js";
+import { api, apiUrl } from "../api.js";
 
 interface Layout {
   id: number;
@@ -29,7 +29,7 @@ export function LayoutList() {
 
   const handleExport = async (id: number, name: string) => {
     try {
-      const res = await fetch(`/api/layouts/${id}/export`);
+      const res = await fetch(apiUrl(`/api/layouts/${id}/export`));
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -77,7 +77,7 @@ export function LayoutList() {
     try {
       // Chain the existing export + import endpoints so we don't need a
       // dedicated server-side copy endpoint.
-      const res = await fetch(`/api/layouts/${id}/export`);
+      const res = await fetch(apiUrl(`/api/layouts/${id}/export`));
       if (!res.ok) throw new Error("Export failed");
       const exported = await res.json();
       if (exported && typeof exported === "object" && "name" in exported) {
