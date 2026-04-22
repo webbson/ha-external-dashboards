@@ -18,11 +18,13 @@ ingress: true
 ingress_port: 8080
 panel_icon: "mdi:view-dashboard-outline"
 panel_title: "External Dashboards"
-# AppArmor off for now; a hardened profile lands in a follow-up.
-apparmor: false
+# Custom AppArmor profile lives in apparmor.txt (Supervisor loads it
+# automatically when apparmor is not explicitly disabled).
 # Bridge networking is fine for the common case. Admins who want MAC-based
 # display-client identification (see DOCS.md) can flip this to true.
 host_network: false
+# Ingress panel is visible in the sidebar only for admin HA users.
+panel_admin: true
 ports:
   8099/tcp: 8099
 ports_description:

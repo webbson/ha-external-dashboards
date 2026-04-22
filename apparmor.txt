@@ -1,0 +1,54 @@
+#include <tunables/global>
+
+profile external_dashboards flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Capabilities
+  file,
+  network,
+  signal (send) set=(kill,term,int,hup,cont),
+
+  # S6-overlay (HA base image boot sequence)
+  /init ix,
+  /bin/** ix,
+  /usr/bin/** ix,
+  /run/{s6,s6-rc*,service}/** ix,
+  /package/** ix,
+  /command/** ix,
+  /etc/services.d/** rwix,
+  /etc/cont-init.d/** rwix,
+  /etc/cont-finish.d/** rwix,
+  /run/{,**} rwk,
+  /dev/tty rw,
+
+  # Bashio (if ever used for run scripts)
+  /usr/lib/bashio/** ix,
+  /tmp/** rwk,
+
+  # Node.js runtime + bundled app
+  /usr/bin/node ix,
+  /usr/lib/node_modules/** r,
+  /app/** rix,
+
+  # Persistent add-on state (options.json, secrets.json)
+  /data/** rwk,
+
+  # User config dir: SQLite database + uploaded assets
+  /config/** rwk,
+
+  # Deny the dangerous stuff explicitly so a future refactor can't
+  # accidentally widen access.
+  deny /root/** rwkl,
+  deny /home/** rwkl,
+  deny /etc/shadow r,
+  deny /proc/*/mem r,
+  deny /proc/sys/** w,
+  deny /sys/** w,
+  deny capability mac_admin,
+  deny capability mac_override,
+  deny capability sys_admin,
+  deny capability sys_module,
+  deny capability sys_ptrace,
+  deny capability sys_rawio,
+  deny capability dac_read_search,
+}
