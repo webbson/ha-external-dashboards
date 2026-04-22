@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-04-22
+
+### Fixed
+
+- Images published at the correct path. The 0.1.0 release pushed under
+  `ghcr.io/webbson/ghcr.io/webbson/{arch}-external-dashboards` because
+  `home-assistant/builder` re-prefixed the `--image` value with its
+  own registry path. The release workflow now uses
+  `docker/build-push-action` directly, so tags are verbatim and images
+  land at `ghcr.io/webbson/{arch}-external-dashboards:0.1.1` — the path
+  `config.yaml`'s `image:` field points at.
+
+### Changed
+
+- Repository restructured into the canonical HA add-on layout: add-on
+  files live in `external_dashboards/`, with `repository.yaml` at the
+  root. Required to satisfy Supervisor's "is this a valid add-on
+  repository?" validation.
+
 ## [0.1.0] — 2026-04-22
 
 First public release as a Home Assistant add-on.
@@ -64,5 +83,6 @@ First public release as a Home Assistant add-on.
 - MAC-based client identification requires `host_network: true`; without it,
   clients are tracked by IP only.
 
-[Unreleased]: https://github.com/webbson/ha-external-dashboards/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/webbson/ha-external-dashboards/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.1
 [0.1.0]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.0
