@@ -55,9 +55,14 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
-          # DL3018 (apk add without version pin) is acceptable for HA base images.
-          # DL3059 (multiple consecutive RUN) is fine — the two RUNs have distinct concerns.
-          ignore: DL3018,DL3059
+          # DL3006 (tag image version explicitly) — the base is set via the
+          # BUILD_FROM ARG which Supervisor substitutes with a tagged image
+          # (e.g. ghcr.io/home-assistant/amd64-base:3.20) at build time.
+          # DL3018 (apk add without version pin) is acceptable for HA base
+          # images.
+          # DL3059 (multiple consecutive RUN) is fine — the two RUNs have
+          # distinct concerns.
+          ignore: DL3006,DL3018,DL3059
 
   docker-build:
     name: Docker build (amd64)
