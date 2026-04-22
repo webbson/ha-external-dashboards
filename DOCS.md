@@ -45,7 +45,23 @@ If you front your HA with Nginx / Traefik / Caddy, expose **both** ports or term
 
 ### MAC-based client tracking (optional)
 
-The Diagnostics page lists persistent clients. By default they're keyed by IP address. If you want MAC-based identity so the same kiosk keeps its alias across DHCP changes, enable **host networking** on the add-on (Configuration → Network → enable `host_network`). MAC resolution uses the Linux ARP cache, which is only visible in host-network mode.
+The Diagnostics page lists persistent clients. By default they're keyed by IP
+address. If you want MAC-based identity so the same kiosk keeps its alias
+across DHCP changes, MAC resolution uses the Linux ARP cache — which is only
+visible in host-network mode.
+
+Host networking is a build-time property of the add-on and can't be toggled
+from the Supervisor UI. A future release will publish a second branch of this
+repository with `host_network: true` baked in, reachable by appending `#next`
+to the repository URL when adding it in Supervisor:
+
+```
+https://github.com/webbson/ha-external-dashboards#next
+```
+
+Users on the `main` branch stay on bridge networking (IP-only identity);
+users on `#next` get host networking (MAC identity, wider host visibility).
+Until that branch exists, clients show up as `ip:<addr>` in Diagnostics.
 
 ## Data & backups
 
