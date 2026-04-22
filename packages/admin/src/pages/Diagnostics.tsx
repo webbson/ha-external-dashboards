@@ -1,24 +1,31 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Badge,
+  Button,
   Card,
   Col,
   Descriptions,
+  Popconfirm,
   Row,
   Skeleton,
   Space,
   Statistic,
   Table,
   Tag,
+  Tooltip,
   Typography,
+  message,
 } from "antd";
 import {
   ApiOutlined,
   ClockCircleOutlined,
   DatabaseOutlined,
+  DeleteOutlined,
   DesktopOutlined,
   WifiOutlined,
 } from "@ant-design/icons";
+import { Link } from "react-router";
 
 interface DiagnosticsPayload {
   haWs: {
@@ -77,10 +84,25 @@ function formatTimeAgo(iso: string | null): string {
   return `${Math.floor(delta / 86_400_000)}d ago`;
 }
 
+interface KnownClient {
+  id: number;
+  identity: string;
+  macAddress: string | null;
+  alias: string | null;
+  hostname: string | null;
+  lastIp: string | null;
+  lastDashboardId: number | null;
+  lastSlug: string | null;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  connected: boolean;
+}
+
 const POLL_INTERVAL_MS = 5000;
 
 export function Diagnostics() {
   const [data, setData] = useState<DiagnosticsPayload | null>(null);
+  const [knownClients, setKnownClients] = useState<KnownClient[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const visibleRef = useRef(
@@ -89,16 +111,30 @@ export function Diagnostics() {
       : true
   );
 
+  const fetchClients = useCallback(async (): Promise<KnownClient[] | null> => {
+    try {
+      const res = await fetch("/api/admin/clients");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return (await res.json()) as KnownClient[];
+    } catch {
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
     const fetchOnce = async () => {
       try {
-        const res = await fetch("/api/admin/diagnostics");
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = (await res.json()) as DiagnosticsPayload;
+        const [diagRes, clients] = await Promise.all([
+          fetch("/api/admin/diagnostics"),
+          fetchClients(),
+        ]);
+        if (!diagRes.ok) throw new Error(`HTTP ${diagRes.status}`);
+        const json = (await diagRes.json()) as DiagnosticsPayload;
         if (!cancelled) {
           setData(json);
+          setKnownClients(clients);
           setError(null);
         }
       } catch (err) {
@@ -130,7 +166,43 @@ export function Diagnostics() {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [fetchClients]);
+
+  const setAlias = useCallback(
+    async (id: number, alias: string | null) => {
+      try {
+        const res = await fetch(`/api/admin/clients/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ alias }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        message.success("Alias saved");
+        const next = await fetchClients();
+        if (next) setKnownClients(next);
+      } catch (err) {
+        message.error(`Failed to save alias: ${(err as Error).message}`);
+      }
+    },
+    [fetchClients]
+  );
+
+  const forgetClient = useCallback(
+    async (id: number) => {
+      try {
+        const res = await fetch(`/api/admin/clients/${id}`, {
+          method: "DELETE",
+        });
+        if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        message.success("Client forgotten");
+        const next = await fetchClients();
+        if (next) setKnownClients(next);
+      } catch (err) {
+        message.error(`Failed to forget client: ${(err as Error).message}`);
+      }
+    },
+    [fetchClients]
+  );
 
   if (loading && !data) {
     return (
@@ -288,6 +360,136 @@ export function Diagnostics() {
                 title: "Clients",
                 dataIndex: "count",
                 align: "right",
+              },
+            ]}
+          />
+        )}
+      </Card>
+
+      <Card title="Known display clients">
+        {!knownClients || knownClients.length === 0 ? (
+          <Typography.Text type="secondary">
+            No known clients yet — connect a display to populate this list.
+          </Typography.Text>
+        ) : (
+          <Table<KnownClient>
+            size="small"
+            rowKey="id"
+            pagination={false}
+            dataSource={knownClients}
+            columns={[
+              {
+                title: "Status",
+                dataIndex: "connected",
+                width: 90,
+                render: (connected: boolean, row) => (
+                  <Tooltip
+                    title={
+                      connected
+                        ? "Currently connected"
+                        : `Last seen ${formatTimeAgo(row.lastSeenAt)}`
+                    }
+                  >
+                    <Badge
+                      status={connected ? "success" : "default"}
+                      text={connected ? "Online" : formatTimeAgo(row.lastSeenAt)}
+                    />
+                  </Tooltip>
+                ),
+              },
+              {
+                title: "Alias",
+                dataIndex: "alias",
+                render: (_, row) => (
+                  <Typography.Text
+                    editable={{
+                      tooltip: "Edit alias",
+                      onChange: (val) => {
+                        const trimmed = val.trim();
+                        if (trimmed === (row.alias ?? "")) return;
+                        setAlias(row.id, trimmed.length > 0 ? trimmed : null);
+                      },
+                      text: row.alias ?? "",
+                    }}
+                    type={row.alias ? undefined : "secondary"}
+                  >
+                    {row.alias ??
+                      (row.hostname
+                        ? `(suggest: ${row.hostname})`
+                        : "(unset)")}
+                  </Typography.Text>
+                ),
+              },
+              {
+                title: "Hostname",
+                dataIndex: "hostname",
+                render: (h: string | null) =>
+                  h ?? <Typography.Text type="secondary">—</Typography.Text>,
+              },
+              {
+                title: "MAC",
+                dataIndex: "macAddress",
+                render: (mac: string | null, row) =>
+                  mac ? (
+                    <Typography.Text code>{mac}</Typography.Text>
+                  ) : (
+                    <Tooltip title="MAC could not be resolved — row is keyed by IP. Enable host_network for the add-on to unlock MAC tracking.">
+                      <Tag color="default">IP-based</Tag>
+                    </Tooltip>
+                  ),
+              },
+              {
+                title: "Last IP",
+                dataIndex: "lastIp",
+                render: (ip: string | null) =>
+                  ip ?? <Typography.Text type="secondary">—</Typography.Text>,
+              },
+              {
+                title: "Last dashboard",
+                dataIndex: "lastSlug",
+                render: (slug: string | null) =>
+                  slug ? (
+                    <Link to={`/dashboards`}>{slug}</Link>
+                  ) : (
+                    <Typography.Text type="secondary">—</Typography.Text>
+                  ),
+              },
+              {
+                title: "First seen",
+                dataIndex: "firstSeenAt",
+                render: (ts: string) => (
+                  <Tooltip title={new Date(ts).toLocaleString()}>
+                    {formatTimeAgo(ts)}
+                  </Tooltip>
+                ),
+              },
+              {
+                title: "",
+                key: "actions",
+                width: 90,
+                align: "right",
+                render: (_, row) => (
+                  <Popconfirm
+                    title="Forget this client?"
+                    description={
+                      row.connected
+                        ? "The client is currently connected. It will be re-created on the next heartbeat, without the alias."
+                        : "This removes the persistent record. It can be re-discovered on next connect."
+                    }
+                    okText="Forget"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={() => forgetClient(row.id)}
+                  >
+                    <Button
+                      size="small"
+                      danger
+                      type="text"
+                      icon={<DeleteOutlined />}
+                    >
+                      Forget
+                    </Button>
+                  </Popconfirm>
+                ),
               },
             ]}
           />
