@@ -1,0 +1,29 @@
+---
+# yamllint config for the HA add-on repo root. Scoped to the files WE
+# author: config.yaml, build.yaml, apparmor.txt-adjacent manifests, and
+# GitHub Actions workflows. Ignores dependency-managed files and build
+# artefacts so CI doesn't fail on lines we don't control.
+extends: default
+
+ignore: |
+  node_modules/
+  packages/*/node_modules/
+  packages/*/dist/
+  dist/
+  pnpm-lock.yaml
+  drizzle/
+  .worktrees/
+
+rules:
+  line-length: disable
+  # HA's config.yaml uses keys like `ingress: true` / `apparmor: false` that
+  # trip yamllint's default truthy-key check.
+  truthy:
+    check-keys: false
+  # Add-on configs often have keys not in alphabetical order by design
+  # (grouped semantically). Disable the ordering nag.
+  document-start: disable
+  comments:
+    min-spaces-from-content: 1
+  braces:
+    max-spaces-inside: 1

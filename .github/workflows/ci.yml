@@ -43,16 +43,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Lint config.yaml
+      - name: Lint YAML (config.yaml, build.yaml, workflows)
         uses: frenck/action-yamllint@v1.5
         with:
-          # Relaxed: HA config.yaml uses non-strict yaml conventions.
-          config_data: |
-            extends: default
-            rules:
-              line-length: disable
-              truthy:
-                check-keys: false
+          # Config lives at repo root (.yamllint.yml) — keeps the ignore
+          # list (pnpm-lock.yaml, node_modules, etc.) in version control
+          # rather than inline.
+          config: .yamllint.yml
 
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
