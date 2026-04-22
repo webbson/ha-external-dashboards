@@ -1,3 +1,6 @@
+// MUST be first: loads HA add-on options.json into process.env so config/jwt.ts
+// and other modules see real values instead of falling back to warnings.
+import "./bootstrap/options.js";
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifyMultipart from "@fastify/multipart";

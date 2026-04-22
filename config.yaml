@@ -1,23 +1,40 @@
 name: "External Dashboards"
 description: "Create and display dashboards outside of Home Assistant"
-version: "0.0.1"
+version: "0.1.0"
 slug: "external_dashboards"
-url: "https://github.com/tom-stevens/ha-external-dashboards"
+url: "https://github.com/webbson/ha-external-dashboards"
+image: "ghcr.io/webbson/{arch}-external-dashboards"
 arch:
   - aarch64
   - amd64
   - armv7
 init: false
+startup: application
+boot: auto
+stage: experimental
+homeassistant: "2024.1.0"
 homeassistant_api: true
 ingress: true
 ingress_port: 8080
 panel_icon: "mdi:view-dashboard-outline"
 panel_title: "External Dashboards"
+# AppArmor off for now; a hardened profile lands in a follow-up.
+apparmor: false
+# Bridge networking is fine for the common case. Admins who want MAC-based
+# display-client identification (see DOCS.md) can flip this to true.
+host_network: false
 ports:
   8099/tcp: 8099
 ports_description:
-  8099/tcp: "External dashboard display port"
+  8099/tcp: "External dashboard display port (for browser clients on the LAN)"
 map:
   - config:rw
-options: {}
-schema: {}
+options:
+  # Leave both blank to have the add-on generate and persist a random
+  # JWT secret on first boot. Set them explicitly to share secrets across
+  # reinstalls or to pin the MCP API key.
+  jwt_secret: ""
+  mcp_api_key: ""
+schema:
+  jwt_secret: "str?"
+  mcp_api_key: "str?"

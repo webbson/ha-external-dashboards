@@ -1,0 +1,11 @@
+build_from:
+  aarch64: ghcr.io/home-assistant/aarch64-base:3.20
+  amd64: ghcr.io/home-assistant/amd64-base:3.20
+  armv7: ghcr.io/home-assistant/armv7-base:3.20
+labels:
+  org.opencontainers.image.title: "External Dashboards"
+  org.opencontainers.image.description: "Create and display dashboards outside of Home Assistant"
+  org.opencontainers.image.source: "https://github.com/webbson/ha-external-dashboards"
+  # Non-standard SPDX identifier — OSaaSy is MIT plus a SaaS non-compete clause.
+  # Full text lives in LICENSE at the repo root.
+  org.opencontainers.image.licenses: "LicenseRef-OSaaSy"
