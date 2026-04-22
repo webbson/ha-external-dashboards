@@ -54,7 +54,10 @@ First public release as a Home Assistant add-on.
 
 ### Supported architectures
 
-- `amd64`, `aarch64`, `armv7`.
+- `amd64`, `aarch64`. (Pi 4/5 default install.) `armv7` is intentionally
+  omitted for this release — qemu-emulated builds of the Node monorepo
+  are prohibitively slow in CI. Can be re-enabled later if there's
+  demand.
 
 ### Known issues
 
