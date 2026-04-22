@@ -35,6 +35,10 @@ interface DisplayConnection {
   /** Entities matched by glob patterns that have filters — these need re-evaluation on state changes */
   globMatchedEntities: Map<string, GlobPatternEntry[]>;
   globPatterns: GlobPatternEntry[];
+  /** Stable identity used to correlate with the persistent display_clients row ("mac:..." or "ip:...") */
+  identity?: string;
+  /** PK of the matched display_clients row, if any */
+  clientRowId?: number;
 }
 
 class ConnectionManager {
@@ -45,7 +49,9 @@ class ConnectionManager {
     dashboardId: number,
     slug: string,
     entityIds: string[],
-    globPatterns: GlobPatternEntry[] = []
+    globPatterns: GlobPatternEntry[] = [],
+    identity?: string,
+    clientRowId?: number
   ) {
     const conn: DisplayConnection = {
       ws,
@@ -54,9 +60,26 @@ class ConnectionManager {
       subscribedEntities: new Set(entityIds),
       globMatchedEntities: new Map(),
       globPatterns,
+      identity,
+      clientRowId,
     };
     this.connections.set(ws, conn);
     return conn;
+  }
+
+  getByWs(ws: WebSocket): DisplayConnection | undefined {
+    return this.connections.get(ws);
+  }
+
+  /** Identities of currently-connected display clients (OPEN sockets only) */
+  getConnectedIdentities(): Set<string> {
+    const ids = new Set<string>();
+    for (const conn of this.connections.values()) {
+      if (conn.identity && conn.ws.readyState === WebSocket.OPEN) {
+        ids.add(conn.identity);
+      }
+    }
+    return ids;
   }
 
   remove(ws: WebSocket) {

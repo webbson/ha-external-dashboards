@@ -214,6 +214,29 @@ export const dashboardEntityAccess = sqliteTable("dashboard_entity_access", {
   index("idx_dashboard_entity_access_dashboard_id").on(table.dashboardId),
 ]);
 
+export const displayClients = sqliteTable("display_clients", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  // Stable identifier for this client. MAC address when resolvable
+  // (same-LAN + host networking), IP-based fallback otherwise.
+  //   "mac:aa:bb:cc:dd:ee:ff" | "ip:192.168.1.42"
+  identity: text("identity").notNull().unique(),
+  macAddress: text("mac_address"),
+  alias: text("alias"),
+  hostname: text("hostname"),
+  lastIp: text("last_ip"),
+  lastDashboardId: integer("last_dashboard_id").references(() => dashboards.id, {
+    onDelete: "set null",
+  }),
+  // Denormalised so the UI can still render a meaningful row after the dashboard is deleted.
+  lastSlug: text("last_slug"),
+  firstSeenAt: text("first_seen_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  lastSeenAt: text("last_seen_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export const assets = sqliteTable("assets", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),

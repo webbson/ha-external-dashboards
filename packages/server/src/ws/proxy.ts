@@ -15,6 +15,15 @@ import {
   type GlobStateFilter,
 } from "@ha-external-dashboards/shared";
 import { getEntityAccessPatterns } from "../services/entity-access.js";
+import {
+  computeIdentity,
+  extractClientIp,
+  resolveMac,
+} from "../utils/client-identity.js";
+import {
+  touchDisplayClient,
+  upsertDisplayClient,
+} from "../services/display-clients.js";
 
 // Rate limiting for call_service
 const rateLimits = new Map<WebSocket, { count: number; resetAt: number }>();
@@ -237,6 +246,26 @@ export async function setupWebSocketProxy(app: FastifyInstance) {
       return;
     }
 
+    // Identify the client by MAC (preferred) or IP (fallback) and persist.
+    // Errors here must never prevent the WS from working — identification is
+    // advisory.
+    const ip = extractClientIp(req);
+    let identity: string | undefined;
+    let clientRowId: number | undefined;
+    try {
+      const mac = await resolveMac(ip);
+      identity = computeIdentity(mac, ip);
+      clientRowId = await upsertDisplayClient({
+        identity,
+        macAddress: mac,
+        ip,
+        dashboardId: dashboard.id,
+        slug,
+      });
+    } catch (err) {
+      req.log.warn({ err }, "Failed to persist display client");
+    }
+
     // Get subscribed entities for this dashboard
     const subscription = await getSubscribedEntities(dashboard.id);
     const conn = connectionManager.add(
@@ -244,7 +273,9 @@ export async function setupWebSocketProxy(app: FastifyInstance) {
       dashboard.id,
       slug,
       subscription.entityIds,
-      subscription.globPatterns
+      subscription.globPatterns,
+      identity,
+      clientRowId
     );
 
     // Track initial glob-matched entities for filter re-evaluation
@@ -351,6 +382,13 @@ export async function setupWebSocketProxy(app: FastifyInstance) {
     });
 
     socket.on("close", () => {
+      if (clientRowId != null) {
+        try {
+          touchDisplayClient(clientRowId);
+        } catch (err) {
+          req.log.warn({ err, clientRowId }, "Failed to stamp client last_seen_at on close");
+        }
+      }
       connectionManager.remove(socket);
       rateLimits.delete(socket);
     });
