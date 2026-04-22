@@ -138,12 +138,15 @@ async function start() {
     wildcard: false,
   });
 
-  // SPA fallback
+  // SPA fallback. `reply.sendFile` was decorated by the FIRST fastifyStatic
+  // registration (the assets dir), so we must pass adminDir explicitly —
+  // otherwise it looks for index.html inside /config/assets and 404s on
+  // any deep link reload (e.g. /diagnostics, /dashboards/foo).
   admin.setNotFoundHandler(async (req, reply) => {
     if (req.url.startsWith("/api/")) {
       return reply.code(404).send({ error: "Not found" });
     }
-    return reply.sendFile("index.html");
+    return reply.sendFile("index.html", adminDir);
   });
 
   await admin.listen({ port: INGRESS_PORT, host: "0.0.0.0" });
