@@ -7,6 +7,7 @@ import { LivePreview } from "../components/preview/LivePreview.js";
 import { EntityDataViewer } from "../components/preview/EntityDataViewer.js";
 import { EntitySelector } from "../components/selectors/EntitySelector.js";
 import { MdiIconSelector } from "../components/selectors/MdiIconSelector.js";
+import { AssetSelect } from "../components/selectors/AssetSelect.js";
 import { api } from "../api.js";
 
 const DEFAULT_TEMPLATE = `<div class="component">
@@ -20,7 +21,7 @@ const DEFAULT_STYLES = `.component {
 interface ParameterDef {
   name: string;
   label: string;
-  type: "string" | "number" | "boolean" | "color" | "select" | "icon";
+  type: "string" | "number" | "boolean" | "color" | "select" | "icon" | "asset" | "textarea";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
   step?: number;
@@ -436,6 +437,14 @@ export function ComponentEditor() {
                   }
                   placeholder={def.default != null ? String(def.default) : undefined}
                   rows={4}
+                />
+              ) : def.type === "asset" ? (
+                <AssetSelect
+                  value={(testParameterValues[def.name] as string) || undefined}
+                  onChange={(fileName) =>
+                    setTestParameterValues((prev) => ({ ...prev, [def.name]: fileName }))
+                  }
+                  mimePrefix="image/"
                 />
               ) : (
                 <Input
