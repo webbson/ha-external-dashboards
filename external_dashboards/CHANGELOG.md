@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-04-23
+
+### Added
+
+- **Image Card** now has `Padding (px)` and `Max width` parameters (e.g. `400px`,
+  `50%`). Padding is applied inside the card wrapper with `box-sizing: border-box`
+  so it doesn't overflow the region; max-width defaults to `none`.
+
+### Fixed
+
+- Derived entities (`{{state (deriveEntity ...)}}`) no longer fail to subscribe
+  in production when the WebSocket is still connecting on first render. Two
+  changes combined: `subscribeEntities` now only calls `send()` when
+  `readyState === OPEN` (previously threw a DOMException in CONNECTING state),
+  and `requestedEntities` is cleared on every WS `open` event so derived entity
+  IDs are re-sent after each (re)connect rather than being permanently skipped.
+  This was the root cause of the Employee list status dot not updating in HA
+  while appearing to work in dev (where localhost connects fast enough that
+  the socket is usually OPEN by the time the first effect fires).
+
 ## [0.1.4] — 2026-04-23
 
 ### Added
@@ -165,7 +185,8 @@ First public release as a Home Assistant add-on.
 - MAC-based client identification requires `host_network: true`; without it,
   clients are tracked by IP only.
 
-[Unreleased]: https://github.com/webbson/ha-external-dashboards/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/webbson/ha-external-dashboards/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.5
 [0.1.4]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.4
 [0.1.3]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.3
 [0.1.2]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.2
