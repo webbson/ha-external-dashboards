@@ -11,7 +11,7 @@ import { sceneSelector } from "./scene-selector.js";
 const prebuiltComponents: PrebuiltComponent[] = [
   {
     name: "Clock",
-    template: `<div class="clock" data-time-format="{{param "timeFormat"}}" data-date-format="{{param "dateFormat"}}" style="--clock-time-size: {{timeSize}}em; --clock-date-size: {{dateSize}}em;">
+    template: `<div class="clock" data-time-format="{{param "timeFormat"}}" data-date-format="{{param "dateFormat"}}" style="--clock-time-size: {{param "timeSize"}}em; --clock-date-size: {{param "dateSize"}}em;">
   <div class="clock-time" id="clock-time"></div>
   {{#if (param "showDate")}}<div class="clock-date" id="clock-date"></div>{{/if}}
 </div>
