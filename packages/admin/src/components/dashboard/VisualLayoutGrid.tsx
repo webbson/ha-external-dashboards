@@ -237,6 +237,28 @@ function SortableCard({
   );
 }
 
+function editorGridFromTemplate(template: string): {
+  gridTemplateAreas: string;
+  gridTemplateRows: string;
+  gridTemplateColumns: string;
+} {
+  // Split on "/" to separate the areas+rows portion from the columns portion
+  const slashIdx = template.lastIndexOf("/");
+  const areasPart = slashIdx >= 0 ? template.slice(0, slashIdx).trim() : template.trim();
+
+  // Extract quoted area strings: "a a b", "c d d", etc.
+  const areaRows = Array.from(areasPart.matchAll(/"([^"]+)"/g)).map((m) => `"${m[1]}"`);
+
+  // Count columns from the first row's cell names
+  const colCount = (areaRows[0]?.match(/[A-Za-z_][\w-]*|\./g) ?? []).length;
+
+  return {
+    gridTemplateAreas: areaRows.join(" "),
+    gridTemplateRows: `repeat(${areaRows.length}, minmax(120px, auto))`,
+    gridTemplateColumns: `repeat(${colCount || 1}, minmax(0, 1fr))`,
+  };
+}
+
 export function VisualLayoutGrid({
   gridTemplate,
   regions,
@@ -319,7 +341,7 @@ export function VisualLayoutGrid({
       <div
         style={{
           display: "grid",
-          gridTemplate,
+          ...editorGridFromTemplate(gridTemplate),
           gap: 8,
           minHeight: 400,
           padding: 8,
