@@ -1,12 +1,20 @@
 export type AccessMode = "public" | "password" | "header";
 export type LayoutSwitchMode = "tabs" | "auto-rotate";
-export type VisibilityOperator = "eq" | "neq" | "gt" | "lt" | "gte" | "lte";
+export type VisibilityOperator =
+  | "eq"
+  | "neq"
+  | "gt"
+  | "lt"
+  | "gte"
+  | "lte"
+  | "isTruthy"
+  | "isFalsy";
 
 export interface VisibilityRule {
   entityId: string;
   attribute?: string;
   operator: VisibilityOperator;
-  value: string;
+  value?: string;
 }
 
 export interface ParameterDef {

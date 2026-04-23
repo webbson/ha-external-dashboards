@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { Modal, Form, Select, Input, Button, Space, theme, Checkbox, InputNumber, Divider } from "antd";
+import { Modal, Form, Select, Button, Space, theme, Checkbox, InputNumber, Divider } from "antd";
 import { MdiIconSelector } from "../selectors/MdiIconSelector.js";
+import type { VisibilityRule } from "@ha-external-dashboards/shared";
+import { VisibilityRuleEditor } from "./VisibilityRuleEditor.js";
 
 interface Layout {
   id: number;
@@ -9,13 +11,6 @@ interface Layout {
     gridTemplate: string;
     regions: { id: string }[];
   };
-}
-
-interface VisibilityRule {
-  entityId: string;
-  attribute?: string;
-  operator: string;
-  value: string;
 }
 
 interface LayoutTabModalProps {
@@ -147,55 +142,12 @@ export function LayoutTabModal({
 
         <div style={{ marginBottom: 12 }}>
           {visibilityRules.map((rule, i) => (
-            <Space key={i} style={{ display: "flex", marginBottom: 4 }} align="start">
-              <Input
-                placeholder="entity_id"
-                size="small"
-                style={{ width: 140 }}
-                value={rule.entityId}
-                onChange={(e) => {
+            <Space key={i} direction="vertical" style={{ display: "flex", marginBottom: 12, width: "100%" }}>
+              <VisibilityRuleEditor
+                value={rule}
+                onChange={(r) => {
                   const next = [...visibilityRules];
-                  next[i] = { ...next[i], entityId: e.target.value };
-                  setVisibilityRules(next);
-                }}
-              />
-              <Input
-                placeholder="attribute (opt)"
-                size="small"
-                style={{ width: 120 }}
-                value={rule.attribute ?? ""}
-                onChange={(e) => {
-                  const next = [...visibilityRules];
-                  next[i] = { ...next[i], attribute: e.target.value || undefined };
-                  setVisibilityRules(next);
-                }}
-              />
-              <Select
-                size="small"
-                style={{ width: 70 }}
-                value={rule.operator}
-                onChange={(v) => {
-                  const next = [...visibilityRules];
-                  next[i] = { ...next[i], operator: v };
-                  setVisibilityRules(next);
-                }}
-                options={[
-                  { value: "eq", label: "=" },
-                  { value: "neq", label: "≠" },
-                  { value: "gt", label: ">" },
-                  { value: "lt", label: "<" },
-                  { value: "gte", label: "≥" },
-                  { value: "lte", label: "≤" },
-                ]}
-              />
-              <Input
-                placeholder="value"
-                size="small"
-                style={{ width: 100 }}
-                value={rule.value}
-                onChange={(e) => {
-                  const next = [...visibilityRules];
-                  next[i] = { ...next[i], value: e.target.value };
+                  next[i] = r;
                   setVisibilityRules(next);
                 }}
               />
@@ -204,13 +156,13 @@ export function LayoutTabModal({
                 danger
                 onClick={() => setVisibilityRules(visibilityRules.filter((_, j) => j !== i))}
               >
-                ×
+                Remove Rule
               </Button>
             </Space>
           ))}
           <Button
             size="small"
-            onClick={() => setVisibilityRules([...visibilityRules, { entityId: "", operator: "eq", value: "" }])}
+            onClick={() => setVisibilityRules([...visibilityRules, { entityId: "", operator: "isTruthy" }])}
           >
             + Add Rule
           </Button>

@@ -9,9 +9,9 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/api": "http://localhost:8080",
-      "/assets": "http://localhost:8080",
-      "/mcp": "http://localhost:8080",
+      "/api": "http://localhost:8180",
+      "/assets": "http://localhost:8180",
+      "/mcp": "http://localhost:8180",
     },
   },
 });

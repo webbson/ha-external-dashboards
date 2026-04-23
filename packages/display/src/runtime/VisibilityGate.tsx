@@ -4,7 +4,7 @@ interface VisibilityRule {
   entityId: string;
   attribute?: string;
   operator: string;
-  value: string;
+  value?: string;
 }
 
 interface EntityState {
@@ -19,6 +19,16 @@ interface VisibilityGateProps {
   children: ReactNode;
 }
 
+const FALSY_STRINGS = new Set(["", "0", "false", "off", "no", "unavailable", "unknown"]);
+
+function isFalsyValue(v: unknown): boolean {
+  if (v === null || v === undefined) return true;
+  if (typeof v === "boolean") return !v;
+  if (typeof v === "number") return v === 0;
+  if (typeof v === "string") return FALSY_STRINGS.has(v.toLowerCase());
+  return false;
+}
+
 function evaluate(
   rule: VisibilityRule,
   entities: Record<string, EntityState>
@@ -26,12 +36,17 @@ function evaluate(
   const entity = entities[rule.entityId];
   if (!entity) return false;
 
-  const actual = rule.attribute
-    ? String(entity.attributes[rule.attribute] ?? "")
+  const source = rule.attribute
+    ? entity.attributes[rule.attribute]
     : entity.state;
-  const expected = rule.value;
+  const actual = typeof source === "string" ? source : String(source ?? "");
+  const expected = rule.value ?? "";
 
   switch (rule.operator) {
+    case "isTruthy":
+      return !isFalsyValue(source);
+    case "isFalsy":
+      return isFalsyValue(source);
     case "eq":
       return actual === expected;
     case "neq":

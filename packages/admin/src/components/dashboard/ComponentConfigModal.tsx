@@ -15,6 +15,8 @@ import { DeleteOutlined, PlusOutlined, MinusCircleOutlined } from "@ant-design/i
 import { EntitySelector } from "../selectors/EntitySelector.js";
 import { MdiIconSelector } from "../selectors/MdiIconSelector.js";
 import { LivePreview } from "../preview/LivePreview.js";
+import { VisibilityRuleEditor } from "./VisibilityRuleEditor.js";
+import type { VisibilityRule } from "@ha-external-dashboards/shared";
 
 interface ParameterDef {
   name: string;
@@ -30,13 +32,6 @@ interface EntitySelectorDef {
   label: string;
   mode: "single" | "multiple" | "glob";
   allowedDomains?: string[];
-}
-
-interface VisibilityRule {
-  entityId: string;
-  attribute?: string;
-  operator: string;
-  value: string;
 }
 
 interface GlobAttributeFilter {
@@ -578,57 +573,16 @@ export function ComponentConfigModal({
                     {visibilityRules.map((rule, i) => (
                       <Space
                         key={i}
-                        style={{ display: "flex", marginBottom: 8 }}
+                        direction="vertical"
+                        style={{ display: "flex", marginBottom: 12, width: "100%" }}
                       >
-                        <Input
-                          placeholder="Entity ID"
-                          value={rule.entityId}
-                          onChange={(e) => {
+                        <VisibilityRuleEditor
+                          value={rule}
+                          onChange={(r) => {
                             const next = [...visibilityRules];
-                            next[i] = { ...next[i], entityId: e.target.value };
+                            next[i] = r;
                             setVisibilityRules(next);
                           }}
-                          style={{ width: 160 }}
-                        />
-                        <Input
-                          placeholder="Attribute"
-                          value={rule.attribute ?? ""}
-                          onChange={(e) => {
-                            const next = [...visibilityRules];
-                            next[i] = {
-                              ...next[i],
-                              attribute: e.target.value || undefined,
-                            };
-                            setVisibilityRules(next);
-                          }}
-                          style={{ width: 100 }}
-                        />
-                        <Select
-                          value={rule.operator}
-                          onChange={(v) => {
-                            const next = [...visibilityRules];
-                            next[i] = { ...next[i], operator: v };
-                            setVisibilityRules(next);
-                          }}
-                          style={{ width: 80 }}
-                          options={[
-                            { value: "eq", label: "=" },
-                            { value: "neq", label: "!=" },
-                            { value: "gt", label: ">" },
-                            { value: "lt", label: "<" },
-                            { value: "gte", label: ">=" },
-                            { value: "lte", label: "<=" },
-                          ]}
-                        />
-                        <Input
-                          placeholder="Value"
-                          value={rule.value}
-                          onChange={(e) => {
-                            const next = [...visibilityRules];
-                            next[i] = { ...next[i], value: e.target.value };
-                            setVisibilityRules(next);
-                          }}
-                          style={{ width: 100 }}
                         />
                         <Button
                           size="small"
@@ -639,7 +593,9 @@ export function ComponentConfigModal({
                               visibilityRules.filter((_, j) => j !== i)
                             )
                           }
-                        />
+                        >
+                          Remove Rule
+                        </Button>
                       </Space>
                     ))}
                     <Button
@@ -647,7 +603,7 @@ export function ComponentConfigModal({
                       onClick={() =>
                         setVisibilityRules([
                           ...visibilityRules,
-                          { entityId: "", operator: "eq", value: "" },
+                          { entityId: "", operator: "isTruthy" },
                         ])
                       }
                     >
