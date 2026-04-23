@@ -348,8 +348,15 @@ export function DisplayApp() {
       });
     });
 
-    // Subscribe to derived entities (from deriveEntity helper) on demand
+    // Subscribe to derived entities (from deriveEntity helper) on demand.
+    // Clear requestedEntities on each (re)connect so derived entities are
+    // re-subscribed after a reconnect — the previous connection's server-side
+    // subscriptions are gone and subscribeEntities may have silently dropped
+    // messages if the WS wasn't OPEN yet on the first attempt.
     const requestedEntities = new Set<string>();
+    client.on("open", () => {
+      requestedEntities.clear();
+    });
     setDerivedEntityHandler((entityIds) => {
       const newIds = entityIds.filter((id) => !requestedEntities.has(id));
       if (newIds.length === 0) return;

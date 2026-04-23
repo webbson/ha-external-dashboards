@@ -78,6 +78,11 @@ export class DisplayClient {
       }
     };
 
+    this.ws.onopen = () => {
+      const handlers = this.handlers.get("open") ?? [];
+      for (const handler of handlers) handler({});
+    };
+
     this.ws.onclose = () => {
       if (this.closed) return;
       this.reconnectTimer = setTimeout(() => this.connect(), 3000);
@@ -148,9 +153,9 @@ export class DisplayClient {
   }
 
   subscribeEntities(entityIds: string[]) {
-    this.ws?.send(
-      JSON.stringify({ type: "subscribe_entities", entityIds })
-    );
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: "subscribe_entities", entityIds }));
+    }
   }
 
   callService(domain: string, service: string, data: Record<string, unknown>) {

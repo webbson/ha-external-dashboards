@@ -1385,8 +1385,8 @@ comp.addEventListener('click', function() {
   sceneSelector,
   {
     name: "Image Card",
-    template: `<div class="image-card"><img src="/assets/{{param "asset"}}" style="object-fit: {{param "fit"}}" alt="{{param "alt"}}" /></div>`,
-    styles: `.image-card { width: 100%; height: 100%; display: flex; align-items: stretch; }
+    template: `<div class="image-card" style="padding: {{param "padding"}}px; max-width: {{param "maxWidth"}}; margin: auto"><img src="/assets/{{param "asset"}}" style="object-fit: {{param "fit"}}" alt="{{param "alt"}}" /></div>`,
+    styles: `.image-card { width: 100%; height: 100%; display: flex; align-items: stretch; box-sizing: border-box; }
 .image-card img { width: 100%; height: 100%; border-radius: var(--radius, 0); }`,
     parameterDefs: [
       { name: "asset", label: "Image asset", type: "asset", default: "" },
@@ -1402,6 +1402,8 @@ comp.addEventListener('click', function() {
           { label: "None", value: "none" },
         ],
       },
+      { name: "padding", label: "Padding (px)", type: "number", default: 0 },
+      { name: "maxWidth", label: "Max width (e.g. 400px, 50%)", type: "string", default: "none" },
       { name: "alt", label: "Alt text", type: "string", default: "" },
     ],
     entitySelectorDefs: [],
