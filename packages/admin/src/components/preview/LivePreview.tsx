@@ -3,6 +3,18 @@ import { Button, Card, Spin } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import { api } from "../../api.js";
 
+const REWRITE_PREFIXES = ["assets", "api/image_proxy", "api/camera_proxy", "api/icons"];
+
+function rewriteIngressUrls(html: string): string {
+  const ingressPrefix = new URL(document.baseURI).pathname.replace(/\/$/, "");
+  if (!ingressPrefix) return html;
+  const pattern = new RegExp(
+    `([\\s"'(=])/(${REWRITE_PREFIXES.join("|")})/`,
+    "g",
+  );
+  return html.replace(pattern, `$1${ingressPrefix}/$2/`);
+}
+
 interface EntityFilterEntry {
   attributeFilters?: { attribute: string; operator: string; value: string }[];
   stateFilters?: { operator: string; value: string }[];
@@ -58,12 +70,15 @@ export function LivePreview({
         const doc = iframe.contentDocument;
         if (!doc) return;
 
+        const safeHtml = rewriteIngressUrls(html);
+        const safeStyles = rewriteIngressUrls(css ?? "");
+
         // Scope :host to the preview wrapper, same as display runtime
-        const scopedCss = css.replaceAll(":host", "[data-preview]");
+        const scopedCss = safeStyles.replaceAll(":host", "[data-preview]");
 
         const bodyBg =
           bgType === "image" && bgImage
-            ? `background-image: url(/assets/${bgImage}); background-size: cover; background-position: center;`
+            ? `background-image: ${rewriteIngressUrls(`url(/assets/${bgImage})`)}; background-size: cover; background-position: center;`
             : `background-color: ${bgColor};`;
 
         doc.open();
@@ -93,7 +108,7 @@ export function LivePreview({
     ${scopedCss}
   </style>
 </head>
-<body><div data-chrome><div data-preview>${html.replace(/<script>/g, '<script type="text/x-component">')}</div></div>
+<body><div data-chrome><div data-preview>${safeHtml.replace(/<script>/g, '<script type="text/x-component">')}</div></div>
 <script>
 document.querySelectorAll('script[type="text/x-component"]').forEach(function(s) {
   var comp = document.querySelector('[data-preview]');
