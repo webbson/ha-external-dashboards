@@ -3,9 +3,11 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { App } from "./App.js";
 
+const basename = new URL(document.baseURI).pathname.replace(/\/$/, "");
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={basename || "/"}>
       <App />
     </BrowserRouter>
   </StrictMode>

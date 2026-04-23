@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router";
 import { Layout, Menu, ConfigProvider, theme, Button } from "antd";
 import {
   DashboardOutlined,
@@ -106,7 +106,8 @@ function AppLayout({ isDark, toggle }: { isDark: boolean; toggle: () => void }) 
       <Layout style={{ background: token.colorBgLayout }}>
         <Content style={{ padding: 24 }}>
           <Routes>
-            <Route path="/" element={<DashboardList />} />
+            <Route index element={<Navigate to="/dashboards" replace />} />
+            <Route path="*" element={<Navigate to="/dashboards" replace />} />
             <Route path="/dashboards" element={<DashboardList />} />
             <Route path="/dashboards/new" element={<DashboardEditor />} />
             <Route path="/dashboards/:id" element={<DashboardEditor />} />
