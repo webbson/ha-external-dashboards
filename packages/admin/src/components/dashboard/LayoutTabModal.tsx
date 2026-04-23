@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Modal, Form, Select, Button, Space, theme, Checkbox, InputNumber, Divider } from "antd";
+import { Modal, Form, Input, Select, Button, Space, theme, Checkbox, InputNumber, Divider } from "antd";
 import { MdiIconSelector } from "../selectors/MdiIconSelector.js";
 import type { VisibilityRule } from "@ha-external-dashboards/shared";
 import { VisibilityRuleEditor } from "./VisibilityRuleEditor.js";
