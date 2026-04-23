@@ -1,4 +1,4 @@
-import { Radio, Select, Input, Space } from "antd";
+import { Radio, Select, Input } from "antd";
 import type { VisibilityRule, VisibilityOperator } from "@ha-external-dashboards/shared";
 import { EntitySelector } from "../selectors/EntitySelector.js";
 
@@ -24,7 +24,7 @@ export function VisibilityRuleEditor({
   const needsValue = value.operator !== "isTruthy" && value.operator !== "isFalsy";
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
       <EntitySelector
         mode="single"
         value={value.entityId}
@@ -62,6 +62,6 @@ export function VisibilityRuleEditor({
           onChange={(e) => onChange({ ...value, value: e.target.value })}
         />
       )}
-    </Space>
+    </div>
   );
 }
