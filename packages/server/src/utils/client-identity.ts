@@ -16,6 +16,7 @@ import type { FastifyRequest } from "fastify";
 
 const MAC_RE = /lladdr\s+([0-9a-f]{2}(?::[0-9a-f]{2}){5})/i;
 const LOCAL_IPS = new Set(["127.0.0.1", "::1", "localhost"]);
+const hostNetworkEnabled = process.env.HOST_NETWORK === "true";
 
 /**
  * Extract a usable client IP from a Fastify request. Strips IPv6-mapped
@@ -55,6 +56,7 @@ function execWithTimeout(
  * IP is not in the ARP cache, or the lookup times out.
  */
 export async function resolveMac(ip: string | null): Promise<string | null> {
+  if (!hostNetworkEnabled) return null;
   if (!ip || LOCAL_IPS.has(ip)) return null;
   const out = await execWithTimeout("ip", ["neigh", "show", ip], 250);
   if (!out) return null;
@@ -67,6 +69,7 @@ export async function resolveMac(ip: string | null): Promise<string | null> {
  * or if it takes longer than the timeout.
  */
 export async function reverseDns(ip: string | null): Promise<string | null> {
+  if (!hostNetworkEnabled) return null;
   if (!ip || LOCAL_IPS.has(ip)) return null;
   try {
     const result = await Promise.race([

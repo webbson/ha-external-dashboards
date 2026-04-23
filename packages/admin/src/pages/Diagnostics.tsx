@@ -111,6 +111,7 @@ const POLL_INTERVAL_MS = 5000;
 export function Diagnostics() {
   const [data, setData] = useState<DiagnosticsPayload | null>(null);
   const [knownClients, setKnownClients] = useState<KnownClient[] | null>(null);
+  const [hostNetwork, setHostNetwork] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const visibleRef = useRef(
@@ -134,15 +135,20 @@ export function Diagnostics() {
 
     const fetchOnce = async () => {
       try {
-        const [diagRes, clients] = await Promise.all([
+        const [diagRes, clients, settingsRes] = await Promise.all([
           fetch(apiUrl("/api/admin/diagnostics")),
           fetchClients(),
+          fetch(apiUrl("/api/settings")),
         ]);
         if (!diagRes.ok) throw new Error(`HTTP ${diagRes.status}`);
         const json = (await diagRes.json()) as DiagnosticsPayload;
+        const settings = settingsRes.ok
+          ? ((await settingsRes.json()) as { hostNetwork?: boolean })
+          : null;
         if (!cancelled) {
           setData(json);
           setKnownClients(clients);
+          setHostNetwork(settings?.hostNetwork ?? false);
           setError(null);
         }
       } catch (err) {
@@ -421,31 +427,30 @@ export function Diagnostics() {
                     }}
                     type={row.alias ? undefined : "secondary"}
                   >
-                    {row.alias ??
-                      (row.hostname
-                        ? `(suggest: ${row.hostname})`
-                        : "(unset)")}
+                    {row.alias ?? "(unset)"}
                   </Typography.Text>
                 ),
               },
-              {
-                title: "Hostname",
-                dataIndex: "hostname",
-                render: (h: string | null) =>
-                  h ?? <Typography.Text type="secondary">—</Typography.Text>,
-              },
-              {
-                title: "MAC",
-                dataIndex: "macAddress",
-                render: (mac: string | null, row) =>
-                  mac ? (
-                    <Typography.Text code>{mac}</Typography.Text>
-                  ) : (
-                    <Tooltip title="MAC could not be resolved — row is keyed by IP. Enable host_network for the add-on to unlock MAC tracking.">
-                      <Tag color="default">IP-based</Tag>
-                    </Tooltip>
-                  ),
-              },
+              ...(hostNetwork
+                ? [
+                    {
+                      title: "Hostname",
+                      dataIndex: "hostname",
+                      render: (h: string | null) =>
+                        h ?? <Typography.Text type="secondary">—</Typography.Text>,
+                    },
+                    {
+                      title: "MAC",
+                      dataIndex: "macAddress",
+                      render: (mac: string | null) =>
+                        mac ? (
+                          <Typography.Text code>{mac}</Typography.Text>
+                        ) : (
+                          <Typography.Text type="secondary">—</Typography.Text>
+                        ),
+                    },
+                  ]
+                : []),
               {
                 title: "Last IP",
                 dataIndex: "lastIp",

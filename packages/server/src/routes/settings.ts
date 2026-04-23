@@ -57,6 +57,7 @@ export async function settingsRoutes(app: FastifyInstance) {
       devMode,
       mcpEnabled: !!process.env.MCP_API_KEY || devMode,
       mcpApiKey: process.env.MCP_API_KEY ?? null,
+      hostNetwork: process.env.HOST_NETWORK === "true",
     };
   });
 }
