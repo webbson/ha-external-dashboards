@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
+import { html as beautifyHtml, css as beautifyCss } from "js-beautify";
 
 interface EntitySelectorDef {
   name: string;
@@ -71,6 +72,50 @@ function collectEntityIds(): string[] {
   }
 
   return Array.from(ids);
+}
+
+/**
+ * Format a Handlebars/HTML template synchronously.
+ *
+ * Monaco's built-in HTML formatter corrupts Handlebars string literals inside
+ * HTML attribute values — the `"` characters inside `{{ ... "sensor" ... }}`
+ * trick its tokenizer into thinking the attribute value ended, and it
+ * rewrites `"sensor"` as `" sensor"`. To dodge that entirely we:
+ *
+ *   1. Replace every {{ ... }} / {{{ ... }}} span with an opaque placeholder
+ *      (`__HB0__`, `__HB1__`, ...). Placeholders contain only word chars, so
+ *      no HTML formatter will touch them.
+ *   2. Run js-beautify synchronously on the placeholder-ified HTML.
+ *   3. Restore the original Handlebars spans verbatim.
+ */
+function formatHandlebarsSync(source: string): string {
+  const placeholders: string[] = [];
+  const substituted = source.replace(
+    /\{\{\{[\s\S]*?\}\}\}|\{\{[\s\S]*?\}\}/g,
+    (match) => {
+      const idx = placeholders.length;
+      placeholders.push(match);
+      return `__HB${idx}__`;
+    }
+  );
+
+  const formatted = beautifyHtml(substituted, {
+    indent_size: 2,
+    wrap_line_length: 0,
+    preserve_newlines: true,
+    max_preserve_newlines: 2,
+    end_with_newline: true,
+    unformatted: ["code", "pre"],
+    content_unformatted: ["pre", "textarea"],
+    extra_liners: [],
+  });
+
+  return formatted.replace(/__HB(\d+)__/g, (_, i) => {
+    const original = placeholders[parseInt(i, 10)];
+    // If the placeholder lookup somehow fails (shouldn't be possible), leave
+    // the placeholder token in place rather than inserting `undefined`.
+    return original ?? _;
+  });
 }
 
 let completionProviderRegistered = false;
@@ -203,10 +248,43 @@ export function CodeEditor({
         }
       }}
       onMount={(editor, monaco) => {
-        // Auto-format on load so minified code is readable
-        setTimeout(() => {
-          editor.getAction("editor.action.formatDocument")?.run();
-        }, 100);
+        // Auto-format on load so minified code is readable.
+        //
+        // We intentionally do NOT use Monaco's built-in formatter
+        // (editor.action.formatDocument) because:
+        //   - CSS: acceptable but we want consistent tooling.
+        //   - HTML/Handlebars: Monaco's HTML formatter runs in a web worker
+        //     asynchronously, which creates impossible races when trying to
+        //     hide Handlebars expressions behind placeholders (action.run()
+        //     resolves before the worker applies edits; onDidChangeContent
+        //     fires before the edits land; polling with a timeout is
+        //     unreliable). More importantly, Monaco's HTML formatter
+        //     corrupts Handlebars string literals inside HTML attribute
+        //     values — the `"` inside {{ ... "sensor" ... }} confuses its
+        //     tokenizer and it rewrites `"sensor"` as `" sensor"`.
+        //
+        // Instead we format synchronously with js-beautify before we even
+        // set the model value. For Handlebars we escape {{ ... }} spans to
+        // opaque placeholders first, format, then restore. No worker, no
+        // race, no poll — the value that lands in the model is already
+        // final.
+        const model = editor.getModel();
+        if (model) {
+          try {
+            const original = model.getValue();
+            const formatted =
+              language === "css"
+                ? beautifyCss(original, { indent_size: 2, end_with_newline: true })
+                : formatHandlebarsSync(original);
+            if (formatted !== original) {
+              model.setValue(formatted);
+              onChange(formatted);
+            }
+          } catch {
+            // If formatting fails for any reason, leave the original
+            // content untouched rather than corrupting it.
+          }
+        }
 
         // Ctrl/Cmd+S to trigger save. Monaco prevents the browser default
         // while the editor has focus.
