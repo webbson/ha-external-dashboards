@@ -1,6 +1,6 @@
 {
   "name": "@ha-external-dashboards/server",
-  "version": "0.0.1",
+  "version": "0.1.4",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",

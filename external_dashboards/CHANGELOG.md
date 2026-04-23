@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-04-23
+
+### Added
+
+- **Visibility rules** now support targeting entity `state` directly (in addition to
+  attributes) via an explicit State/Attribute radio in the editor. Two new operators
+  `isTruthy` / `isFalsy` cover "has any value" / "is off/empty" cases without
+  needing to type an exact match value. Falsy set: `""`, `"0"`, `"false"`, `"off"`,
+  `"no"`, `"unavailable"`, `"unknown"`.
+- **Visibility rule entity field** now uses the existing `EntitySelector` autocomplete
+  instead of a plain text input.
+- **`external_base_url` addon config option** — set explicitly in the add-on UI, or
+  leave blank to auto-detect: the server queries the HA Supervisor network API at
+  startup and derives `http://<host-ip>:<EXTERNAL_PORT>`. The "Open dashboard" button
+  in the admin panel is now usable on most installs without manual config.
+- **Prebuilt Image Card** component — place an uploaded asset as a full-bleed image.
+  Supports cover/contain/fill/none object-fit and alt text.
+- **`asset` parameter type** — component authors can declare a parameter of type
+  `"asset"` to get a searchable dropdown of uploaded assets instead of a text field.
+  Applies in both the component test panel and the dashboard component editor.
+- **Clock font size parameters** — `timeSize` (default 4 em) and `dateSize`
+  (default 1.2 em) are now editable per instance.
+
+### Fixed
+
+- Admin SPA opens correctly when launched from the Home Assistant sidebar (ingress
+  URL). `<BrowserRouter>` now derives its `basename` from the server-injected
+  `<base href>` so React Router matches routes under
+  `/api/hassio_ingress/<token>/`. A root-path redirect ensures `/` → `/dashboards`.
+- Dashboard editor regions now use `minmax(120px, auto)` row heights instead of the
+  layout's fixed pixel values, so all placed components are visible while editing.
+  The display runtime (port 8099) continues to use the real grid proportions.
+- Component preview in the admin panel now rewrites absolute-path asset and proxy
+  URLs (`/assets/…`, `/api/image_proxy/…`, `/api/camera_proxy/…`, `/api/icons/…`)
+  to include the HA ingress prefix, so images and icons render correctly when the
+  admin is opened via HA ingress.
+- MAC address and hostname columns are hidden from the Diagnostics page by default.
+  Both columns (and the underlying ARP/DNS resolution calls) are skipped unless the
+  add-on is started with `HOST_NETWORK=true`. Existing installs see a cleaner
+  Diagnostics table with no permanently empty columns.
+- Server version shown in Diagnostics now matches the add-on version tag
+  (`packages/server/package.json` kept in sync with `config.yaml`).
+
 ## [0.1.3] — 2026-04-22
 
 ### Fixed
@@ -122,7 +165,8 @@ First public release as a Home Assistant add-on.
 - MAC-based client identification requires `host_network: true`; without it,
   clients are tracked by IP only.
 
-[Unreleased]: https://github.com/webbson/ha-external-dashboards/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/webbson/ha-external-dashboards/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.4
 [0.1.3]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.3
 [0.1.2]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.2
 [0.1.1]: https://github.com/webbson/ha-external-dashboards/releases/tag/v0.1.1
