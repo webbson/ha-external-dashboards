@@ -1,6 +1,6 @@
 name: "External Dashboards"
 description: "Create and display dashboards outside of Home Assistant"
-version: "0.1.5"
+version: "0.1.6"
 slug: "external_dashboards"
 url: "https://github.com/webbson/ha-external-dashboards"
 image: "ghcr.io/webbson/{arch}-external-dashboards"
