@@ -23,6 +23,7 @@ const SECRETS_PATH = path.join(DATA_DIR, "secrets.json");
 interface AddonOptions {
   jwt_secret?: string;
   mcp_api_key?: string;
+  external_base_url?: string;
 }
 
 interface PersistedSecrets {
@@ -86,5 +87,11 @@ export function loadAddonOptions(): void {
   // explicitly opts in to the MCP endpoint by setting a key.
   if (!process.env.MCP_API_KEY && opts.mcp_api_key) {
     process.env.MCP_API_KEY = opts.mcp_api_key;
+  }
+
+  // external_base_url: env wins → options.json. Falls back to supervisor IP
+  // detection at request time in settings.ts when not set here.
+  if (!process.env.EXTERNAL_BASE_URL && opts.external_base_url) {
+    process.env.EXTERNAL_BASE_URL = opts.external_base_url;
   }
 }
