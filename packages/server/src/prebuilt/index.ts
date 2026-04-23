@@ -11,7 +11,7 @@ import { sceneSelector } from "./scene-selector.js";
 const prebuiltComponents: PrebuiltComponent[] = [
   {
     name: "Clock",
-    template: `<div class="clock" data-time-format="{{param "timeFormat"}}" data-date-format="{{param "dateFormat"}}">
+    template: `<div class="clock" data-time-format="{{param "timeFormat"}}" data-date-format="{{param "dateFormat"}}" style="--clock-time-size: {{timeSize}}em; --clock-date-size: {{dateSize}}em;">
   <div class="clock-time" id="clock-time"></div>
   {{#if (param "showDate")}}<div class="clock-date" id="clock-date"></div>{{/if}}
 </div>
@@ -34,10 +34,12 @@ const prebuiltComponents: PrebuiltComponent[] = [
 })();
 </script>`,
     styles: `.clock { text-align: center; padding: 20px; }
-.clock-time { font-size: 4em; font-weight: 200; color: var(--db-font-color, #fff); }
-.clock-date { font-size: 1.2em; color: var(--db-font-color-secondary, #aaa); margin-top: 8px; }`,
+.clock-time { font-size: var(--clock-time-size, 4em); font-weight: 200; color: var(--db-font-color, #fff); }
+.clock-date { font-size: var(--clock-date-size, 1.2em); color: var(--db-font-color-secondary, #aaa); margin-top: 8px; }`,
     parameterDefs: [
       { name: "showDate", label: "Show Date", type: "boolean", default: true },
+      { name: "timeSize", label: "Time font size (em)", type: "number", default: 4 },
+      { name: "dateSize", label: "Date font size (em)", type: "number", default: 1.2 },
       {
         name: "timeFormat", label: "Time Format", type: "select", default: "12h",
         options: [
