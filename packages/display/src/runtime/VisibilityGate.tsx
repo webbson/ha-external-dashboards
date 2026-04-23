@@ -1,11 +1,5 @@
 import { type ReactNode } from "react";
-
-interface VisibilityRule {
-  entityId: string;
-  attribute?: string;
-  operator: string;
-  value?: string;
-}
+import type { VisibilityRule } from "@ha-external-dashboards/shared";
 
 interface EntityState {
   entity_id: string;
@@ -36,7 +30,7 @@ function evaluate(
   const entity = entities[rule.entityId];
   if (!entity) return false;
 
-  const source = rule.attribute
+  const source = rule.attribute && rule.attribute !== ""
     ? entity.attributes[rule.attribute]
     : entity.state;
   const actual = typeof source === "string" ? source : String(source ?? "");

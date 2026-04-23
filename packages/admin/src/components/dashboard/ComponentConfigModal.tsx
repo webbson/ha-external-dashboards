@@ -571,10 +571,9 @@ export function ComponentConfigModal({
                 children: (
                   <div>
                     {visibilityRules.map((rule, i) => (
-                      <Space
+                      <div
                         key={i}
-                        direction="vertical"
-                        style={{ display: "flex", marginBottom: 12, width: "100%" }}
+                        style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", marginBottom: 12 }}
                       >
                         <VisibilityRuleEditor
                           value={rule}
@@ -596,7 +595,7 @@ export function ComponentConfigModal({
                         >
                           Remove Rule
                         </Button>
-                      </Space>
+                      </div>
                     ))}
                     <Button
                       size="small"

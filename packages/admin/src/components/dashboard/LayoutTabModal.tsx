@@ -142,7 +142,7 @@ export function LayoutTabModal({
 
         <div style={{ marginBottom: 12 }}>
           {visibilityRules.map((rule, i) => (
-            <Space key={i} direction="vertical" style={{ display: "flex", marginBottom: 12, width: "100%" }}>
+            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", marginBottom: 12 }}>
               <VisibilityRuleEditor
                 value={rule}
                 onChange={(r) => {
@@ -158,7 +158,7 @@ export function LayoutTabModal({
               >
                 Remove Rule
               </Button>
-            </Space>
+            </div>
           ))}
           <Button
             size="small"
