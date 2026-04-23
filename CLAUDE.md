@@ -185,6 +185,6 @@ HA WS API → ha-client.ts → ws/manager.ts → Display WS clients (filtered by
 - `INGRESS_PORT` — Admin port (default: 8080)
 - `EXTERNAL_PORT` — Display port (default: 8099)
 - `JWT_SECRET` — JWT signing secret for dashboard password auth and ext_session cookies
-- `EXTERNAL_BASE_URL` — Base URL for external dashboards (e.g. `http://192.168.1.100:8099`)
+- `EXTERNAL_BASE_URL` — Base URL for external dashboards (e.g. `http://192.168.1.100:8099`). If unset, auto-detected from HA Supervisor network API (`http://supervisor/network/info`). Also readable from addon config option `external_base_url` via `/data/options.json`.
 - `MCP_API_KEY` — API key for MCP endpoint auth (required in production, optional in dev)
 - `NODE_ENV` — Set to "development" to skip ingress auth and MCP auth

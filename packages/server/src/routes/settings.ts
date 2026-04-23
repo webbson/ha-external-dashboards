@@ -1,27 +1,39 @@
 import { FastifyInstance } from "fastify";
 
-let cachedSupervisorUrl: string | null | undefined; // undefined = not yet attempted
+let cachedSupervisorUrl: string | undefined; // undefined = not yet succeeded
+let lastSupervisorAttempt = 0;
+const SUPERVISOR_RETRY_MS = 30_000;
 
 async function detectSupervisorBaseUrl(): Promise<string | null> {
   const token = process.env.SUPERVISOR_TOKEN;
-  if (!token) return null;
+  if (!token) {
+    console.debug("EXTERNAL_BASE_URL: no SUPERVISOR_TOKEN, skipping supervisor detection");
+    return null;
+  }
   try {
     const res = await fetch("http://supervisor/network/info", {
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(3000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`EXTERNAL_BASE_URL: supervisor /network/info returned ${res.status}`);
+      return null;
+    }
     const body = (await res.json()) as {
       data?: { interfaces?: Array<{ primary?: boolean; ipv4?: { address?: string[] } }> };
     };
     const ifaces = body.data?.interfaces ?? [];
     const primary = ifaces.find((i) => i.primary) ?? ifaces[0];
     const cidr = primary?.ipv4?.address?.[0];
-    if (!cidr) return null;
+    if (!cidr) {
+      console.warn("EXTERNAL_BASE_URL: supervisor returned no IPv4 address on primary interface");
+      return null;
+    }
     const ip = cidr.split("/")[0];
     const port = process.env.EXTERNAL_PORT ?? "8099";
     return `http://${ip}:${port}`;
-  } catch {
+  } catch (err) {
+    console.warn("EXTERNAL_BASE_URL: supervisor detection failed:", err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -32,10 +44,12 @@ export async function settingsRoutes(app: FastifyInstance) {
 
     let externalBaseUrl: string | null = process.env.EXTERNAL_BASE_URL?.trim() || null;
     if (!externalBaseUrl) {
-      if (cachedSupervisorUrl === undefined) {
-        cachedSupervisorUrl = await detectSupervisorBaseUrl();
+      if (!cachedSupervisorUrl && Date.now() - lastSupervisorAttempt > SUPERVISOR_RETRY_MS) {
+        lastSupervisorAttempt = Date.now();
+        const detected = await detectSupervisorBaseUrl();
+        if (detected) cachedSupervisorUrl = detected;
       }
-      externalBaseUrl = cachedSupervisorUrl;
+      externalBaseUrl = cachedSupervisorUrl ?? null;
     }
 
     return {
