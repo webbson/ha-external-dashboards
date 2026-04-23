@@ -16,10 +16,16 @@ export function AssetSelect({
   const [assets, setAssets] = useState<Asset[]>([]);
   useEffect(() => {
     fetch(apiUrl("/api/assets"))
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`/api/assets ${r.status}`);
+        return r.json();
+      })
       .then((data: Asset[]) =>
         setAssets(mimePrefix ? data.filter((a) => a.mimeType.startsWith(mimePrefix)) : data),
-      );
+      )
+      .catch(() => {
+        // leave assets as [] — dropdown shows empty with no crash
+      });
   }, [mimePrefix]);
   return (
     <Select
