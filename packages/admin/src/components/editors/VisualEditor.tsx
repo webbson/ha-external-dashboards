@@ -7,7 +7,7 @@ import { api } from "../../api.js";
 interface ParameterDef {
   name: string;
   label: string;
-  type: "string" | "number" | "boolean" | "color" | "select" | "icon";
+  type: "string" | "number" | "boolean" | "color" | "select" | "icon" | "asset" | "textarea";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
   step?: number;
@@ -306,6 +306,7 @@ export function VisualEditor({
                       { value: "color", label: "Color" },
                       { value: "icon", label: "Icon" },
                       { value: "select", label: "Select" },
+                      { value: "asset", label: "Asset" },
                     ]}
                   />
                 </td>

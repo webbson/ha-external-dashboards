@@ -71,7 +71,7 @@ interface Layout {
 interface ParameterDef {
   name: string;
   label: string;
-  type: "string" | "textarea" | "number" | "boolean" | "color" | "select" | "icon";
+  type: "string" | "textarea" | "number" | "boolean" | "color" | "select" | "icon" | "asset";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
   step?: number;

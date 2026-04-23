@@ -14,6 +14,7 @@ import {
 import { DeleteOutlined, PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
 import { EntitySelector } from "../selectors/EntitySelector.js";
 import { MdiIconSelector } from "../selectors/MdiIconSelector.js";
+import { AssetSelect } from "../selectors/AssetSelect.js";
 import { LivePreview } from "../preview/LivePreview.js";
 import { VisibilityRuleEditor } from "./VisibilityRuleEditor.js";
 import type { VisibilityRule } from "@ha-external-dashboards/shared";
@@ -21,7 +22,7 @@ import type { VisibilityRule } from "@ha-external-dashboards/shared";
 interface ParameterDef {
   name: string;
   label: string;
-  type: "string" | "number" | "boolean" | "color" | "select" | "icon";
+  type: "string" | "number" | "boolean" | "color" | "select" | "icon" | "asset" | "textarea";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
   step?: number;
@@ -522,6 +523,17 @@ export function ComponentConfigModal({
                           [def.name]: v ?? "",
                         }))
                       }
+                    />
+                  ) : def.type === "asset" ? (
+                    <AssetSelect
+                      value={parameterValues[def.name] as string | undefined}
+                      onChange={(fileName) =>
+                        setParameterValues((prev) => ({
+                          ...prev,
+                          [def.name]: fileName,
+                        }))
+                      }
+                      mimePrefix="image/"
                     />
                   ) : def.type === "color" ? (
                     <Input

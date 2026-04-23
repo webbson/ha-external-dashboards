@@ -7,7 +7,7 @@ import { TemplateHelperReference } from "./TemplateHelperReference.js";
 interface ParameterDef {
   name: string;
   label: string;
-  type: "string" | "number" | "boolean" | "color" | "select" | "icon";
+  type: "string" | "number" | "boolean" | "color" | "select" | "icon" | "asset" | "textarea";
   default?: string | number | boolean;
   options?: { label: string; value: string }[];
   step?: number;

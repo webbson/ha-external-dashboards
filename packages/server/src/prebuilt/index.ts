@@ -1383,6 +1383,31 @@ comp.addEventListener('click', function() {
   serviceButton,
   miniHistory,
   sceneSelector,
+  {
+    name: "Image Card",
+    template: `<div class="image-card"><img src="/assets/{{param "asset"}}" style="object-fit: {{param "fit"}}" alt="{{param "alt"}}" /></div>`,
+    styles: `.image-card { width: 100%; height: 100%; display: flex; align-items: stretch; }
+.image-card img { width: 100%; height: 100%; border-radius: var(--radius, 0); }`,
+    parameterDefs: [
+      { name: "asset", label: "Image asset", type: "asset", default: "" },
+      {
+        name: "fit",
+        label: "Fit",
+        type: "select",
+        default: "cover",
+        options: [
+          { label: "Cover", value: "cover" },
+          { label: "Contain", value: "contain" },
+          { label: "Fill", value: "fill" },
+          { label: "None", value: "none" },
+        ],
+      },
+      { name: "alt", label: "Alt text", type: "string", default: "" },
+    ],
+    entitySelectorDefs: [],
+    isContainer: false,
+    containerConfig: null,
+  },
 ];
 
 export async function seedPrebuiltComponents() {
