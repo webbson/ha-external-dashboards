@@ -1,6 +1,8 @@
 # Home Assistant Integration
 
-## Popup Notifications from Automations
+This page covers how to call External Dashboards from HA automations and how to deploy dashboards to kiosk / browser-mode devices. For dashboard access modes and interactive mode, see [user-guide/dashboards.md](user-guide/dashboards.md).
+
+## Popup notifications from automations
 
 External Dashboards exposes a REST endpoint for triggering popups. This integrates with HA's `rest_command` platform.
 
@@ -25,7 +27,7 @@ rest_command:
     payload: '{"content": {"type": "text", "body": "{{ message }}"}, "timeout": {{ timeout | default(10) }}}'
 ```
 
-### Usage in Automations
+### Usage in automations
 
 ```yaml
 automation:
@@ -51,9 +53,9 @@ automation:
           popup_id: 3
 ```
 
-### Targeting Specific Dashboards
+### Targeting specific dashboards
 
-By default, popups appear on all connected displays. To target specific dashboards, configure `targetDashboardIds` in the popup editor or pass them in the REST call:
+By default, popups appear on all connected displays. To target specific dashboards, pass `targetDashboardIds` in the REST call:
 
 ```yaml
 rest_command:
@@ -64,40 +66,42 @@ rest_command:
     payload: '{"content": {"type": "text", "body": "{{ message }}"}, "timeout": 10, "targetDashboardIds": [1]}'
 ```
 
-## Dashboard Access Modes
+See [user-guide/popups.md](user-guide/popups.md) for the admin-side equivalent.
 
-### Public
+## Switch layout from automations
 
-No authentication required. Suitable for local network displays.
+You can remotely switch a dashboard to a specific layout tab (e.g. flash a doorbell view on motion, then auto-return):
 
-### Password Protected
+```yaml
+rest_command:
+  dashboard_switch_layout:
+    url: "http://localhost:8099/api/trigger/switch-layout"
+    method: POST
+    content_type: "application/json"
+    payload: >
+      {
+        "dashboardSlug": "{{ slug }}",
+        "layoutLabel": "{{ label }}",
+        "autoReturn": true,
+        "autoReturnDelay": 15
+      }
 
-Displays show a password prompt. After login, a JWT cookie is stored for 30 days.
-
-### Header Authentication
-
-Requires a specific HTTP header and value. Useful for reverse proxy setups:
-
-```nginx
-location /d/secure-dashboard/ {
-    proxy_pass http://localhost:8099;
-    proxy_set_header X-Dashboard-Auth my-secret-value;
-}
+automation:
+  - alias: "Flash doorbell tab on motion"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.front_door_motion
+        to: "on"
+    action:
+      - action: rest_command.dashboard_switch_layout
+        data:
+          slug: kitchen
+          label: Doorbell
 ```
 
-Configure the header name and value in the dashboard settings.
+For the full list of tabs configurable on a dashboard (labels, hide-in-tab-bar, auto-return, visibility rules), see [user-guide/dashboards.md](user-guide/dashboards.md#editor--content-tab).
 
-## Interactive Mode
-
-When enabled, the display app can send `call_service` commands to Home Assistant through the WebSocket proxy.
-
-**Security considerations:**
-- Only entities used in the dashboard can be controlled
-- Rate limited to 10 commands per second per connection
-- A warning is shown in the admin if a public dashboard has interactive mode enabled
-- The access key provides WebSocket authentication
-
-## Kiosk Deployment
+## Kiosk deployment
 
 ### Raspberry Pi + Chromium
 
@@ -111,21 +115,40 @@ When enabled, the display app can send `call_service` commands to Home Assistant
   http://<ha-ip>:8099/d/<slug>
 ```
 
-### Android Tablet
+Flags worth knowing:
+
+- `--kiosk` — fullscreen, no chrome.
+- `--noerrdialogs --disable-infobars` — suppress the "Chrome didn't shut down cleanly" bubble and the info bar.
+- `--disable-component-update` + `--check-for-update-interval=31536000` — stop background component updates that can wake the tab.
+
+### Android tablet
 
 Use Fully Kiosk Browser or WallPanel and set the URL to:
+
 ```
 http://<ha-ip>:8099/d/<slug>
 ```
+
+Useful options in Fully Kiosk:
+
+- Enable **Keep Screen On** and **Fullscreen Mode**.
+- Set **Start URL** to the dashboard URL so it loads on boot.
+- Enable **Auto Reload on Network Disconnection** to recover after Wi-Fi hiccups.
 
 ### Fire TV / Stick
 
 Use the Silk Browser or sideload Fully Kiosk Browser.
 
+### Rotating display / auto-login
+
+- On a rotated (portrait) wall display, set the screen rotation in the OS (e.g. `xrandr --output HDMI-1 --rotate left` on a Pi) rather than rotating inside the browser, so touch coordinates stay correct.
+- For auto-login on boot, configure the OS to auto-login the user and launch the browser in the session startup scripts. The snippet above shows the LXDE pattern; systemd user services and `.desktop` autostart entries are alternatives.
+
 ## Backup
 
 The add-on stores data in:
+
 - `/config/external_dashboards.db` — SQLite database (included in HA backups)
 - `/config/assets/` — Uploaded files (included in HA backups)
 
-Both paths are within the `/config` directory mapped by the add-on, so standard HA backups capture everything.
+Both paths are within the `/config` directory mapped by the add-on, so standard HA backups capture everything. The admin panel also has in-app [Backup and restore](user-guide/backup-restore.md) for a definition-only JSON export.
