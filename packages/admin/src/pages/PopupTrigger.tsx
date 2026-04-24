@@ -6,18 +6,17 @@ import {
   Select,
   Button,
   Card,
-  Alert,
   Typography,
   Radio,
   Row,
   Col,
-  Collapse,
+  Tooltip,
   message,
 } from "antd";
-import { SendOutlined } from "@ant-design/icons";
+import { SendOutlined, CopyOutlined, CheckOutlined } from "@ant-design/icons";
 import { api, apiUrl } from "../api.js";
 
-const { Text, Paragraph } = Typography;
+const { Text, Title } = Typography;
 
 const preStyle: React.CSSProperties = {
   background: "#f5f5f5",
@@ -25,11 +24,13 @@ const preStyle: React.CSSProperties = {
   borderRadius: 4,
   fontSize: 12,
   overflowX: "auto",
+  margin: 0,
 };
 
 interface Dashboard {
   id: number;
   name: string;
+  slug: string;
 }
 
 interface Asset {
@@ -39,14 +40,43 @@ interface Asset {
   mimeType: string;
 }
 
+
+function buildEventYaml(
+  content: { type: string; body?: string; mediaUrl?: string },
+  timeout: number,
+  targetSlugs: string[]
+): string {
+  const contentLines =
+    content.type === "text"
+      ? `        type: text\n        body: "${content.body ?? ""}"`
+      : `        type: ${content.type}\n        mediaUrl: "${content.mediaUrl ?? ""}"`;
+
+  const targetLines =
+    targetSlugs.length > 0
+      ? `\n      target_dashboards:\n${targetSlugs.map((s) => `        - ${s}`).join("\n")}`
+      : "";
+
+  return `action:
+  - event: external_dashboards_popup
+    event_data:
+      content:
+${contentLines}
+      timeout: ${timeout}${targetLines}`;
+}
+
 export function PopupTrigger() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [mediaSource, setMediaSource] = useState<"asset" | "url">("asset");
+
   const contentType = Form.useWatch(["content", "type"], form);
   const mediaUrl = Form.useWatch(["content", "mediaUrl"], form);
+  const body = Form.useWatch(["content", "body"], form);
+  const timeout = Form.useWatch("timeout", form) ?? 10;
+  const targetDashboardIds: number[] = Form.useWatch("targetDashboardIds", form) ?? [];
 
   useEffect(() => {
     api.get<Dashboard[]>("/api/dashboards").then(setDashboards);
@@ -86,6 +116,18 @@ export function PopupTrigger() {
       setLoading(false);
     }
   };
+
+  // Build live example snippets from current form state
+  const effectiveContent =
+    contentType === "text"
+      ? { type: "text" as const, body: body ?? "" }
+      : { type: (contentType ?? "image") as "image" | "video", mediaUrl: mediaUrl ?? "" };
+
+  const targetSlugs = targetDashboardIds.map(
+    (id) => dashboards.find((d) => d.id === id)?.slug ?? String(id)
+  );
+
+  const eventYaml = buildEventYaml(effectiveContent, timeout, targetSlugs);
 
   return (
     <Card title="Send Popup">
@@ -235,90 +277,27 @@ export function PopupTrigger() {
           </Button>
         </Form.Item>
       </Form>
-      <Collapse
-        style={{ marginTop: 16 }}
-        items={[
-          {
-            key: "ha-integration",
-            label: "Home Assistant Integration Examples",
-            children: (
-              <div>
-                <Paragraph>
-                  <Text>
-                    Add these to your HA <Text code>configuration.yaml</Text>{" "}
-                    and call them from automations or scripts.
-                  </Text>
-                </Paragraph>
 
-                <div style={{ fontWeight: 500, marginBottom: 4 }}>
-                  Text popup
-                </div>
-                <pre style={preStyle}>
-                  {`rest_command:
-  popup_text:
-    url: "http://external_dashboards:8080/api/trigger/popup"
-    method: POST
-    content_type: "application/json"
-    payload: '{"content":{"type":"text","body":"{{ message }}"},"timeout":{{ timeout | default(10) }}}'`}
-                </pre>
-
-                <div style={{ fontWeight: 500, marginTop: 16, marginBottom: 4 }}>
-                  Image popup
-                </div>
-                <pre style={preStyle}>
-                  {`rest_command:
-  popup_image:
-    url: "http://external_dashboards:8080/api/trigger/popup"
-    method: POST
-    content_type: "application/json"
-    payload: '{"content":{"type":"image","mediaUrl":"{{ media_url }}"},"timeout":{{ timeout | default(15) }}}'`}
-                </pre>
-
-                <div style={{ fontWeight: 500, marginTop: 16, marginBottom: 4 }}>
-                  Video popup
-                </div>
-                <pre style={preStyle}>
-                  {`rest_command:
-  popup_video:
-    url: "http://external_dashboards:8080/api/trigger/popup"
-    method: POST
-    content_type: "application/json"
-    payload: '{"content":{"type":"video","mediaUrl":"{{ media_url }}"},"timeout":{{ timeout | default(30) }}}'`}
-                </pre>
-
-                <div style={{ fontWeight: 500, marginTop: 16, marginBottom: 4 }}>
-                  Target specific dashboards
-                </div>
-                <pre style={preStyle}>
-                  {`rest_command:
-  popup_targeted:
-    url: "http://external_dashboards:8080/api/trigger/popup"
-    method: POST
-    content_type: "application/json"
-    payload: '{"content":{"type":"text","body":"{{ message }}"},"timeout":10,"targetDashboardIds":[{{ dashboard_id }}]}'`}
-                </pre>
-
-                <div style={{ fontWeight: 500, marginTop: 16, marginBottom: 4 }}>
-                  Automation example
-                </div>
-                <pre style={preStyle}>
-                  {`automation:
-  - alias: "Doorbell popup"
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.doorbell
-        to: "on"
-    action:
-      - service: rest_command.popup_image
-        data:
-          media_url: "/assets/doorbell-snapshot.jpg"
-          timeout: 20`}
-                </pre>
-              </div>
-            ),
-          },
-        ]}
-      />
+      <div style={{ marginTop: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div>
+            <Title level={5} style={{ margin: 0 }}>Trigger from a HA Automation</Title>
+            <Text type="secondary" style={{ fontSize: 12 }}>Updates as you change the form above.</Text>
+          </div>
+          <Tooltip title={copied ? "Copied!" : "Copy"}>
+            <Button
+              size="small"
+              icon={copied ? <CheckOutlined /> : <CopyOutlined />}
+              onClick={() => {
+                navigator.clipboard.writeText(eventYaml);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+            />
+          </Tooltip>
+        </div>
+        <pre style={preStyle}>{eventYaml}</pre>
+      </div>
     </Card>
   );
 }

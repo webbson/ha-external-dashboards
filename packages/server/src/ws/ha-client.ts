@@ -9,12 +9,14 @@ export interface HAState {
 }
 
 type StateChangedCallback = (entityId: string, newState: HAState) => void;
+type CustomEventCallback = (eventType: string, data: Record<string, unknown>) => void;
 
 export class HAClient {
   private ws: WebSocket | null = null;
   private msgId = 0;
   private states = new Map<string, HAState>();
   private onStateChanged: StateChangedCallback | null = null;
+  private onHaEvent: CustomEventCallback | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private supervisorToken: string;
   private haUrl: string;
@@ -32,6 +34,10 @@ export class HAClient {
 
   setOnStateChanged(cb: StateChangedCallback) {
     this.onStateChanged = cb;
+  }
+
+  setOnHaEvent(cb: CustomEventCallback) {
+    this.onHaEvent = cb;
   }
 
   getState(entityId: string): HAState | undefined {
@@ -146,10 +152,14 @@ export class HAClient {
   private handleEvent(msg: Record<string, unknown>) {
     const event = msg.event as {
       event_type: string;
-      data: { entity_id: string; old_state: HAState | null; new_state: HAState };
+      data: Record<string, unknown>;
     };
-    if (event?.event_type === "state_changed" && event.data?.new_state) {
-      const { entity_id, old_state, new_state } = event.data;
+    if (!event?.event_type) return;
+
+    if (event.event_type === "state_changed") {
+      const data = event.data as { entity_id: string; old_state: HAState | null; new_state: HAState };
+      if (!data?.new_state) return;
+      const { entity_id, old_state, new_state } = data;
       this.states.set(entity_id, new_state);
 
       // Skip forwarding if state value and attributes haven't changed
@@ -163,6 +173,8 @@ export class HAClient {
       }
 
       this.onStateChanged?.(entity_id, new_state);
+    } else {
+      this.onHaEvent?.(event.event_type, event.data ?? {});
     }
   }
 
@@ -175,6 +187,11 @@ export class HAClient {
       id: ++this.msgId,
       type: "subscribe_events",
       event_type: "state_changed",
+    });
+    this.send({
+      id: ++this.msgId,
+      type: "subscribe_events",
+      event_type: "external_dashboards_popup",
     });
   }
 

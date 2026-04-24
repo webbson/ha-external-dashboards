@@ -12,9 +12,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { runMigrations } from "./db/migrate.js";
+import { db } from "./db/connection.js";
+import { dashboards } from "./db/schema.js";
+import { inArray } from "drizzle-orm";
+import { z } from "zod";
 import { haClient } from "./ws/ha-client.js";
 import { connectionManager } from "./ws/manager.js";
 import { setupWebSocketProxy } from "./ws/proxy.js";
+import { broadcastPopup } from "./ws/popup-broadcast.js";
 import { dashboardRoutes } from "./routes/dashboards.js";
 import { layoutRoutes } from "./routes/layouts.js";
 import { componentRoutes } from "./routes/components.js";
@@ -69,6 +74,37 @@ async function start() {
   haClient.setOnStateChanged((entityId, newState) => {
     connectionManager.sendStateUpdate(entityId, newState, newState.attributes);
   });
+
+  const haPopupEventSchema = z.object({
+    content: z.object({
+      type: z.enum(["text", "image", "video"]),
+      body: z.string().optional(),
+      mediaUrl: z.string().optional(),
+    }),
+    timeout: z.number().int().positive().default(10),
+    target_dashboards: z.array(z.string()).default([]),
+  });
+
+  haClient.setOnHaEvent((eventType, data) => {
+    if (eventType === "external_dashboards_popup") {
+      const parsed = haPopupEventSchema.safeParse(data);
+      if (!parsed.success) {
+        console.warn("[HA Event] Invalid external_dashboards_popup data:", parsed.error.message);
+        return;
+      }
+      const { content, timeout, target_dashboards } = parsed.data;
+      let targetIds: number[] = [];
+      if (target_dashboards.length > 0) {
+        const rows = db.select({ id: dashboards.id })
+          .from(dashboards)
+          .where(inArray(dashboards.slug, target_dashboards))
+          .all();
+        targetIds = rows.map((r) => r.id);
+      }
+      broadcastPopup(targetIds, { content, timeout });
+    }
+  });
+
   haClient.connect().catch((err) => {
     console.warn("HA WebSocket initial connection failed:", err.message);
   });

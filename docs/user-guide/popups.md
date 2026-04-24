@@ -26,8 +26,72 @@ rest_command:
 
 For the full REST payload reference (all fields, authentication, rate limits), see [../api-reference.md](../api-reference.md).
 
+## Triggering via HA Events
+
+Instead of a `rest_command`, you can fire a native HA event directly from an automation or script. The add-on listens on its existing HA WebSocket connection for `external_dashboards_popup` events — no extra HTTP call required.
+
+### Event fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `content.type` | `text` \| `image` \| `video` | Yes | Content type |
+| `content.body` | string | For `text` | Message body |
+| `content.mediaUrl` | string | For `image`/`video` | URL or asset path |
+| `timeout` | integer (seconds) | No (default 10) | Auto-dismiss after |
+| `target_dashboards` | list of slugs | No (default all) | Limit to specific dashboards |
+
+### Examples
+
+**Text popup to all displays:**
+
+```yaml
+action: event
+event_type: external_dashboards_popup
+event_data:
+  content:
+    type: text
+    body: "Motion detected in the garden!"
+  timeout: 15
+```
+
+**Image popup targeted to specific dashboards:**
+
+```yaml
+action: event
+event_type: external_dashboards_popup
+event_data:
+  content:
+    type: image
+    mediaUrl: "/local/cameras/front-door.jpg"
+  timeout: 20
+  target_dashboards:
+    - living-room
+    - hallway
+```
+
+**In an automation:**
+
+```yaml
+automation:
+  - alias: "Doorbell popup"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.doorbell
+        to: "on"
+    action:
+      - event: external_dashboards_popup
+        event_data:
+          content:
+            type: text
+            body: "Someone is at the door!"
+          timeout: 30
+```
+
+> **Note:** The dashboard slug is the URL-friendly identifier shown in the admin UI (e.g. a dashboard at `/d/living-room` has slug `living-room`).
+
 ## Gotchas
 
-- The endpoint is admin-scoped (uses HA ingress auth) and **rate-limited to 10 requests/second**. Bursting more will drop requests.
+- The REST endpoint is admin-scoped (uses HA ingress auth) and **rate-limited to 10 requests/second**. Bursting more will drop requests. The HA event path has no rate limit, so fire responsibly.
 - Videos must be a format the display browser can play (typically `.mp4`/H.264).
 - There is no "close all popups" control — they clear themselves when the timeout elapses.
+- Invalid event data (wrong content type, non-integer timeout, etc.) is silently dropped with a server-side warning in the add-on logs.
