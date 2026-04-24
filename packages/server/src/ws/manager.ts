@@ -41,7 +41,7 @@ interface DisplayConnection {
   clientRowId?: number;
 }
 
-class ConnectionManager {
+export class ConnectionManager {
   private connections = new Map<WebSocket, DisplayConnection>();
 
   add(
@@ -169,60 +169,84 @@ class ConnectionManager {
     for (const conn of this.connections.values()) {
       if (conn.ws.readyState !== WebSocket.OPEN) continue;
 
-      if (conn.subscribedEntities.has(entityId)) {
-        // Re-evaluate filters for glob-matched entities
-        const matchedGps = conn.globMatchedEntities.get(entityId);
-        if (matchedGps && matchedGps.length > 0) {
-          const remaining: GlobPatternEntry[] = [];
-          for (const gp of matchedGps) {
-            if (this.passesFilters(gp, stateStr, attributes)) {
-              remaining.push(gp);
-            } else {
-              conn.ws.send(
-                JSON.stringify({
-                  type: "glob_expansion_remove",
-                  pattern: expansionKey(gp),
-                  entityId,
-                })
-              );
-            }
-          }
-          if (remaining.length > 0) {
-            conn.globMatchedEntities.set(entityId, remaining);
-            conn.ws.send(payload);
-          } else {
-            // No pattern still matches — remove from subscriptions
-            conn.subscribedEntities.delete(entityId);
-            conn.globMatchedEntities.delete(entityId);
-          }
-          continue;
-        }
-        conn.ws.send(payload);
+      const wasSubscribed = conn.subscribedEntities.has(entityId);
+
+      if (conn.globPatterns.length === 0) {
+        if (wasSubscribed) conn.ws.send(payload);
         continue;
       }
 
-      // Check if any glob pattern matches this entity (dynamic discovery)
-      if (conn.globPatterns.length > 0) {
-        let matched = false;
-        for (const gp of conn.globPatterns) {
-          if (matchGlob(gp.pattern, [entityId]).length > 0) {
-            if (!this.passesFilters(gp, stateStr, attributes)) continue;
+      // Re-evaluate ALL glob patterns for this entity on every state event.
+      // This is required for multi-instance dashboards where the same entity
+      // can migrate from one instance's filter to another's on a single state change.
+      const prevMatched = conn.globMatchedEntities.get(entityId) ?? [];
+      let hasPatternMatch = false;
+      let anyGlobMatches = false;
+      const nextMatched: GlobPatternEntry[] = [];
+      const expansionUpdates: string[] = [];
 
-            if (!matched) {
-              conn.subscribedEntities.add(entityId);
-              conn.ws.send(payload);
-              matched = true;
-            }
-            this.trackGlobMatch(conn, entityId, gp);
+      for (const gp of conn.globPatterns) {
+        if (matchGlob(gp.pattern, [entityId]).length === 0) continue;
+        hasPatternMatch = true;
+
+        const hasFilters =
+          (gp.stateFilters && gp.stateFilters.length > 0) ||
+          (gp.attributeFilters && gp.attributeFilters.length > 0);
+        const passes = this.passesFilters(gp, stateStr, attributes);
+        const wasTracked = prevMatched.some(
+          (p) => p.instanceId === gp.instanceId && p.selectorName === gp.selectorName
+        );
+
+        if (hasFilters) {
+          if (!passes && wasTracked) {
             conn.ws.send(
               JSON.stringify({
-                type: "glob_expansion_update",
+                type: "glob_expansion_remove",
                 pattern: expansionKey(gp),
                 entityId,
               })
             );
+          } else if (passes) {
+            nextMatched.push(gp);
+            anyGlobMatches = true;
+            if (!wasTracked) {
+              expansionUpdates.push(expansionKey(gp));
+            }
+          }
+        } else {
+          // Unfiltered glob: always matches when pattern matches
+          anyGlobMatches = true;
+          if (!wasSubscribed) {
+            expansionUpdates.push(expansionKey(gp));
           }
         }
+      }
+
+      if (nextMatched.length > 0) {
+        conn.globMatchedEntities.set(entityId, nextMatched);
+      } else {
+        conn.globMatchedEntities.delete(entityId);
+      }
+
+      if (hasPatternMatch) {
+        if (anyGlobMatches) {
+          conn.subscribedEntities.add(entityId);
+          conn.ws.send(payload);
+          for (const key of expansionUpdates) {
+            conn.ws.send(
+              JSON.stringify({
+                type: "glob_expansion_update",
+                pattern: key,
+                entityId,
+              })
+            );
+          }
+        } else if (wasSubscribed) {
+          conn.subscribedEntities.delete(entityId);
+        }
+      } else if (wasSubscribed) {
+        // Entity is here via explicit binding or derived subscribe_entities — forward as-is
+        conn.ws.send(payload);
       }
     }
   }
