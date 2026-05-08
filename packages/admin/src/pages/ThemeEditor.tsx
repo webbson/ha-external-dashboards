@@ -13,17 +13,33 @@ import {
   Select,
   Tooltip,
   message,
+  AutoComplete,
+  Modal,
+  Tag,
+  Divider,
 } from "antd";
-import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { PlusOutlined, DeleteOutlined, InfoCircleOutlined, FontColorsOutlined } from "@ant-design/icons";
 import { api, apiUrl } from "../api.js";
 import type { StandardVariables } from "@ha-external-dashboards/shared";
 import { STANDARD_VARIABLE_DEFAULTS } from "@ha-external-dashboards/shared";
+
+type FontSource =
+  | { type: "asset"; assetId: number; fileName: string }
+  | { type: "url"; url: string }
+  | { type: "stylesheet"; url: string };
+
+interface FontDeclaration {
+  id: string;
+  name: string;
+  sources: FontSource[];
+}
 
 interface Theme {
   id?: number;
   name: string;
   standardVariables: Partial<StandardVariables>;
   globalStyles: Record<string, string>;
+  fontDeclarations: FontDeclaration[];
 }
 
 interface Asset {
@@ -33,18 +49,169 @@ interface Asset {
   mimeType: string;
 }
 
+const FONT_MIME_TYPES = [
+  "font/woff2",
+  "font/woff",
+  "font/ttf",
+  "font/otf",
+  "application/x-font-ttf",
+  "application/x-font-otf",
+  "application/font-woff",
+  "application/font-woff2",
+];
+
+function isFontAsset(mimeType: string): boolean {
+  return FONT_MIME_TYPES.includes(mimeType) || mimeType.startsWith("font/");
+}
+
+function fontSlug(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "font"
+  );
+}
+
+interface FontDeclModalProps {
+  open: boolean;
+  decl: FontDeclaration | null;
+  fontAssets: Asset[];
+  onSave: (decl: FontDeclaration) => void;
+  onClose: () => void;
+}
+
+function FontDeclModal({ open, decl, fontAssets, onSave, onClose }: FontDeclModalProps) {
+  const [name, setName] = useState(decl?.name ?? "");
+  const [sources, setSources] = useState<FontSource[]>(decl?.sources ?? []);
+
+  useEffect(() => {
+    setName(decl?.name ?? "");
+    setSources(decl?.sources ?? []);
+  }, [decl]);
+
+  const slug = fontSlug(name);
+  const cssVar = `--db-font-${slug}`;
+
+  const addSource = (type: FontSource["type"]) => {
+    if (type === "asset") {
+      setSources((prev) => [...prev, { type: "asset", assetId: 0, fileName: "" }]);
+    } else if (type === "url") {
+      setSources((prev) => [...prev, { type: "url", url: "" }]);
+    } else {
+      setSources((prev) => [...prev, { type: "stylesheet", url: "" }]);
+    }
+  };
+
+  const updateSource = (i: number, patch: Partial<FontSource>) => {
+    setSources((prev) => {
+      const next = [...prev];
+      next[i] = { ...next[i], ...patch } as FontSource;
+      return next;
+    });
+  };
+
+  const removeSource = (i: number) => {
+    setSources((prev) => prev.filter((_, j) => j !== i));
+  };
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    onSave({
+      id: decl?.id ?? crypto.randomUUID(),
+      name: name.trim(),
+      sources,
+    });
+  };
+
+  return (
+    <Modal
+      open={open}
+      title={decl ? "Edit Font" : "Add Font"}
+      onCancel={onClose}
+      onOk={handleSave}
+      okText="Save"
+      width={540}
+      destroyOnHidden
+    >
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>Font Name</div>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Brand Sans"
+        />
+        {name && (
+          <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+            CSS var: <code>{cssVar}</code>
+          </div>
+        )}
+      </div>
+
+      <div style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>Sources</div>
+      {sources.map((src, i) => (
+        <Space key={i} style={{ display: "flex", marginBottom: 8, alignItems: "flex-start" }}>
+          <Tag
+            color={src.type === "asset" ? "blue" : src.type === "stylesheet" ? "green" : "orange"}
+            style={{ marginTop: 4, minWidth: 72, textAlign: "center" }}
+          >
+            {src.type}
+          </Tag>
+          {src.type === "asset" && (
+            <Select
+              value={(src as Extract<FontSource, { type: "asset" }>).fileName || undefined}
+              onChange={(fileName) => {
+                const asset = fontAssets.find((a) => a.fileName === fileName);
+                if (asset) updateSource(i, { type: "asset", assetId: asset.id, fileName: asset.fileName });
+              }}
+              placeholder="Select font file"
+              style={{ width: 300 }}
+              options={fontAssets.map((a) => ({ value: a.fileName, label: a.name }))}
+            />
+          )}
+          {(src.type === "url" || src.type === "stylesheet") && (
+            <Input
+              value={(src as Extract<FontSource, { type: "url" | "stylesheet" }>).url}
+              onChange={(e) => updateSource(i, { url: e.target.value } as Partial<FontSource>)}
+              placeholder={
+                src.type === "stylesheet"
+                  ? "https://fonts.googleapis.com/css2?family=..."
+                  : "https://cdn.example.com/font.woff2"
+              }
+              style={{ width: 300 }}
+            />
+          )}
+          <Button danger icon={<DeleteOutlined />} size="small" onClick={() => removeSource(i)} />
+        </Space>
+      ))}
+
+      <Space style={{ marginTop: 8 }}>
+        <Button size="small" icon={<PlusOutlined />} onClick={() => addSource("asset")}>
+          Uploaded file
+        </Button>
+        <Button size="small" icon={<PlusOutlined />} onClick={() => addSource("url")}>
+          File URL
+        </Button>
+        <Button size="small" icon={<PlusOutlined />} onClick={() => addSource("stylesheet")}>
+          Stylesheet URL
+        </Button>
+      </Space>
+    </Modal>
+  );
+}
+
 export function ThemeEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [form] = Form.useForm<{ name: string }>();
   const [loading, setLoading] = useState(false);
-  const [standardVariables, setStandardVariables] = useState<
-    Partial<StandardVariables>
-  >({});
-  const [globalStyleEntries, setGlobalStyleEntries] = useState<
-    { key: string; value: string }[]
-  >([]);
+  const [standardVariables, setStandardVariables] = useState<Partial<StandardVariables>>({});
+  const [globalStyleEntries, setGlobalStyleEntries] = useState<{ key: string; value: string }[]>([]);
   const [imageAssets, setImageAssets] = useState<Asset[]>([]);
+  const [fontDeclarations, setFontDeclarations] = useState<FontDeclaration[]>([]);
+  const [fontAssets, setFontAssets] = useState<Asset[]>([]);
+  const [fontModalOpen, setFontModalOpen] = useState(false);
+  const [editingDecl, setEditingDecl] = useState<FontDeclaration | null>(null);
   const isNew = !id;
 
   const merged = { ...STANDARD_VARIABLE_DEFAULTS, ...standardVariables };
@@ -56,6 +223,7 @@ export function ThemeEditor() {
   useEffect(() => {
     api.get<Asset[]>("/api/assets").then((assets) => {
       setImageAssets(assets.filter((a) => a.mimeType.startsWith("image/")));
+      setFontAssets(assets.filter((a) => isFontAsset(a.mimeType)));
     });
   }, []);
 
@@ -67,6 +235,7 @@ export function ThemeEditor() {
         .then((data) => {
           form.setFieldsValue({ name: data.name });
           setStandardVariables(data.standardVariables ?? {});
+          setFontDeclarations(data.fontDeclarations ?? []);
           const gs = data.globalStyles ?? {};
           setGlobalStyleEntries(
             Object.entries(gs).map(([key, value]) => ({ key, value }))
@@ -87,6 +256,7 @@ export function ThemeEditor() {
         name: values.name,
         standardVariables,
         globalStyles,
+        fontDeclarations,
       };
 
       if (isNew) {
@@ -224,7 +394,16 @@ export function ThemeEditor() {
           {/* Column 2: Typography + Component Chrome + Layout */}
           <Col span={8}>
             {sectionHeader("Typography", "Font settings inherited by all components")}
-            {textField("Font Family", "fontFamily", "inherit", "CSS font-family value. Use in CSS as var(--db-font-family)")}
+            <div style={{ marginBottom: 12 }}>
+              {fieldLabel("Font Family", "CSS font-family value. Declared fonts appear as options. Use in CSS as var(--db-font-family)")}
+              <AutoComplete
+                value={merged.fontFamily}
+                onChange={(v) => update("fontFamily", v)}
+                placeholder={STANDARD_VARIABLE_DEFAULTS.fontFamily}
+                style={{ width: "100%" }}
+                options={fontDeclarations.map((d) => ({ value: d.name, label: d.name }))}
+              />
+            </div>
             {textField("Font Size", "fontSize", "16px", "Base font size for component content. Use in CSS as var(--db-font-size)")}
 
             {sectionHeader("Component Chrome", "Outer wrapper styling applied around each component or region")}
@@ -293,6 +472,74 @@ export function ThemeEditor() {
             {textField("Font Size", "tabBarFontSize", "14px", "Font and icon size for tab labels. Use in CSS as var(--db-tab-bar-font-size)")}
           </Col>
         </Row>
+
+        <Divider />
+
+        {sectionHeader("Fonts", "Declare named font families from uploaded files, CDN URLs, or Google Fonts stylesheets. Each gets a --db-font-{name} CSS variable.")}
+
+        {fontDeclarations.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            {fontDeclarations.map((decl) => {
+              const slug = fontSlug(decl.name);
+              return (
+                <Space key={decl.id} style={{ display: "flex", marginBottom: 8, alignItems: "center" }}>
+                  <span style={{ fontWeight: 500, minWidth: 120 }}>{decl.name}</span>
+                  <code style={{ fontSize: 11, color: "#888" }}>--db-font-{slug}</code>
+                  <Space size={4}>
+                    {Array.from(new Set(decl.sources.map((s) => s.type))).map((t) => (
+                      <Tag key={t} color={t === "asset" ? "blue" : t === "stylesheet" ? "green" : "orange"}>
+                        {t}
+                      </Tag>
+                    ))}
+                  </Space>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setEditingDecl(decl);
+                      setFontModalOpen(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    danger
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    onClick={() =>
+                      setFontDeclarations(fontDeclarations.filter((d) => d.id !== decl.id))
+                    }
+                  />
+                </Space>
+              );
+            })}
+          </div>
+        )}
+
+        <Button
+          icon={<FontColorsOutlined />}
+          onClick={() => {
+            setEditingDecl(null);
+            setFontModalOpen(true);
+          }}
+        >
+          Add Font
+        </Button>
+
+        <FontDeclModal
+          open={fontModalOpen}
+          decl={editingDecl}
+          fontAssets={fontAssets}
+          onSave={(saved) => {
+            setFontDeclarations((prev) => {
+              const idx = prev.findIndex((d) => d.id === saved.id);
+              return idx >= 0
+                ? prev.map((d) => (d.id === saved.id ? saved : d))
+                : [...prev, saved];
+            });
+            setFontModalOpen(false);
+          }}
+          onClose={() => setFontModalOpen(false)}
+        />
 
         <Form.Item style={{ marginTop: 24 }}>
           <Space>
