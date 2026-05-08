@@ -25,6 +25,7 @@ interface DashboardConfig {
     padding?: string | null;
     globalStyles: Record<string, string>;
     standardVariables?: Record<string, string>;
+    fontDeclarations?: FontDeclaration[];
     layoutSwitchMode: "tabs" | "auto-rotate";
     layoutRotateInterval: number;
     blackoutEntity?: string | null;
@@ -77,6 +78,76 @@ interface ComponentDef {
   isContainer: boolean;
   containerConfig: { type: string; rotateInterval?: number } | null;
   parameterDefs?: string | { name: string; default?: string | number | boolean }[];
+}
+
+type FontSource =
+  | { type: "asset"; assetId: number; fileName: string }
+  | { type: "url"; url: string }
+  | { type: "stylesheet"; url: string };
+
+interface FontDeclaration {
+  id: string;
+  name: string;
+  sources: FontSource[];
+}
+
+function injectThemeFonts(declarations: FontDeclaration[]): () => void {
+  const injected: HTMLElement[] = [];
+  const cssVarNames: string[] = [];
+
+  for (const decl of declarations) {
+    const slug =
+      decl.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "") || "font";
+    const cssVar = `--db-font-${slug}`;
+
+    for (const src of decl.sources) {
+      if (src.type === "stylesheet") {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = src.url;
+        link.dataset.dbFont = "1";
+        document.head.appendChild(link);
+        injected.push(link);
+      }
+    }
+
+    const fileSources = decl.sources.filter(
+      (s): s is Extract<FontSource, { type: "asset" | "url" }> =>
+        s.type === "asset" || s.type === "url"
+    );
+    if (fileSources.length > 0) {
+      const formatFromUrl = (url: string) => {
+        const l = url.toLowerCase();
+        if (l.includes(".woff2")) return "woff2";
+        if (l.includes(".woff")) return "woff";
+        if (l.includes(".ttf")) return "truetype";
+        if (l.includes(".otf")) return "opentype";
+        return "woff2";
+      };
+      const srcParts = fileSources.map((s) => {
+        const url = s.type === "asset" ? `/assets/${s.fileName}` : s.url;
+        return `url('${url}') format('${formatFromUrl(url)}')`;
+      });
+      const style = document.createElement("style");
+      style.textContent = `@font-face { font-family: "${decl.name}"; src: ${srcParts.join(", ")}; }`;
+      style.dataset.dbFont = "1";
+      document.head.appendChild(style);
+      injected.push(style);
+    }
+
+    document.documentElement.style.setProperty(cssVar, `"${decl.name}"`);
+    cssVarNames.push(cssVar);
+  }
+
+  return () => {
+    for (const el of injected) el.remove();
+    for (const prop of cssVarNames) {
+      document.documentElement.style.removeProperty(prop);
+    }
+  };
 }
 
 interface PopupData {
@@ -286,6 +357,13 @@ export function DisplayApp() {
       document.body.style.backgroundImage = "";
       document.body.style.backgroundColor = "";
     };
+  }, [config]);
+
+  // Inject font declarations as @font-face rules, <link> tags, and CSS vars
+  useEffect(() => {
+    const decls = config?.dashboard.fontDeclarations ?? [];
+    if (decls.length === 0) return;
+    return injectThemeFonts(decls);
   }, [config]);
 
   // 401 recovery: if any /api/* fetch returns 401, reload to re-auth
