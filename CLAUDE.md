@@ -54,7 +54,7 @@ Build order matters: shared → admin/display → server
 
 ## Data Model
 
-- `themes` — name, standardVariables (JSON: colors/typography/borders/gaps/background), globalStyles (JSON: custom CSS variables)
+- `themes` — name, standardVariables (JSON: colors/typography/borders/gaps/background), globalStyles (JSON: custom CSS variables), fontDeclarations (JSON: FontDeclaration[] — named font families sourced from uploaded assets, CDN URLs, or Google Fonts stylesheets; each generates a `--db-font-{slug}` CSS var on display)
 - `dashboards` — slug, accessKey, accessMode, themeId (FK → themes), layoutSwitchMode, blackoutEntity, blackoutStartTime, blackoutEndTime
 - `layouts` — name, structure (JSON: gridTemplate + regions with applyChromeTo)
 - `dashboard_layouts` — join table with sortOrder, label, icon, visibilityRules (JSON: VisibilityRule[]), hideInTabBar, autoReturn, autoReturnDelay
