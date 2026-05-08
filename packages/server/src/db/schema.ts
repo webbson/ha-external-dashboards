@@ -164,7 +164,7 @@ export const componentInstances = sqliteTable("component_instances", {
         entityId: string;
         attribute?: string;
         operator: string;
-        value: string;
+        value?: string;
       }[]
     >()
     .notNull()

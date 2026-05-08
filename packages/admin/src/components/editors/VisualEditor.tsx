@@ -1,8 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Input, InputNumber, Select, Switch, Button, Card, Modal, Form, Space } from "antd";
 import { MinusCircleOutlined, PlusOutlined, UpOutlined, DownOutlined, SettingOutlined } from "@ant-design/icons";
 import { MdiIconSelector } from "../selectors/MdiIconSelector.js";
-import { api } from "../../api.js";
+
+const HA_DOMAINS = [
+  "alarm_control_panel", "automation", "binary_sensor", "button", "calendar",
+  "camera", "climate", "cover", "device_tracker", "event", "fan", "group",
+  "humidifier", "image", "input_boolean", "input_button", "input_datetime",
+  "input_number", "input_select", "input_text", "light", "lock",
+  "media_player", "notify", "number", "person", "remote", "scene",
+  "schedule", "script", "select", "sensor", "siren", "sun", "switch",
+  "text", "timer", "todo", "update", "vacuum", "valve", "water_heater",
+  "weather", "zone",
+];
 
 interface ParameterDef {
   name: string;
@@ -198,22 +208,7 @@ export function VisualEditor({
   entitySelectorDefs,
   onEntitySelectorDefsChange,
 }: VisualEditorProps) {
-  const [availableDomains, setAvailableDomains] = useState<string[]>([]);
   const [settingsIndex, setSettingsIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    api
-      .get<{ entity_id: string }[]>("/api/ha/entities")
-      .then((entities) => {
-        const domains = new Set<string>();
-        for (const e of entities) {
-          const dot = e.entity_id.indexOf(".");
-          if (dot > 0) domains.add(e.entity_id.substring(0, dot));
-        }
-        setAvailableDomains(Array.from(domains).sort());
-      })
-      .catch((err) => console.warn("Failed to load entity domains:", err));
-  }, []);
 
   const addParam = () => {
     onParameterDefsChange([
@@ -413,7 +408,7 @@ export function VisualEditor({
                       })
                     }
                     style={{ width: "100%" }}
-                    options={availableDomains.map((d) => ({
+                    options={HA_DOMAINS.map((d) => ({
                       value: d,
                       label: d,
                     }))}

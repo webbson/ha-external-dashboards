@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Select, Input, Typography } from "antd";
 import { api } from "../../api.js";
 
@@ -19,15 +19,26 @@ export function EntitySelector({ mode, value, onChange, allowedDomains }: Entity
   const [entities, setEntities] = useState<HAEntity[]>([]);
   const [loading, setLoading] = useState(false);
   const [globMatchCount, setGlobMatchCount] = useState<number | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  useEffect(() => {
+  const fetchEntities = useCallback((search?: string) => {
     setLoading(true);
+    const qs = search ? `?search=${encodeURIComponent(search)}` : "";
     api
-      .get<{ entities: HAEntity[]; total: number }>("/api/ha/entities")
+      .get<{ entities: HAEntity[]; total: number }>(`/api/ha/entities${qs}`)
       .then((res) => setEntities(res.entities))
       .catch(() => setEntities([]))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchEntities();
+  }, [fetchEntities]);
+
+  const handleSearch = (term: string) => {
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => fetchEntities(term || undefined), 300);
+  };
 
   const filteredEntities =
     allowedDomains && allowedDomains.length > 0
@@ -86,13 +97,8 @@ export function EntitySelector({ mode, value, onChange, allowedDomains }: Entity
         onChange={(v) => onChange?.(v)}
         loading={loading}
         placeholder="Select entities"
-        showSearch
+        showSearch={{ filterOption: false, onSearch: handleSearch }}
         style={{ width: "100%" }}
-        filterOption={(input, option) =>
-          (option?.label?.toString() ?? "")
-            .toLowerCase()
-            .includes(input.toLowerCase())
-        }
         options={options}
       />
     );
@@ -106,13 +112,8 @@ export function EntitySelector({ mode, value, onChange, allowedDomains }: Entity
       allowClear
       loading={loading}
       placeholder="Select entity"
-      showSearch
+      showSearch={{ filterOption: false, onSearch: handleSearch }}
       style={{ width: "100%" }}
-      filterOption={(input, option) =>
-        (option?.label?.toString() ?? "")
-          .toLowerCase()
-          .includes(input.toLowerCase())
-      }
       options={options}
     />
   );

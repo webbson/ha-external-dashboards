@@ -440,7 +440,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
                 entityId: z.string(),
                 attribute: z.string().optional(),
                 operator: z.string(),
-                value: z.string(),
+                value: z.string().optional(),
               })
             )
             .default([]),
@@ -501,7 +501,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
               entityId: z.string(),
               attribute: z.string().optional(),
               operator: z.string(),
-              value: z.string(),
+              value: z.string().optional(),
             })
           ),
           entityFilters: z.record(
