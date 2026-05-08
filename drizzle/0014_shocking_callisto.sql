@@ -1,0 +1,1 @@
+ALTER TABLE `themes` ADD `font_declarations` text DEFAULT '[]' NOT NULL;

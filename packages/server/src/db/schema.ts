@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import type { FontDeclaration } from "@ha-external-dashboards/shared";
 
 export const dashboards = sqliteTable("dashboards", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -48,6 +49,10 @@ export const themes = sqliteTable("themes", {
     .$type<Record<string, string>>()
     .notNull()
     .default(sql`'{}'`),
+  fontDeclarations: text("font_declarations", { mode: "json" })
+    .$type<FontDeclaration[]>()
+    .notNull()
+    .default(sql`'[]'`),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
