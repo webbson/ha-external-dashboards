@@ -34,11 +34,18 @@ export function registerThemeTools(mcp: McpServer, adminApp: FastifyInstance) {
         .string()
         .optional()
         .describe("JSON object of custom CSS variable name-value pairs"),
+      fontDeclarations: z
+        .string()
+        .optional()
+        .describe(
+          'JSON array of font declarations. Each: { id: string, name: string, sources: FontSource[] }. FontSource union: { type: "asset", assetId: number, fileName: string } | { type: "url", url: string } | { type: "stylesheet", url: string }. Each declared font generates a --db-font-{slug} CSS variable on the display client.',
+        ),
     },
-    async ({ name, standardVariables, globalStyles }) => {
+    async ({ name, standardVariables, globalStyles, fontDeclarations }) => {
       const payload: Record<string, unknown> = { name };
       if (standardVariables) payload.standardVariables = JSON.parse(standardVariables);
       if (globalStyles) payload.globalStyles = JSON.parse(globalStyles);
+      if (fontDeclarations) payload.fontDeclarations = JSON.parse(fontDeclarations);
 
       const res = await adminApp.inject({
         method: "POST",
@@ -57,13 +64,20 @@ export function registerThemeTools(mcp: McpServer, adminApp: FastifyInstance) {
       name: z.string().optional(),
       standardVariables: z.string().optional().describe("JSON object of standard CSS variables"),
       globalStyles: z.string().optional().describe("JSON object of custom CSS variables"),
+      fontDeclarations: z
+        .string()
+        .optional()
+        .describe(
+          'JSON array of font declarations. Each: { id: string, name: string, sources: FontSource[] }. FontSource union: { type: "asset", assetId: number, fileName: string } | { type: "url", url: string } | { type: "stylesheet", url: string }. Each declared font generates a --db-font-{slug} CSS variable on the display client.',
+        ),
     },
-    async ({ id, name, standardVariables, globalStyles }) => {
+    async ({ id, name, standardVariables, globalStyles, fontDeclarations }) => {
       const payload: Record<string, unknown> = {};
       if (name !== undefined) payload.name = name;
       if (standardVariables !== undefined)
         payload.standardVariables = JSON.parse(standardVariables);
       if (globalStyles !== undefined) payload.globalStyles = JSON.parse(globalStyles);
+      if (fontDeclarations !== undefined) payload.fontDeclarations = JSON.parse(fontDeclarations);
 
       const res = await adminApp.inject({
         method: "PUT",
