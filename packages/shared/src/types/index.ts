@@ -137,6 +137,17 @@ export const STANDARD_VARIABLE_DEFAULTS: StandardVariables = {
   tabBarFontSize: "14px",
 };
 
+export type FontSource =
+  | { type: "asset"; assetId: number; fileName: string }
+  | { type: "url"; url: string }
+  | { type: "stylesheet"; url: string };
+
+export interface FontDeclaration {
+  id: string;
+  name: string;
+  sources: FontSource[];
+}
+
 export const STANDARD_VARIABLE_CSS_MAP: Record<
   Exclude<keyof StandardVariables, "backgroundType" | "backgroundImage">,
   string
