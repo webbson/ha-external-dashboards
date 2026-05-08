@@ -5,10 +5,23 @@ import { themes, dashboards } from "../db/schema.js";
 import { eq, sql } from "drizzle-orm";
 import { broadcastReloadForDashboards } from "../ws/popup-broadcast.js";
 
+const fontSourceSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("asset"), assetId: z.number(), fileName: z.string() }),
+  z.object({ type: z.literal("url"), url: z.string() }),
+  z.object({ type: z.literal("stylesheet"), url: z.string() }),
+]);
+
+const fontDeclarationSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  sources: z.array(fontSourceSchema),
+});
+
 const createSchema = z.object({
   name: z.string().min(1),
   standardVariables: z.record(z.string()).default({}),
   globalStyles: z.record(z.string()).default({}),
+  fontDeclarations: z.array(fontDeclarationSchema).default([]),
 });
 
 const updateSchema = createSchema.partial();
@@ -89,6 +102,7 @@ export async function themeRoutes(app: FastifyInstance) {
           name: `Copy of ${source.name}`,
           standardVariables: source.standardVariables,
           globalStyles: source.globalStyles,
+          fontDeclarations: source.fontDeclarations,
         })
         .returning();
       return reply.code(201).send(row);

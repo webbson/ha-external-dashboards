@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../config/jwt.js";
 import { dashboardAuth } from "../middleware/dashboard-auth.js";
+import type { FontDeclaration } from "@ha-external-dashboards/shared";
 
 export async function displayDataRoutes(app: FastifyInstance) {
   // Serves full dashboard config to the display app
@@ -22,13 +23,18 @@ export async function displayDataRoutes(app: FastifyInstance) {
       const dashboard = (req as unknown as Record<string, unknown>).dashboard as typeof dashboards.$inferSelect;
 
       // Resolve theme if set
-      let themeData = { standardVariables: {} as Record<string, string>, globalStyles: {} as Record<string, string> };
+      let themeData = {
+        standardVariables: {} as Record<string, string>,
+        globalStyles: {} as Record<string, string>,
+        fontDeclarations: [] as FontDeclaration[],
+      };
       if (dashboard.themeId) {
         const [theme] = await db.select().from(themes).where(eq(themes.id, dashboard.themeId));
         if (theme) {
           themeData = {
             standardVariables: theme.standardVariables as Record<string, string>,
             globalStyles: theme.globalStyles as Record<string, string>,
+            fontDeclarations: (theme.fontDeclarations as FontDeclaration[]) ?? [],
           };
         }
       }
@@ -107,6 +113,7 @@ export async function displayDataRoutes(app: FastifyInstance) {
           padding: dashboard.padding,
           globalStyles: themeData.globalStyles,
           standardVariables: themeData.standardVariables,
+          fontDeclarations: themeData.fontDeclarations,
           layoutSwitchMode: dashboard.layoutSwitchMode,
           layoutRotateInterval: dashboard.layoutRotateInterval,
           blackoutEntity: dashboard.blackoutEntity,
