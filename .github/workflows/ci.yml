@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+    paths-ignore:
+      - "external_dashboards/config.yaml"
+      - "packages/server/package.json"
 
 permissions:
   contents: read
