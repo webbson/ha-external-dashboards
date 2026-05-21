@@ -86,12 +86,25 @@ export async function assetRoutes(app: FastifyInstance) {
     const filePath = path.join(ASSETS_DIR, fileName);
     fs.writeFileSync(filePath, buffer);
 
+    // Override generic MIME type using extension for known font formats
+    const FONT_EXT_MIME: Record<string, string> = {
+      ".woff2": "font/woff2",
+      ".woff": "font/woff",
+      ".ttf": "font/ttf",
+      ".otf": "font/otf",
+    };
+    const ext = path.extname(safeName).toLowerCase();
+    const mimeType =
+      data.mimetype === "application/octet-stream" && FONT_EXT_MIME[ext]
+        ? FONT_EXT_MIME[ext]
+        : data.mimetype;
+
     const [row] = await db
       .insert(assets)
       .values({
         name: data.filename,
         fileName,
-        mimeType: data.mimetype,
+        mimeType,
         fileSize: buffer.length,
         folder,
       })

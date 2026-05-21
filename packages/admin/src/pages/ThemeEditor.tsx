@@ -60,8 +60,12 @@ const FONT_MIME_TYPES = [
   "application/font-woff2",
 ];
 
-function isFontAsset(mimeType: string): boolean {
-  return FONT_MIME_TYPES.includes(mimeType) || mimeType.startsWith("font/");
+const FONT_EXTENSIONS = [".woff2", ".woff", ".ttf", ".otf"];
+
+function isFontAsset(asset: Asset): boolean {
+  if (FONT_MIME_TYPES.includes(asset.mimeType) || asset.mimeType.startsWith("font/")) return true;
+  const ext = asset.name.toLowerCase().slice(asset.name.lastIndexOf("."));
+  return FONT_EXTENSIONS.includes(ext);
 }
 
 function fontSlug(name: string): string {
@@ -223,7 +227,7 @@ export function ThemeEditor() {
   useEffect(() => {
     api.get<Asset[]>("/api/assets").then((assets) => {
       setImageAssets(assets.filter((a) => a.mimeType.startsWith("image/")));
-      setFontAssets(assets.filter((a) => isFontAsset(a.mimeType)));
+      setFontAssets(assets.filter((a) => isFontAsset(a)));
     });
   }, []);
 
